@@ -1,0 +1,56 @@
+ACCELERATOR:
+  CLIP_GRAD_NORM: -1.0
+  FP16: true
+  FP16_LOSS_SCALE: dynamic
+  FP16_OPT_LEVEL: O2
+  GRAD_ACCUMULATE_STEPS: 1
+  SYNCBN: false
+
+DATASET:
+  DATASET: ImageNetJsonDataset
+  MODEL_INPUT:
+  - image
+  NEED_TEMB: false
+  NEED_TEXT: false
+  TRAIN_PATH: hdfs://haruna/home/byte_search_nlp_lq/user/huangwenguan/data/tower/imagenet_nte_org_n_nz
+  VAL_PATH: hdfs://haruna/home/byte_search_nlp_lq/user/huangwenguan/data/tower/imagenet_val_nte_org
+
+NETWORK:
+  FREEZE_BN_RUNNING_STATS: false
+  NET: ResNetClassifier
+  PARTIAL_PRETRAIN: null
+  PARTIAL_PRETRAIN_PREFIX_CHANGES: []
+
+TRAIN:
+  LR: 1.2
+  LR_SCHEDULE: cosine
+  LR_STEP:
+  - 30
+  - 60
+  - 80
+  MAX_PREFETCH: 4
+  NUM_READERS: 4
+  NUM_WORKERS: 32
+  WARMUP: true
+  WARMUP_FACTOR: 0.001
+  WARMUP_METHOD: step
+  WD: 0.0001
+  MOMENTUM: 0.9
+
+TRAINER:
+  BEGIN_EPOCH: 0
+  CHECKPOINT_FREQUENT: 12000
+  END_EPOCH: 90
+  LOG_FREQUENT: 100
+  RNG_SEED: 12345
+  TRAIN_BATCH_SIZE: 384
+  TRAIN_DATASET_SIZE: 1281167
+  VAL_BATCH_SIZE: 128
+  VAL_DATASET_SIZE: 50000
+  VAL_FREQUENT: 0
+  VAL_STEPS: 10
+  CHANNELS_LAST: false
+
+VAL:
+  NUM_READERS: 2
+  NUM_WORKERS: 4

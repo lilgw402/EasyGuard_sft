@@ -1,0 +1,25 @@
+# Use --index-url=https://bytedpypi.byted.org/simple/
+# See https://python.byted.org/pip-setup.html
+pylint
+mypy
+pytest
+coverage
+
+tensorboard==2.4.0
+opencv-python
+yacs==0.1.8 # yacs会自带yaml
+byted-dataloader==0.2.6
+Pillow
+tfrecord
+absl-py
+prefetch_generator # 这个库很简单，之后看直接趴下来
+bytedabase
+autopep8
+prettytable
+transformers
+
+# doc scope
+sphinx
+recommonmark
+sphinx_rtd_theme
+einops

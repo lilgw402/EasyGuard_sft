@@ -1,0 +1,51 @@
+ACCELERATOR:
+  ACCELERATOR: PtxAMPDDP
+  CLIP_GRAD_NORM: -1.0
+  GRAD_ACCUMULATE_STEPS: 1
+  SYNCBN: false
+
+TRAINER:
+  BEGIN_EPOCH: 0
+  CHECKPOINT_FREQUENT: 12000
+  END_EPOCH: 90
+  LOG_FREQUENT: 100
+  RNG_SEED: 12345
+  TRAIN_BATCH_SIZE: 384
+  TRAIN_DATASET_SIZE: 1281167
+  VAL_BATCH_SIZE: 128
+  VAL_DATASET_SIZE: 50000
+  VAL_FREQUENT: 0
+  VAL_STEPS: 10
+  CHANNELS_LAST: false
+
+data:
+  train:
+    path: hdfs://haruna/home/byte_search_nlp_lq/multimodal/data/academic/imagenet/train_json
+    source: hdfs
+    preprocess_type: dali
+  val:
+    path: hdfs://haruna/home/byte_search_nlp_lq/multimodal/data/academic/imagenet/val_json
+    source: hdfs
+    preprocess_type: bytedvision
+
+NETWORK:
+  FREEZE_BN_RUNNING_STATS: false
+
+TRAIN:
+  LR: 1.2
+  LR_SCHEDULE: cosine
+  LR_STEP:
+  - 30
+  - 60
+  - 80
+  MAX_PREFETCH: 4
+  NUM_READERS: 4
+  NUM_WORKERS: 32
+  WARMUP: true
+  WARMUP_FACTOR: 0.001
+  WARMUP_METHOD: step
+  WD: 0.0001
+  MOMENTUM: 0.9
+
+
+

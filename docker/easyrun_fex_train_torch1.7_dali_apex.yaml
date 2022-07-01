@@ -1,0 +1,100 @@
+# nvidia-cuda  archer textop  mpi horovod hdfs blade available
+name: fex_train_torch1.7_dali_apex
+
+# Base docker image.
+image: hub.byted.org/arnold/search.fex:1740c410843d1a677e1742f23749fab0
+
+apt:
+  - python-dev
+  - libunwind8-dev
+  - liblzo2-2
+  - liblzo2-dev
+  - apt-file
+  - libgl1-mesa-glx
+  - libgl1
+  - zip
+  - libglib2.0-0
+  - libsm6
+  - libxext6
+  - libxrender-dev
+  - ssh
+  - python-autopep8
+  - pciutils
+
+scms:
+  - name: nlp/ops/visionops
+    version: 1.0.0.62
+    mnt: /opt/tiger/visionops
+
+pip3:
+  - absl-py --index-url=https://bytedpypi.byted.org/simple/
+  - prettytable --index-url=https://bytedpypi.byted.org/simple/
+  - bytedabase --index-url=https://bytedpypi.byted.org/simple/
+  - colorlog
+  - https://d.scm.byted.org/api/v2/download/byted.matx.matxscript_1.5.0.5.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
+  - https://d.scm.byted.org/api/v2/download/byted.matx.matx_text_pip_wheels_1.5.0.1.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
+  - https://d.scm.byted.org/api/v2/download/data.mlsys.byted_vision_1.5.0.4.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
+  - https://d.scm.byted.org/api/v2/download/byted.matx.matx_pytorch_pip_wheels_1.5.0.5.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
+
+# copy ssh from ~/.ssh
+copy_host_ssh: true
+
+# mount host /opt/tiger/typhoon-blade into docker.
+enable_blade: true
+
+# mount host /opt/tiger/yarn_deploy into docker.
+enable_yarn: true
+
+# mount host /opt/tiger/consul_deploy into docker.
+enable_consul: true
+
+# will apt-get install krb-user and mount /etc/krb5.conf into container
+enable_kinit: true
+
+enable_doas: true
+# root_user: true
+# Extra docker run options, mount /tmp into container.
+runOptions: "-v /tmp:/tmp"
+
+# Extra docker run options
+runOptionList:
+  - "-v /var/log/apt:/var/log/apt"
+  - "-v /var/log/tiger:/var/log/tiger"
+
+# use nvidia-docker to run container
+useNvidiaDocker: true
+
+init_cmds:
+  - "python3 -m pip install /opt/tiger/visionops/*.whl --user"
+
+
+env:
+  XLA_FLAGS: "--xla_gpu_cuda_data_dir=/usr/local/cuda"
+  HOROVOD_NCCL_INCLUDE: "/usr/local/cuda/include"
+  HOROVOD_NCCL_LIB: "/usr/local/cuda/lib64"
+  HOROVOD_CUDA_HOME: "/usr/local/cuda"
+  HOROVOD_GPU_OPERATIONS: "NCCL"
+  HOROVOD_NCCL_LINK: "SHARED"
+  PYTHONPATH: "/opt/tiger/pyutil:${PYTHONPATH}"
+  SEC_KV_AUTH: "1"
+
+# Apps that can be run
+apps:
+  - name: test_env
+    cmds:
+      - "echo PYTHONPATH: $PYTHONPATH"
+      - "echo SOME_ENV: $SOME_ENV"
+      - "echo SOME_OTHER_ENV: $SOME_OTHER_ENV"
+
+  - name: test_blade
+    cmds:
+      - "echo PATH: ${PATH}"
+      - blade --help
+  - name: test_yarn
+    cmds:
+      - "echo PATH: ${PATH}"
+      - hadoop -h
+runOptionList:
+  - '-v /mnt:/mnt'
+
+devel_mode: true

@@ -1,0 +1,61 @@
+CONFIG_VERSION: 2
+
+BASE:
+- hdfs://haruna/home/byte_search_nlp_lq/multimodal/confighub/accelerator.yaml
+- hdfs://haruna/home/byte_search_nlp_lq/multimodal/confighub/train_basic.yaml
+- hdfs://haruna/home/byte_search_nlp_lq/multimodal/confighub/albert.yaml
+- hdfs://haruna/home/byte_search_nlp_lq/multimodal/confighub/vitb32_v2.yaml
+
+ACCELERATOR:
+  ACCELERATOR: PtxAMPDDP
+  CLIP_GRAD_NORM: 0.3
+
+# Trainer 所需配置，训练必备。因此用大写。
+TRAINER:
+  TRAIN_BATCH_SIZE: 600
+  VAL_BATCH_SIZE: 64
+  CHECKPOINT_FREQUENT: 10000 # 多少步保存一次ckpt
+  END_EPOCH: 8
+  TRAIN_DATASET_SIZE: 910553718
+  VAL_DATASET_SIZE: 50000
+  VAL_FREQUENT: 10000
+  VAL_STEPS: 20
+
+train:
+  nce_world_size: -1
+  init_tau: 0.07
+  tau_clamp: 4.6051
+  freeze_prefix: []
+  optim: AdamW
+  lr: 2.0e-4
+  wd: 0.01
+  lr_schedule: cosine
+  num_workers: 16
+
+network:
+  visual_type: VitB32
+  project_mode: "1024"
+  visual_config:
+    output_dim: 512
+    vit_dropout: 0.1
+    vit_emb_dropout: 0.0
+    patch_length: 49
+  vocab_file: hdfs://haruna/home/byte_search_nlp_lq/user/huangwenguan/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab
+  partial_pretrain:
+  - hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/bvr_all_add_data_manual/fex/model.th
+  - hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/clip_official/ViT_B_32_p.th
+  partial_pretrain_prefix_changes:
+  - encoder->text.encoder
+  - embedding->text.embedding
+  - pooler->text.pooler
+  - resnet->visual
+  - transformer->not_used.clip_origin_text_transformer
+
+dataset:
+  train_path: hdfs://haruna/home/byte_search_nlp_lq/user/suiguobin/image/clip/tusou_datas/20210627_tbase_1.3b
+  val_path: hdfs://haruna/home/byte_search_nlp_lq/user/huangwenguan/imagenet/val # kv set
+  max_len: 32
+
+val:
+  num_workers: 2
+  num_readers: 2
