@@ -3,14 +3,15 @@
 # See https://python.byted.org/pip-setup.html
 yacs==0.1.8
 tensorboard==2.4.0
-opencv-python
+opencv-python # 需要锚定一个版本
 Pillow
 tfrecord
 numpy
 absl-py
-prefetch_generator # 这个库很简单，之后看直接趴下来
-bytedabase
+prefetch_generator # 需要cleanup
+bytedabase # 需要锚定一个版本
 prettytable
-transformers
+transformers # 需要锚定一个版本
 colorlog
 einops
+torch #  # 需要锚定一个版本
