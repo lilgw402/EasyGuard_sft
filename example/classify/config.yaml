@@ -1,0 +1,76 @@
+
+CLASS_NUM: 638
+
+# 数据集相关的配置
+DATASET:
+  TRAIN_PATH: hdfs://haruna/home/byte_search_nlp_lq/multimodal/data/dy_cls/sample/train
+  VAL_PATH: hdfs://haruna/home/byte_search_nlp_lq/multimodal/data/dy_cls/sample/test
+  VOCAB_FILE: hdfs://haruna/home/byte_search_nlp_lq/user/huangwenguan/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab
+  FRAME_LEN: 8
+
+BERT:
+  vocab_size: 145608
+  embedding_size: 256
+  num_hidden_layers: 6
+  hidden_size: 768
+  intermediate_size: 3072
+  num_attention_heads: 12
+  project_embedding_first: false
+  max_position_embeddings: 512
+  type_vocab_size: 16
+  hidden_dropout_prob: 0.1
+  need_visual_ln: true
+  max_frame_num: 16
+  visual_front: false
+  with_pooler: true
+  initializer_range: 0.02
+  visual_dim: 2048
+
+
+# 模型相关的配置
+NETWORK:
+  PARTIAL_PRETRAIN: 'hdfs://haruna/home/byte_search_nlp_lq/user/huangwenguan/clue/fmlmqtco_nceqf_raw01b_vln_62/model_state_epoch_620000.th'
+  PARTIAL_PRETRAIN_PREFIX_CHANGES:
+  - 'falbert->backbone'
+  visual_type: RN50
+  visual_hidden: 2048
+
+# 训练的一些超参数
+TRAIN:
+  LR: 1.0e-4
+  LR_SCHEDULE: linear
+  MAX_PREFETCH: 4
+  MOMENTUM: 0.9
+  NUM_WORKERS: 4
+  OPTIM: AdamW
+  WARMUP_FACTOR: 0.001
+  WD: 0.0001
+  freeze_prefix:
+  - 'backbone.resnet'
+
+# trianer 相关的配置
+TRAINER:
+  BEGIN_EPOCH: 0
+  END_EPOCH: 4
+  TRAIN_BATCH_SIZE: 32
+  TRAIN_DATASET_SIZE: 15000
+  VAL_BATCH_SIZE: 8
+  VAL_DATASET_SIZE: 4000
+  VAL_FREQUENT: 400
+  VAL_STEPS: 10
+  CHECKPOINT_FREQUENT: 2000
+  LOG_FREQUENT: 100
+  RNG_SEED: 42
+
+# val 相关的配置
+VAL:
+  NUM_WORKERS: 4
+
+# 训练加速相关的配置
+ACCELERATOR:
+  CLIP_GRAD_NORM: 1.0
+  FP16: true
+  FP16_LOSS_SCALE: dynamic
+  FP16_OPT_LEVEL: O2
+  GRAD_ACCUMULATE_STEPS: 1
+  SYNCBN: false

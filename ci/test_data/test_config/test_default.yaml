@@ -1,0 +1,20 @@
+BASE: [ci/test_data/test_config/test_base.yaml, 
+       ci/test_data/test_config/test_base1.yaml]
+CHECKPOINT_FREQUENT: 1000
+
+DATASET:
+  DATASET: FramePairDataSet
+  TRAIN_SIZE: 100
+  VAL_SIZE: 100
+
+TRAIN:
+    BATCH_SIZE: 100
+    BEGIN_EPOCH: 0
+    END_EPOCH: 5
+  
+VAL:
+    BATCH_SIZE: 16
+    STEPS: 10
+
+NETWORK:
+  PARTIAL_PRETRAIN: "hdfs://haruna/home/byte_search_nlp_lq/user/liuzhen.nlp"

@@ -1,0 +1,31 @@
+FROM hub.byted.org/base/lab.cuda.devel:10.1.243-8
+
+RUN  apt-get update -y && \
+     apt-get upgrade -y && \
+     apt-get dist-upgrade -y && \
+     apt-get -y autoremove && \
+     apt-get clean
+
+RUN apt-get install -y build-essential zip libsm6 libxext6 libxrender-dev ffmpeg ibverbs-providers && apt-get clean
+RUN pip3 install -U pip
+
+RUN export CUDA_HOME='/opt/tiger/cuda'
+ARG https_proxy=http://bj-rd-proxy.byted.org:3128
+ARG http_proxy=http://bj-rd-proxy.byted.org:3128
+RUN pip3 install --no-cache-dir torch==1.7.0+cu101 torchvision==0.8.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+
+RUN pip3 install --no-cache-dir nvidia-dali-cuda100 --extra-index-url https://developer.download.nvidia.com/compute/redist
+RUN pip3 install --no-cache-dir Cython easydict jsonlines matplotlib networkx \
+        numpy opencv-python pandas Pillow protobuf==3.10.0 PyYAML requests==2.22.0 \
+        scikit-image scipy tensorboardX tqdm urllib3 boto3 pycocotools \
+        regex==2019.8.19 opencv-python lmdb filelock tfrecord boto3 yacs==0.1.8 \
+        byted-dataloader==0.2.6 bytedabase prefetch_generator -i https://bytedpypi.byted.org/simple/
+
+# apex
+RUN mkdir -p /opt/tiger/apexspace && \
+  cd /opt/tiger/apexspace && \
+  wget https://github.com/NVIDIA/apex/archive/a651e2c24ecf97cbf367fd3f330df36760e1c597.zip && \
+  unzip a651e2c24ecf97cbf367fd3f330df36760e1c597.zip && \
+  cd /opt/tiger/apexspace/apex-a651e2c24ecf97cbf367fd3f330df36760e1c597/ && \
+  pip3 install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+RUN rm -r /opt/tiger/apexspace

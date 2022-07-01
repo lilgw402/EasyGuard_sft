@@ -1,0 +1,4 @@
+RNG_SEED: 567
+TEST_DATA:
+  DATASET: "TestDataSet"
+  TRAIN_SIZE: 150
