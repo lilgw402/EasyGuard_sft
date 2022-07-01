@@ -1,0 +1,7 @@
+#! /usr/bin/env bash
+
+if [ "$(bash ci/pre-commit-hook.sh --show-only)" != "" ]; then
+    echo "python code_style_check failed，请在开发机上运行如下命令并commit，mac或紧急情况可用-n跳过"
+    echo "bash ci/code-format.sh -i"
+    exit 1
+fi
