@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+import os, sys
+
+try:
+    import easyguard
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from easyguard.appzoo.language_modeling.model import LanguageModel
 from easyguard.appzoo.language_modeling.data import LMDataModule

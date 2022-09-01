@@ -17,5 +17,5 @@ python3 run_pretrain.py --config default_config.yaml --model.hidden_size=1024
 - `python mdeberta.py`
 
 **run on multi gpus:**
-- local machine: `/path/to/your/local/cruise/tools/TORCHRUN run_pretrain.py`
-- arnold: `/opt/tiger/cruise/cruise/tools/TORCHRUN run_pretrain.py`
+- local machine: `/path/to/your/local/EasyGuard/tools/TORCHRUN run_pretrain.py`
+- arnold: `/opt/tiger/EasyGuard/tools/TORCHRUN run_pretrain.py`
