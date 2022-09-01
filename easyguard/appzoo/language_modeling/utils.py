@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import torch
 from cruise.utilities.cloud_io import load as crs_load
 from cruise.utilities.rank_zero import rank_zero_info, rank_zero_warn
