@@ -128,8 +128,8 @@ class FashionBertv2(CruiseModule):
             self.config_text = SimpleNamespace(**yaml.load(fp, yaml.Loader))
         with hopen(self.hparams.config_visual) as fp:
             self.config_visual = SimpleNamespace(**yaml.load(fp, yaml.Loader))
-        with hopen(self.hparams.config_fuse) as fp:
-            self.config_fuse = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        with hopen(self.hparams.config_fusion) as fp:
+            self.config_fusion = SimpleNamespace(**yaml.load(fp, yaml.Loader))
 
         """
         Initialize modules
