@@ -19,7 +19,7 @@ cli = CruiseCLI(FashionBertv2,
                     'precision': 'fp16',
                     'max_epochs': 2,
                     'enable_versions': True,
-                    'val_check_interval': 3000,  # val after 1 epoch
+                    'val_check_interval': 500,  # val after 1 epoch
                     'limit_val_batches': 100,
                     'gradient_clip_val': 2.0,
                     'sync_batchnorm': True,
