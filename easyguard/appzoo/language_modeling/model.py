@@ -51,12 +51,13 @@ class LanguageModel(CruiseModule):
         super().__init__()
         self.save_hparams()
 
-        if pretrained_model_name_or_path == "microsoft/mdeberta-v3-base":
+        if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
             """use our own mdeberta_v2"""
-            self.model = DebertaV2ForMaskedLM.from_pretrained(pretrained_model_name_or_path)
+            self.backbone = DebertaV2ForMaskedLM.from_pretrained('microsoft/mdeberta-v3-base')
         else:
-            self.model = AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
+            self.backbone = AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
 
+        # self.model = self.backbone
         # self.init_weights()
         # self.freeze_params(self.config.TRAIN.freeze_prefix)
 
@@ -157,7 +158,7 @@ class LanguageModel(CruiseModule):
         output_dict = {}
 
         # mlm loss
-        mmout = self.model(input_ids, attention_mask, token_type_ids, labels=labels, output_hidden_states=True)
+        mmout = self.backbone(input_ids, attention_mask, token_type_ids, labels=labels, output_hidden_states=True)
         loss1 = mmout.loss
         self.log('mlm_loss', loss1)
         output_dict['loss'] = loss1

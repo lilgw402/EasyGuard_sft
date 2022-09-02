@@ -133,5 +133,7 @@ cmake*
 Makefile
 
 dict
-*.json
 sample
+
+wandb/*
+cruise_logs/*
