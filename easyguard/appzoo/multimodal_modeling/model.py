@@ -359,8 +359,6 @@ class FashionBertv2(CruiseModule):
         rep_dict.update(batch)
 
         loss_dict = self.cal_pt_loss(**rep_dict)
-        loss_dict["logits"] = rep_dict["fuse_cat"]
-        loss_dict["label"] = label
 
         return loss_dict
 
