@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import os.path
 
+import yaml
+from types import SimpleNamespace
 from typing import Union, List, Tuple
 
 import math
@@ -12,9 +15,9 @@ try:
 except ImportError:
     print("[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag")
 
-from cruise import CruiseModule, CruiseConfig
+from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
-from cruise.utilities.hdfs_io import hexists
+from cruise.utilities.hdfs_io import hexists, hopen
 
 from .albert import ALBert
 from .swin import SwinTransformer
@@ -105,9 +108,9 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
             param_group['lr'] = lr
 
 class FashionBertv2(CruiseModule):
-    def __init__(self, config_text: CruiseConfig,
-                 config_visual: CruiseConfig,
-                 config_fusion: CruiseConfig,
+    def __init__(self, config_text: str = "configs/config_text.yaml",
+                 config_visual: str = "configs/config_visual.yaml",
+                 config_fusion: str = "configs/config_fusion.yaml",
                  learning_rate: float = 1e-4,
                  betas: Tuple[float, float] = (0.9, 0.999),
                  eps: float = 1e-8,
@@ -116,11 +119,18 @@ class FashionBertv2(CruiseModule):
         super(FashionBertv2, self).__init__()
         self.save_hparams()
 
-        self.config_text = config_text
-        self.config_visual = config_visual
-        self.config_fusion = config_fusion
-
     def setup(self, stage) -> None:
+        """
+        Load yaml file as config class
+        """
+        assert hexists(self.hparams.config_text) and hexists(self.hparams.config_visual) and hexists(self.hparams.config_fuse)
+        with hopen(self.hparams.config_text) as fp:
+            self.config_text = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        with hopen(self.hparams.config_visual) as fp:
+            self.config_visual = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        with hopen(self.hparams.config_fuse) as fp:
+            self.config_fuse = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+
         """
         Initialize modules
         """
@@ -187,18 +197,18 @@ class FashionBertv2(CruiseModule):
         Initialize loss
         """
         self.calc_nce_loss_vt = LearnableNTXentLoss(
-            init_tau=self.config.train.init_tau,
-            clamp=self.config.train.tau_clamp
+            init_tau=self.config_fuse.init_tau,
+            clamp=self.config_fuse.tau_clamp
         )  # 底层图-文CLIP损失
         self.calc_pcl_loss_ff = LearnablePCLLoss(
-            init_tau=self.config.train.init_tau,
-            clamp=self.config.train.tau_clamp,
-            num_labels=self.config.dataset.pretrain.num_logits_level1 + 1
+            init_tau=self.config_fuse.init_tau,
+            clamp=self.config_fuse.tau_clamp,
+            num_labels=self.config_fuse.category_logits_level1 + 1
         )  # 上层融合-融合CLIP损失，使用一级标签
         self.category_pred_loss = SCELoss(
             alpha=1.0,
             beta=0.5,
-            num_classes=self.config.dataset.pretrain.num_logits + 1
+            num_classes=self.config_fusion.category_logits_level2 + 1
         )  # 融合表征的预测损失
 
         """
