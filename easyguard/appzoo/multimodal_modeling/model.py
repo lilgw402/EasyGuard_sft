@@ -123,7 +123,7 @@ class FashionBertv2(CruiseModule):
         """
         Load yaml file as config class
         """
-        assert hexists(self.hparams.config_text) and hexists(self.hparams.config_visual) and hexists(self.hparams.config_fuse)
+        assert hexists(self.hparams.config_text) and hexists(self.hparams.config_visual) and hexists(self.hparams.config_fusion)
         with hopen(self.hparams.config_text) as fp:
             self.config_text = SimpleNamespace(**yaml.load(fp, yaml.Loader))
         with hopen(self.hparams.config_visual) as fp:
