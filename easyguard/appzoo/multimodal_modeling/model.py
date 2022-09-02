@@ -197,13 +197,13 @@ class FashionBertv2(CruiseModule):
         Initialize loss
         """
         self.calc_nce_loss_vt = LearnableNTXentLoss(
-            init_tau=self.config_fuse.init_tau,
-            clamp=self.config_fuse.tau_clamp
+            init_tau=self.config_fusion.init_tau,
+            clamp=self.config_fusion.tau_clamp
         )  # 底层图-文CLIP损失
         self.calc_pcl_loss_ff = LearnablePCLLoss(
-            init_tau=self.config_fuse.init_tau,
-            clamp=self.config_fuse.tau_clamp,
-            num_labels=self.config_fuse.category_logits_level1 + 1
+            init_tau=self.config_fusion.init_tau,
+            clamp=self.config_fusion.tau_clamp,
+            num_labels=self.config_fusion.category_logits_level1 + 1
         )  # 上层融合-融合CLIP损失，使用一级标签
         self.category_pred_loss = SCELoss(
             alpha=1.0,
