@@ -329,6 +329,7 @@ class FashionBertv2(CruiseModule):
         for key in ["t_rep", "v_rep", "fuse_rep", "label_l1"]:
             if key in kwargs:
                 kwargs[key] = self.all_gather(kwargs[key].contiguous())
+                kwargs[key] = kwargs[key].flatten(0, 1)
 
         vt_loss = self.calc_nce_loss_vt(kwargs["t_rep"], kwargs["v_rep"])
 
