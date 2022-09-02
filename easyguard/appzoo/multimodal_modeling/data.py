@@ -87,7 +87,7 @@ class MMDataModule(CruiseDataModule):
                  paths: Union[str, List[str]] = 'hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/pretrain_20220802_20220808_train_url',
                  data_size: int = 140000000,
                  val_step: int = 20,
-                 num_workers: int = 20,
+                 num_workers: int = 24,
                  max_len: int = 256):
         super().__init__()
         self.save_hparams()
