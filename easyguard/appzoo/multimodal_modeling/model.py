@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import os.path
 
 import yaml
+from collections import OrderedDict
 from types import SimpleNamespace
-from typing import Union, List, Tuple
+from typing import Tuple
 
 import math
 import torch
@@ -19,8 +19,8 @@ from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
 from cruise.utilities.hdfs_io import hexists, hopen
 
-from .albert import ALBert
-from .swin import SwinTransformer
+from easyguard.modelzoo.models.albert import ALBert
+from easyguard.modelzoo.models.swin import SwinTransformer
 from ...utils.losses import LearnableNTXentLoss, LearnablePCLLoss, SCELoss
 
 class CosineAnnealingWarmupRestarts(_LRScheduler):
@@ -247,8 +247,13 @@ class FashionBertv2(CruiseModule):
 
     def initialize_weights(self):
         if hexists(self.hparams.load_pretrained):
+            state_dict_ori = self.state_dict()
             state_dict = load(self.hparams.load_pretrained, map_location="cpu")
-            self.load_state_dict(state_dict, strict=False)
+            state_dict_new = OrderedDict()
+            for key, value in state_dict.items():
+                if key in state_dict_ori and state_dict_ori[key].shape == state_dict[key].shape:
+                    state_dict_new[key] = value
+            self.load_state_dict(state_dict_new, strict=False)
 
     def forward_text(self, token_ids: torch.Tensor):
         text_masks = (token_ids != self.PAD).long()
