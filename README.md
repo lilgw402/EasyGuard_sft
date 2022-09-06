@@ -10,6 +10,10 @@ EasyGuard是一个基础业务算法的代码库，旨在给平台治理提供NL
 
 [Warning:代码处于快速迭代期，核心代码需要UT保护，不然可能会被破坏!]()
 
+## Job
+* GCP：https://arnold-i18n.byted.org/job/3807
+* 中国区：https://arnold.byted.org/job/27576
+
 ## 依赖
 
 EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业务算法
