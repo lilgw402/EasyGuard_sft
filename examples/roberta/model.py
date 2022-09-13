@@ -55,12 +55,6 @@ class SequenceClassificationModel(CruiseModule):
                  ):
         super().__init__()
         self.save_hparams()
-        
-        # if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
-        #     """use our own mdeberta_v2"""
-        #     self.backbone = DebertaV2ForMaskedLM.from_pretrained('microsoft/mdeberta-v3-base')
-        # else:
-        #     self.backbone = AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
 
         # tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese")
         self.backbone = AutoModelForMaskedLM.from_pretrained("bert-base-chinese")
@@ -101,38 +95,6 @@ class SequenceClassificationModel(CruiseModule):
         if self.hparams.load_pretrain:
             load_pretrained(self.hparams.load_pretrain, self)
 
-    def cl_loss(self, cls_status):
-        batch_size = cls_status.shape[0]
-        z1, z2 = cls_status[0:batch_size // 2, :], cls_status[batch_size // 2:, :]
-
-        # all gather to increase effective batch size
-        if self.nce_group is not False:
-            # [bsz, n] -> [group, bsz, n]
-            group_z1 = self.all_gather(z1, group=self.nce_group, sync_grads='rank')
-            group_z2 = self.all_gather(z2, group=self.nce_group, sync_grads='rank')
-            # [group, bsz, n] -> [group * bsz, n]
-            z1 = group_z1.view((-1, cls_status.shape[-1]))
-            z2 = group_z2.view((-1, cls_status.shape[-1]))
-
-        if self.ntx_enable:
-            loss = self.ntx_loss_layer(z1, z2)
-        else:
-            # cosine similarity as logits
-            self.logit_scale.data.clamp_(-np.log(100), np.log(100))
-            logit_scale = self.logit_scale.exp()
-            self.log('logit_scale', logit_scale)
-            logits_per_z1 = logit_scale * z1 @ z2.t()
-            logits_per_z2 = logit_scale * z2 @ z1.t()
-
-            bsz = logits_per_z1.shape[0]
-            labels = torch.arange(bsz, device=logits_per_z1.device)  # bsz
-
-            loss_v = self.cl_loss_layer(logits_per_z1, labels)
-            loss_t = self.cl_loss_layer(logits_per_z2, labels)
-            loss = (loss_v + loss_t) / 2
-
-        return loss
-
     def forward(self, input_ids, token_type_ids, attention_mask, labels, classification_label=None):
         """
         input_ids: [bsz, seq_len]
@@ -149,18 +111,6 @@ class SequenceClassificationModel(CruiseModule):
         self.log('mlm_loss', loss1)
         output_dict['loss'] = loss1
 
-        # cl loss
-        if self.cl_enable:
-            hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
-            cls_status = hidden_states[:, 0, :]
-            loss2 = self.cl_loss(cls_status)
-            self.log('cl_loss', loss2)
-            loss = loss1 + self.cl_weight * loss2
-
-            output_dict['mlm_loss'] = loss1
-            output_dict['cl_loss'] = loss2
-            output_dict['loss'] = loss
-
         # classification task
         if self.classification_task_enable:
             hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
@@ -172,6 +122,8 @@ class SequenceClassificationModel(CruiseModule):
             output_dict['mlm_loss'] = loss1
             output_dict['cla_loss'] = loss3
             output_dict['loss'] = loss
+        else:
+            raise Exception('Currently only classification task is supported.')
 
         return output_dict
 
