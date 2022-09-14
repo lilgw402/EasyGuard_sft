@@ -6,15 +6,15 @@ try:
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from model import SequenceClassificationModel
-from easyguard.appzoo.language_modeling.data import LMDataModule
+from easyguard.appzoo.sequence_classification.model import SequenceClassificationModel
+from easyguard.appzoo.sequence_classification.data import SequenceClassificationData
 from easyguard.utils.arguments import print_cfg
 
 from cruise import CruiseTrainer, CruiseCLI
 
 cli = CruiseCLI(SequenceClassificationModel,
                 trainer_class=CruiseTrainer,
-                datamodule_class=LMDataModule,
+                datamodule_class=SequenceClassificationData,
                 trainer_defaults={
                     'log_every_n_steps': 50,
                     'precision': 'fp16',
@@ -28,8 +28,8 @@ cli = CruiseCLI(SequenceClassificationModel,
                     'summarize_model_depth': 2,
                     'checkpoint_monitor': 'loss',
                     'checkpoint_mode': 'min',
-                    'default_hdfs_dir': 'hdfs://harunasg/home/byte_magellan_govern/users/jiangjunjun.happy/xlmr14' # use your own path to save model
-                }
-                )
+                    'default_hdfs_dir': 'hdfs://harunasg/home/byte_magellan_govern/users/xiaochen.qiu/roberta/' # use your own path to save model
+                })
 cfg, trainer, model, datamodule = cli.parse_args()
+print_cfg(cfg)
 trainer.fit(model, datamodule)

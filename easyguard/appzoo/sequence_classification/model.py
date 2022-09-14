@@ -11,35 +11,27 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM
 
 try:
     import cruise
+    from cruise import CruiseModule
 except ImportError:
     print("[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag")
 
-from cruise import CruiseModule
-
-import sys
-sys.path.append('./')
-sys.path.append('../../')
-# sys.path.append('../../easyguard/')
-
-from easyguard.modelzoo.modeling_utils import load_pretrained
-from easyguard.core.optimizers import build_optimizer, build_scheduler
-from easyguard.modelzoo.models.mdeberta_v2 import DebertaV2ForMaskedLM
-from easyguard.utils.losses import cross_entropy, LearnableNTXentLoss
+from ...modelzoo.modeling_utils import load_pretrained
+from ...core.optimizers import build_optimizer, build_scheduler
+from ...utils.losses import cross_entropy, LearnableNTXentLoss
 
 
 class SequenceClassificationModel(CruiseModule):
     def __init__(self,
-                 pretrained_model_name_or_path: str = None,
+                 pretrained_model_name_or_path: str = "fashionxlm-mdeberta-v3-base",
                  cl_enable: bool = False,
                  cl_temp: float = 0.05,
                  cl_weight: float = 1.0,
                  ntx_enable: bool = False,
                  classification_task_enable: bool = False,
-                 classification_task_head: int = 1422,
+                 classification_task_head: int = 2,
                  hidden_size: int = 768,
                  load_pretrain: Optional[str] = None,
                  all_gather_limit: int = -1,
-
                  warmup_ratio: float = 0.1,
                  weight_decay: float = 0.05,
                  base_lr: float = 5e-4,
@@ -50,24 +42,21 @@ class SequenceClassificationModel(CruiseModule):
                  lr_scheduler_decay_rate: float = 0.1,
                  optimizer: str = 'adamw',
                  optimizer_eps: float = 1e-8,
-                 optimizer_betas: Tuple[float, ...] = (0.9, 0.999),
+                 optimizer_betas: Tuple[float, ...] = [0.9, 0.999],
                  momentum: float = 0.9,
                  ):
         super().__init__()
         self.save_hparams()
 
-        # tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese")
-        self.backbone = AutoModelForMaskedLM.from_pretrained("bert-base-chinese")
-
-        # self.model = self.backbone
-        # self.init_weights()
-        # self.freeze_params(self.config.TRAIN.freeze_prefix)
-
+        if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
+            from ...modelzoo.models.mdeberta_v2 import DebertaV2ForMaskedLM
+            self.backbone = DebertaV2ForMaskedLM.from_pretrained('microsoft/mdeberta-v3-base')
+        else:
+            self.backbone = AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
+        
         # use classification learning loss
-        self.classification_task_enable = classification_task_enable
-        if self.classification_task_enable:
-            self.classification_task_head = classification_task_head
-            self.classifier = torch.nn.Linear(hidden_size, self.classification_task_head)
+        self.classification_task_head = classification_task_head
+        self.classifier = torch.nn.Linear(hidden_size, self.classification_task_head)
 
         # setup nce allgather group if has limit
         self.nce_group = False
@@ -95,35 +84,28 @@ class SequenceClassificationModel(CruiseModule):
         if self.hparams.load_pretrain:
             load_pretrained(self.hparams.load_pretrain, self)
 
-    def forward(self, input_ids, token_type_ids, attention_mask, labels, classification_label=None):
+    def forward(self, input_ids, token_type_ids, attention_mask, labels):
         """
         input_ids: [bsz, seq_len]
         input_segment_ids: [bsz, seq_len]
         input_mask: [bsz, seq_len]
-        label: [bsz]
-        classification_label: [bsz]
+        labels: [bsz]
         """
         output_dict = {}
-
-        # mlm loss
-        mmout = self.backbone(input_ids, attention_mask, token_type_ids, labels=labels, output_hidden_states=True)
-        loss1 = mmout.loss
-        self.log('mlm_loss', loss1)
-        output_dict['loss'] = loss1
-
+        
         # classification task
-        if self.classification_task_enable:
-            hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
-            cls_status = hidden_states[:, 0, :]  # batch * emd_size
-            logits = self.classifier(cls_status)  # batch * label_size
-            loss3 = cross_entropy(logits, classification_label)
-            loss = loss1 + loss3
+        mmout = self.backbone(input_ids, attention_mask, token_type_ids, 
+                              labels=None, output_hidden_states=True)
+        hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
+        cls_status = hidden_states[:, 0, :]  # batch * emd_size
+        logits = self.classifier(cls_status)  # batch * label_size
+        loss = cross_entropy(logits, labels)
 
-            output_dict['mlm_loss'] = loss1
-            output_dict['cla_loss'] = loss3
-            output_dict['loss'] = loss
-        else:
-            raise Exception('Currently only classification task is supported.')
+        output_dict['loss'] = loss
+
+        # collect results for validation
+        output_dict['diff'] = (labels.long() == torch.argmax(logits, 1).long()).float()
+        # output_dict['predictions'] = torch.argmax(logits, 1).float()
 
         return output_dict
 
@@ -132,6 +114,18 @@ class SequenceClassificationModel(CruiseModule):
 
     def validation_step(self, batch, idx):
         return self(**batch)
+
+    def validation_epoch_end(self, outputs) -> None:
+        # compute validation results at val_check_interval
+        # TODO: need to apply all_gather op for distributed training (multiple workers)
+        all_labels = [] 
+        all_predictions = [] 
+        # for out in outputs:
+        #     all_labels.extend(out["diff"])
+        # acc_score = (all_labels.long() == all_predictions.long()).sum().float() / all_labels.numel().float()
+        acc_score = 0.0
+        self.log("acc_score", acc_score, console=True)
+        print("acc_score", acc_score)
 
     def configure_optimizers(self):
         optimizer = build_optimizer(self.hparams, self)
