@@ -1,25 +1,8 @@
 # Use --index-url=https://bytedpypi.byted.org/simple/
 # See https://python.byted.org/pip-setup.html
-pylint
-mypy
-pytest
-coverage
 
-tensorboard==2.4.0
-opencv-python # 需要锚定一个版本
-yacs==0.1.8 # yacs会自带yaml
-byted-dataloader==0.2.6
-Pillow
-tfrecord
-absl-py
-prefetch_generator # 需要cleanup
-bytedabase
-autopep8
-prettytable
-transformers # 需要锚定一个版本
-
-# doc scope
-sphinx
-recommonmark
-sphinx_rtd_theme
-einops
+protobuf==3.17.3
+byted-dataloader==0.3.1
+bytedtitan==0.0.4
+byted-wandb -i https://bytedpypi.byted.org/simple
+sentencepiece==0.1.97

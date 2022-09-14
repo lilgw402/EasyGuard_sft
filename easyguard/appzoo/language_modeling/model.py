@@ -16,8 +16,8 @@ except ImportError:
 
 from cruise import CruiseModule
 
-from .utils import load_pretrained
 from ...core.optimizers import build_optimizer, build_scheduler
+from ...modelzoo.modeling_utils import load_pretrained
 from ...modelzoo.models.mdeberta_v2 import DebertaV2ForMaskedLM
 from ...utils.losses import cross_entropy, LearnableNTXentLoss
 
