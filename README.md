@@ -19,9 +19,7 @@ EasyGuard是一个基础业务算法的代码库，旨在给平台治理提供NL
 EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业务算法
 
 * [Cruise框架](https://codebase.byted.org/repo/data/cruise)
-* [Fex多模态框架](https://bytedance.feishu.cn/docs/doccnk0nOpzvERZSHPCuGJKiZCM)
 * [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
-* [OpenCV](https://pypi.org/project/opencv-python/)
 
 
 ## CopyRight
