@@ -36,18 +36,14 @@ trainer:
   enable_trace: false
 model:
   pretrained_model_name_or_path: fashionxlm-mdeberta-v3-base
-  cl_enable: false
-  cl_temp: 0.05
-  cl_weight: 1.0
-  ntx_enable: false
   classification_task_enable: false
   classification_task_head: 2
   hidden_size: 768
   load_pretrain: hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xlmr16/model_state_epoch_400000.th
   all_gather_limit: -1
   warmup_ratio: 0.1
-  weight_decay: 0.05
-  base_lr: 0.0005
+  weight_decay: 0.01
+  base_lr: 0.00005
   warmup_lr: 5.0e-07
   min_lr: 5.0e-06
   lr_scheduler: cosine
@@ -70,5 +66,5 @@ data:
   y_key: label
   region_key: country
   pre_tokenize: false
-  max_len: 128
+  max_len: 256
 log_level: INFO

@@ -23,10 +23,10 @@ from ...utils.losses import cross_entropy, LearnableNTXentLoss
 class SequenceClassificationModel(CruiseModule):
     def __init__(self,
                  pretrained_model_name_or_path: str = "fashionxlm-mdeberta-v3-base",
-                 cl_enable: bool = False,
-                 cl_temp: float = 0.05,
-                 cl_weight: float = 1.0,
-                 ntx_enable: bool = False,
+                #  cl_enable: bool = False,
+                #  cl_temp: float = 0.05,
+                #  cl_weight: float = 1.0,
+                #  ntx_enable: bool = False,
                  classification_task_enable: bool = False,
                  classification_task_head: int = 2,
                  hidden_size: int = 768,
@@ -59,7 +59,7 @@ class SequenceClassificationModel(CruiseModule):
         self.classifier = torch.nn.Linear(hidden_size, self.classification_task_head)
 
         # setup nce allgather group if has limit
-        self.nce_group = False
+        # self.nce_group = False
 
     def init_weights(self):
         def init_weight_module(module):
