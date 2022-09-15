@@ -3,5 +3,5 @@
 **FashionXLM:**
 - `python3 run_model.py --config config_mdeberta.yaml`
 
-**RoBERTa:**
+**XLM-RoBERTa:**
 - `python3 run_model.py --config config_roberta.yaml`
