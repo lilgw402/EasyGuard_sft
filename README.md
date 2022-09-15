@@ -20,6 +20,7 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 
 * [Cruise框架](https://codebase.byted.org/repo/data/cruise)
 * [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
+* 后续考虑新增ptx
 
 
 ## CopyRight
