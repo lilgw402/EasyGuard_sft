@@ -120,11 +120,13 @@ class SequenceClassificationModel(CruiseModule):
         # TODO: need to apply all_gather op for distributed training (multiple workers)
         all_labels = [] 
         all_predictions = [] 
-        # for out in outputs:
-        #     all_labels.extend(out["diff"])
-        # acc_score = (all_labels.long() == all_predictions.long()).sum().float() / all_labels.numel().float()
-        acc_score = 0.0
+        for out in outputs:
+            all_labels.extend(out["diff"])
+        all_labels = np.array(all_labels).reshape([-1])
+        acc_score = np.average(all_labels)
         self.log("acc_score", acc_score, console=True)
+        print('shape', all_labels.shape)
+        print('sum', np.sum(all_labels))
         print("acc_score", acc_score)
 
     def configure_optimizers(self):
