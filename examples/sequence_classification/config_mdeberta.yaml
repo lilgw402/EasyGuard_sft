@@ -11,14 +11,14 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: {}
   precision: fp16
-  max_epochs: 10
+  max_epochs: 2
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: null
   limit_test_batches: null
   sync_batchnorm: true
   sync_fit_metrics: null
-  val_check_interval: 0.2
+  val_check_interval: 0.5
   accumulate_grad_batches: null
   gradient_clip_val: 2.0
   seed: 42
@@ -57,7 +57,7 @@ data:
   train_batch_size: 16
   val_batch_size: 16
   data_size: 16000
-  val_step: 2000
+  val_step: -1
   num_workers: 1
   tokenizer: microsoft/mdeberta-v3-base
   train_file: 'hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/ansa_train.json'
