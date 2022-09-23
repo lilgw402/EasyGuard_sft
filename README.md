@@ -26,21 +26,21 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 
 | Model | Parameters | Note |
 | --- | --- | --- |
-| **BERT** |  |  |
+| **BERT** |
 | bert-small-uncased | L=6,H=768,A=12 |  |
 | bert-base-uncased | L=12,H=768,A=12 |  |
-| bert-large-uncased | L=24,H=1024,A=16 |  |
-| **Chinese BERT** |  |  |
+| fashiondeberta-base-zh | L=12,H=768,A=12 | Pretrain w/ ASR & CCR datasets |
+| **Chinese BERT** |
 | hfl/chinese-roberta-wwm-ext | L=12,H=768,A=12 |  |
 | hfl/chinese-roberta-wwm-ext-large | L=24,H=768,A=12 |  |
-| langboat/mengzi-bert-base | L=12,H=768,A=12| Pretrain BERT w/ Chinese datasets|
-| **Multilingual BERT** |  |  |
-| fashionxlm-base-xl | L=12,H=768,A=12 | |
-| **Vision-Language BERT** |  |  |
-| fashionxlm-base-xl | L=12,H=768,A=12 | |
-| **Video-Text BERT** |  |  |
-| hfl/macbert-base-zh | L=12,H=768,A=12 |  |
-| hfl/macbert-large-zh | L=24,H=1024,A=16 |  |
+| langboat/mengzi-bert-base | L=12,H=768,A=12| Pretrain w/ Chinese datasets|
+| **Multilingual BERT**  |
+| fashionxlm-base-xl | L=12,H=768,A=12 | Pretrain w/ TTS datasets|
+| **Vision-Language BERT** |
+| fashionbert-base-zh | L=12,H=768,A=12 | Pretrain w/ Product datasets|
+| **Video-Text BERT** |
+| videoclip | L=12,H=768,A=12 |  |
+| framealbert | L=12,H=x,A=x |  |
 
 
 # 代码使用方式
