@@ -22,7 +22,7 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 * [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
 * 后续考虑新增ptx
 
-# ModelZoo Model List
+# FashionModels
 
 | Model | Parameters | Note |
 | --- | --- | --- |
@@ -34,7 +34,6 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 | hfl/chinese-roberta-wwm-ext | L=12,H=768,A=12 |  |
 | hfl/chinese-roberta-wwm-ext-large | L=24,H=768,A=12 |  |
 | langboat/mengzi-bert-base | L=12,H=768,A=12| Pretrain BERT w/ Chinese datasets|
-| langboat/mengzi-bert-base-fin | L=12,H=768,A=12 | Pretrain BERT w/ Finance datasets
 | **Multilingual BERT** |  |  |
 | fashionxlm-base-xl | L=12,H=768,A=12 | |
 | **Vision-Language BERT** |  |  |
