@@ -46,7 +46,11 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 # 代码使用方式
 
 ```python
-model = SequenceClassification(pretrained_model_name_or_path='bert-small-uncased')
+app = SequenceClassification(pretrained_model_name_or_path='bert-small-uncased')
+```
+or:
+```python
+model = AutoModel.from_pretrained('bert-small-uncased')
 ```
 
 
