@@ -23,7 +23,7 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 * [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
 * 后续考虑新增ptx
 
-# FashionModels
+# FashionModels（待注册）
 
 | Model | Parameters | Note |
 | --- | --- | --- |
