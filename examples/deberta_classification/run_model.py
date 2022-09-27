@@ -11,6 +11,11 @@ try:
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from cruise import CruiseTrainer, CruiseModule, CruiseCLI
+
+try:
+    import easyguard
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from easyguard.appzoo.deberta_classification.data import DebertaDataModule
 from easyguard.appzoo.deberta_classification.model import DebertaModel
 
