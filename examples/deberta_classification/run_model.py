@@ -18,6 +18,7 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from easyguard.appzoo.deberta_classification.data import DebertaDataModule
 from easyguard.appzoo.deberta_classification.model import DebertaModel
+from easyguard.utils.arguments import print_cfg
 
 cli = CruiseCLI(DebertaModel,
                 trainer_class=CruiseTrainer,
@@ -33,6 +34,9 @@ cli = CruiseCLI(DebertaModel,
                     'resume_ckpt_path': None
                 })
 cfg, trainer, model, datamodule = cli.parse_args()
+print_cfg(cfg)
+
+
 # 训练模型
 # trainer.fit(model, datamodule)
 # 预测得分
