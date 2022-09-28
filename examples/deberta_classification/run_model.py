@@ -38,11 +38,13 @@ print_cfg(cfg)
 
 
 # 训练模型
-# trainer.fit(model, datamodule)
+trainer.fit(model, datamodule)
+
 # 预测得分
-datamodule.local_rank_zero_prepare()
-datamodule.setup('predict')
-model.partial_load_from_checkpoints('/opt/tiger/tianke/checkpoints/best_checkpoint/epoch=2-step=140625_success.ckpt', rename_params={})
+# datamodule.local_rank_zero_prepare()
+# datamodule.setup('predict')
+# model.partial_load_from_checkpoints('/opt/tiger/tianke/checkpoints/best_checkpoint/epoch=2-step=140625_success.ckpt', rename_params={})
 # trainer.predict(model, datamodule.predict_dataloader(), sync_predictions=False)
+
 # trace模型
-trainer.trace(model, datamodule.predict_dataloader(), mode='jit')
+# trainer.trace(model, datamodule.predict_dataloader(), mode='jit')
