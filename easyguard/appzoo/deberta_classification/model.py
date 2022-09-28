@@ -52,7 +52,7 @@ class DebertaModel(CruiseModule):
         # if not os.path.exists(self.local_pretrained_model_dir):
         #     os.makedirs(self.hparams.local_pretrained_model_dir_prefix, exist_ok=True)
         #     os.system(f"hdfs dfs -copyToLocal {self.hparams.pretrained_model_dir} {self.local_pretrained_model_dir}")
-        self.csv_writer = csv.writer(open('/opt/tiger/tianke/cruise_predict.csv', 'w'))
+        self.csv_writer = csv.writer(open(self.hparams.local_dir_prefix + '/cruise_predict.csv', 'w'))
 
     def forward(self, input_ids, attention_mask, segment_ids, labels=None):
         """
