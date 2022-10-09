@@ -3,7 +3,7 @@
 import argparse
 
 import torch
-from titan import create_model, TOSHelper
+from titan import create_model, list_models, TOSHelper
 
 def parse_args():
     # Parse args with argparse tool
@@ -31,6 +31,11 @@ def main():
     tos_helper = TOSHelper(
         args.tos_bucket,
         args.tos_access_key)
+
+    # list models
+    print('Titan models: ')
+    for key in list_models():
+        print('\t' + key)
 
     # 创建模型
     model = create_model(
