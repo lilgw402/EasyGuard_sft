@@ -199,3 +199,9 @@ if __name__ == '__main__':
 
     with open(f'{save_path}/warmup_data.json', 'w') as fw:
         fw.write(matx.serialize(all_data))
+
+    # meta data
+    with open(f'{save_path}/meta.pb.txt', 'w') as fw:
+        fw.write(f'name:"{matx_configs.service_name}"\n')
+        for bs in allowed_batch_sizes:
+            fw.write(f"allowed_batch_sizes:{bs}\n")
