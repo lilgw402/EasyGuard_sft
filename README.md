@@ -6,7 +6,7 @@
 [Contributors](https://code.byted.org/ecom_govern/EasyGuard/) |
 [Release Notes]()
 
-EasyGuard是一个基础业务算法的代码库，旨在给平台治理提供NLP，CV，和多模态的基础算法和解决方案。
+EasyGuard是基于AML的Cruise框架扩展的业务算法的代码库，旨在给平台治理提供NLP，CV，和多模态的基础算法和解决方案。
 接口设计说明详见：[EasyGuard的框架设计](https://bytedance.feishu.cn/docx/doxcnjT9CWaIH1PNDMg5TLUz7UN)
 
 [Warning:代码处于快速迭代期，核心代码需要UT保护，不然可能会被破坏!]()
