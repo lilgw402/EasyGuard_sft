@@ -8,6 +8,7 @@ except ImportError:
 
 from easyguard.appzoo.language_modeling.model import LanguageModel
 from easyguard.appzoo.language_modeling.data import LMDataModule
+from easyguard.utils.arguments import print_cfg
 
 from cruise import CruiseTrainer, CruiseCLI
 
@@ -31,4 +32,5 @@ cli = CruiseCLI(LanguageModel,
                 }
                 )
 cfg, trainer, model, datamodule = cli.parse_args()
+print_cfg(cfg)
 trainer.fit(model, datamodule)

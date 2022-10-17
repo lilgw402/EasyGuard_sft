@@ -8,6 +8,7 @@ except ImportError:
 
 from easyguard.appzoo.multimodal_modeling.model import FashionBertv2
 from easyguard.appzoo.multimodal_modeling.data import MMDataModule
+from easyguard.utils.arguments import print_cfg
 
 from cruise import CruiseTrainer, CruiseCLI
 
@@ -30,4 +31,5 @@ cli = CruiseCLI(FashionBertv2,
                     'default_hdfs_dir': 'hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/checkpoint_pt'
                 })
 cfg, trainer, model, datamodule = cli.parse_args()
+print_cfg(cfg)
 trainer.fit(model, datamodule)
