@@ -13,6 +13,6 @@
 | `service_validation.py`  |本地服务验证|
 
 ## 2.参考文档
-- https://bytedance.feishu.cn/docx/doxcnzKN98cM1B5Gr5yKRmpa31e
-- https://code.byted.org/ecom_govern/nlp_model_tianke
-- https://bytedance.feishu.cn/wiki/wikcnGlaLxBw9Lq2YDtrjbNqIhf#
+- NLP模型训练trace部署指南：https://bytedance.feishu.cn/docx/doxcnzKN98cM1B5Gr5yKRmpa31e
+- 代码示例：https://code.byted.org/ecom_govern/nlp_model_tianke
+- Laplace&Ferminco推理：https://bytedance.feishu.cn/wiki/wikcnGlaLxBw9Lq2YDtrjbNqIhf#
