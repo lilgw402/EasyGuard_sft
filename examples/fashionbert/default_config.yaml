@@ -1,0 +1,56 @@
+trainer:
+  default_root_dir: null
+  default_hdfs_dir: null
+  logger: true
+  log_every_n_steps: 100
+  benchmark: false
+  enable_speedmonitor: true
+  enable_versions: true
+  detect_anomaly: false
+  deterministic: false
+  accelerator: gpu
+  accelerator_kwargs: {}
+  precision: fp16
+  max_epochs: 2
+  max_steps: -1
+  limit_train_batches: null
+  limit_val_batches: 100
+  limit_test_batches: null
+  sync_batchnorm: true
+  sync_fit_metrics: null
+  val_check_interval: 500
+  accumulate_grad_batches: null
+  gradient_clip_val: 2.0
+  seed: null
+  summarize_model_depth: 2
+  resume_ckpt_path: null
+  callbacks: null
+  enable_checkpoint: true
+  checkpoint_monitor: loss
+  checkpoint_mode: min
+  dataloader_timeout: -1
+  dataloader_retry_limit: 100
+  dataloader_retry_persistent_limit: 5
+  find_unused_parameters: true
+  project_name: null
+  enable_trace: false
+model:
+  config_text: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_text.yaml
+  config_visual: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_visual.yaml
+  config_fusion: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_fusion.yaml
+  learning_rate: 0.0001
+  betas:
+  - 0.9
+  - 0.999
+  eps: 1.0e-08
+  weight_decay: 0.02
+  load_pretrained: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/model_state_epoch_83332.th
+data:
+  train_batch_size: 64
+  val_batch_size: 64
+  paths: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/pretrain_20220802_20220808_train_url
+  data_size: 140000000
+  val_step: 20
+  num_workers: 24
+  max_len: 256
+log_level: INFO
