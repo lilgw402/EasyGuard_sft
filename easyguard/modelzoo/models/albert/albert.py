@@ -293,6 +293,11 @@ class BertEmbedding(nn.Module):
 class ALBert(nn.Module):
     """ ALBert Backbone，其实是Bert的超集，比Bert多了embedding projection
         但和传统意义的albert不一样，没有实现layer共享
+
+        name: 
+        fashion-albert-medium-zh: 
+            hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_text.yaml
+            hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/model_state_epoch_83332.th
     """
 
     def __init__(self, config):
