@@ -59,7 +59,7 @@ data:
   data_size: 16000
   val_step: -1
   num_workers: 1
-  tokenizer: microsoft/mdeberta-v3-base
+  tokenizer: microsoft/mdeberta-v2-base
   train_file: 'hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/ansa_train.json'
   val_file: 'hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/leaderboard/ansa_test.json'
   x_key: text

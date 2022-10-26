@@ -7,7 +7,7 @@ from typing import Tuple, Optional
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers import AutoTokenizer, AutoModelForMaskedLM
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 try:
     import cruise
@@ -49,10 +49,11 @@ class SequenceClassificationModel(CruiseModule):
         self.save_hparams()
 
         if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
-            from ...modelzoo.models.mdeberta_v2 import DebertaV2ForMaskedLM
-            self.backbone = DebertaV2ForMaskedLM.from_pretrained('microsoft/mdeberta-v3-base')
+            # load mdeberta-v3-base backbone and then restore new pre-trained fashionxlm parameters
+            from ...modelzoo.models.mdeberta_v2 import DebertaV2ForSequenceClassification
+            self.backbone = DebertaV2ForSequenceClassification.from_pretrained('microsoft/mdeberta-v3-base')
         else:
-            self.backbone = AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
+            self.backbone = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name_or_path)
         
         # use classification learning loss
         self.classification_task_head = classification_task_head
