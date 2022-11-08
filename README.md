@@ -24,7 +24,10 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 * [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
 * 后续考虑新增ptx
 
-# FashionModels（待注册）
+# 电商场景预训练算法服务
+* 文档详见：[预训练算法服务](https://bytedance.feishu.cn/wiki/wikcnrmcpmz5RAB89yJhWd0jFZg)
+
+* FashionModel
 
 | Model | Parameters | Note |
 | --- | --- | --- |
@@ -44,8 +47,10 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 | videoclip | L=12,H=768,A=12 |  |
 | framealbert | L=12,H=x,A=x |  |
 
+* FashionApps
+待更新
 
-# 代码使用方式
+* 调用方式
 
 ```python
 app = SequenceClassification(pretrained_model_name_or_path='bert-small-uncased')
