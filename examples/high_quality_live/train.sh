@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python3 /mnt/bn/ecom-govern-maxiangqian/qingxuan/EasyGuard/examples/high_quality_live/run_model.py --config /mnt/bn/ecom-govern-maxiangqian/qingxuan/EasyGuard/examples/high_quality_live/config/hq_config_baseline.yaml

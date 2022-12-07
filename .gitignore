@@ -139,3 +139,6 @@ wandb/*
 cruise_logs/*
 
 .idea
+
+# npm modules
+node_modules/
