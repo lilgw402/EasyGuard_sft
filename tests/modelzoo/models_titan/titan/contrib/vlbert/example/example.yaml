@@ -1,0 +1,120 @@
+runner: Cls
+epoch: 35
+resume: None
+
+data:
+    name: vid_cls
+    # dataset
+    train_path_patterns: [
+        [
+            hdfs://haruna/home/byte_data_aml_research/user/junda.zhang/titan/demo_data/pos_split_0,
+        ],
+        [
+            hdfs://haruna/home/byte_data_aml_research/user/junda.zhang/titan/demo_data/neg_split_0,
+        ]]
+    val_path_patterns: None 
+    batch_size: [80, 80]
+    batch_size_val: 160 #[256, 256]
+    num_workers: 6
+    ds_num_readers: 6
+    dataset_split_num: 3
+    proc_cache_size: 10
+    split_keys: False
+    num_workers_val: 2
+    ds_num_readers_val: 2
+    dataset_split_num_val: 2
+    restart_epoch: 5
+
+    # video
+    data_key: frames
+    label_key: label
+    # copy from lx
+    task_label_num: 1
+    label_key_is_str: True
+    force_binary_label: False
+    add_binary_label: False
+    split_keys: False
+    # end copy ##
+    
+    input_size: 256
+    input_size_val: 256
+    image_size: 256
+    image_size_val: [256, 256]
+    vid_cls:
+        num_segments: 8
+        num_frames_limit: None
+
+    # embeddings
+    linguistic_type: text  # embedding text None
+    
+    # copy from lx
+    has_title_embedding: False
+    has_ocr_embedding: False
+    has_asr_embedding: False
+    has_merge_embedding: False
+
+    has_title_text: True
+    has_ocr_text: True
+    has_asr_text: False
+    has_merge_text: True
+    context_ocr_text: True
+    context_asr_text: True
+    
+    title_text_len: 80
+    ocr_text_len: 160
+    asr_text_len: 0
+
+    vid_cls:
+        num_segments: 8
+        num_frames_limit: None
+
+    # label
+    label_key: label
+    label_key_is_str: True
+
+augment:
+    vid_cls:
+        multiscale_crop: True
+        random_resized_crop: False
+        mixup: None
+        flip_ratio: 0.5
+        auto_augment: True
+        auto_augment_no_color: False
+
+model:
+    name: vln
+    pretrained: None 
+    bert:
+        config: wengchaoqun/model/bert/bert-base-chinese
+        mlm_prob: 0 # mlm is False
+
+    backbone:
+        name: resnet
+        tag: 50
+        param:
+            zero_gamma: False
+            # middle_stride: True
+            use_se: False
+            use_avgdown: False
+    neck:
+        name: pooling
+        param:
+            pooling_type: max
+    fusion:
+        name: multimodal_fusion
+        param:
+            in_channels: [2048, 768]
+            fusion_type: fc_concat
+            num_classes: 19 #18+1
+            has_multi_head: True
+            has_binary_head: True
+            has_embedding_head: True
+            fc_channels: -1
+            embedding_channels: -1
+
+    criterion:
+        name: cls
+        cls_loss_type: CrossEntropyLoss
+        label_smooth: None
+        prob_type: softmax
+        param: {}

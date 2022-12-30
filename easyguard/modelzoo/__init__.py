@@ -1,0 +1,1 @@
+from .config import MODEL_CONFIG_PATH, MODELZOO_CONFIG

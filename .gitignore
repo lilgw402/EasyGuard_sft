@@ -142,3 +142,8 @@ cruise_logs/*
 
 # npm modules
 node_modules/
+.pre-commit-config.yaml
+
+# train weight
+*.ckpt
+events.out*

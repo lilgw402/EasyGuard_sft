@@ -14,7 +14,7 @@
 
 from typing import TYPE_CHECKING
 
-from ...file_utils import (
+from ....file_utils import (
     _BaseLazyModule,
     is_tokenizers_available,
     is_torch_available,

@@ -1,0 +1,37 @@
+# the demo for config settings
+unique_keys:
+  - name
+  - backend
+  - config_archive
+  - config
+  - tokenizer
+  - tokenizer_fast
+  - model_for_pretrained
+
+models:
+  bert:
+    name: BERT
+    backend: hf
+    config_archive: BERT_PRETRAINED_CONFIG_ARCHIVE_MAP
+    configuration_bert:
+      config: BertConfig
+    tokenization_bert:
+      tokenizer: BertTokenizer
+    tokenization_bert_fast:
+      tokenizer_fast: BertTokenizerFast
+    modeling_bert:
+      model: BertModel
+      model_for_pretrained: BertForPreTraining
+  bart:
+    name: BART
+    backend: hf
+    config_archive: BART_PRETRAINED_CONFIG_ARCHIVE_MAP
+    configuration_bart:
+      config: BartConfig
+    modeling_bart:
+      model: BartModel
+    tokenization_bart:
+      tokenizer: BartTokenizer
+    tokenization_bart_fast:
+      tokenizer_fast: BartTokenizerFast
+    
