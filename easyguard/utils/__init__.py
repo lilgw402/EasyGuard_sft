@@ -145,6 +145,28 @@ from .import_utils import (
     torch_only_method,
     torch_required,
     torch_version,
+    lazy_model_import,
+)
+
+from .hdfs_utils import (
+    hlist_files,
+    hopen,
+    hexists,
+    hmkdir,
+    hglob,
+    hisdir,
+    hcountline,
+    hrm,
+    hcopy,
+    hmget,
+)
+
+from .auxiliary_utils import (
+    sha256,
+    EASYGUARD_CACHE,
+    cache_file,
+    get_configs,
+    load_pretrained_model_weights,
 )
 
 WEIGHTS_NAME = "pytorch_model.bin"

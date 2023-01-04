@@ -38,6 +38,7 @@ from transformers.utils.import_utils import (
     ENV_VARS_TRUE_VALUES,
     is_sagemaker_mp_enabled,
 )
+from abc import ABC, abstractmethod
 
 from .activations import get_activation
 from .configuration_utils import PretrainedConfig
@@ -3798,3 +3799,17 @@ def get_disk_only_shard_files(device_map, sharded_metadata):
     return [
         fname for fname, devices in files_content.items() if set(devices) == {"disk"}
     ]
+
+
+# TODO (junwei.Dong): 一些基础的通用的方法和对应平台终端的方法可以在ModelBase里进行注册，自己写的模型尽量继承该基类
+# EasyGuard Model base class
+from ..utils import load_pretrained_model_weights
+
+
+class ModelBase(nn.Module, ABC):
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
+
+    def load_pretrained_weights(self, weight_file_path, **kwargs):
+        # TODO (junwei.Dong): 这里的权重载入目前是比较固定的方式, 后续还需要进一步开发, 自己开发的模型可以在继承该基类的前提下重载这个函数
+        load_pretrained_model_weights(self, weight_file_path, **kwargs)

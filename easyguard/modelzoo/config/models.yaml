@@ -1,4 +1,6 @@
-# the demo for config settings
+# all model config settings, each required setting for your model can be exposed here
+
+# the unique keys are designed for mappings
 unique_keys:
   - name
   - backend
@@ -8,6 +10,7 @@ unique_keys:
   - tokenizer_fast
   - model_for_pretrained
 
+# all models' settings
 models:
   bert:
     name: BERT
@@ -34,4 +37,15 @@ models:
       tokenizer: BartTokenizer
     tokenization_bart_fast:
       tokenizer_fast: BartTokenizerFast
+  deberta:
+    name: DeBERTa
+    backend: default
+    configuration_deberta:
+      config: DeBERTaConfig
+    modeling_deberta:
+      model: DebertaModel
+    tokenization_deberta:
+      tokenizer: DeBERTaTokenizer
+    
+    
     

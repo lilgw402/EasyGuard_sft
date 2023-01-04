@@ -88,6 +88,7 @@ MODEL_FOR_CAUSAL_LM_MAPPING = _LazyAutoMapping(
 
 class AutoModel(_BaseAutoModelClass):
     _model_mapping = MODEL_MAPPING
+    _model_key = "model"
 
 
 AutoModel = auto_class_update(AutoModel)
@@ -97,6 +98,4 @@ class AutoModelForCausalLM(_BaseAutoModelClass):
     _model_mapping = MODEL_FOR_CAUSAL_LM_MAPPING
 
 
-AutoModelForCausalLM = auto_class_update(
-    AutoModelForCausalLM, head_doc="causal language modeling"
-)
+AutoModelForCausalLM = auto_class_update(AutoModelForCausalLM)

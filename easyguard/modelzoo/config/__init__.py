@@ -1,20 +1,51 @@
 import os
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from collections import OrderedDict
 
-from ...utils.yaml_utils import YamlConfig
+from ...utils.yaml_utils import YamlConfig, load_yaml
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
-MODEZOO_NAME = "models"
+MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
+MODELZOO_NAME = "models"
 YAML_DEEP = 3
+
+"""
+config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多操作就可以借助models.yaml来进行简化,
+例如:
+模型注册: 直接将自主开发的模型一次注入到models.yaml文件里即可调用, 无需在auto各个模块进行配置
+模型开发: 在模型的__init__函数里只需要利用typing.TYPE_CHECKING来辅助代码提示即可,无需手动lazyimport, 可参照deberta模型进行开发
+模型懒加载: 不再需要各种mapping的存在, 因为models.yaml已经把各自模型的配置归类在一起了, 所以直接借助models.yaml即可轻松完成模块按需懒加载使用
+
+"""
 
 
 class ModelZooYaml(YamlConfig):
+    @classmethod
+    def to_module(cls, config: tuple) -> tuple:
+        """
+
+        Parameters
+        ----------
+        config : tuple
+            specific config
+            example:
+            ('models.bert.configuration_bert.config', 'BertConfig')
+
+        Returns
+        -------
+        str
+            module name
+            example:
+                'models.bert.configuration_bert.BertConfig'
+        """
+        module_split = config[0].split(".")
+        return ".".join(module_split[:-1]), config[-1]
+
     def check(self):
         """check modelzoo config yaml:
-        1. the deepest level is 4
-        2. for a specific model, each key has an unique name
+        1. the deepest level is `YAML_DEEP`.
+        2. for a specific model, each key has an unique name.
 
         Returns
         -------
@@ -26,9 +57,9 @@ class ModelZooYaml(YamlConfig):
         ValueError
             _description_
         """
-        global MODEZOO_NAME, YAML_DEEP
+        global MODELZOO_NAME, YAML_DEEP
         leafs = {}
-        prefix = MODEZOO_NAME
+        prefix = MODELZOO_NAME
 
         def dfs_leafs(data: Dict[str, Any], deep: int, leafs: List[str], prefix: str):
 
@@ -45,8 +76,8 @@ class ModelZooYaml(YamlConfig):
                 else:
                     leafs.append((prefix_, key_item))
 
-        # for model_backend in self.config[MODEZOO_NAME].keys():
-        for key_item, value in self.config[MODEZOO_NAME].items():
+        # for model_backend in self.config[MODELZOO_NAME].keys():
+        for key_item, value in self.config[MODELZOO_NAME].items():
             leafs[key_item] = []
             dfs_leafs(value, 2, leafs[key_item], f"{prefix}.{key_item}")
 
@@ -62,9 +93,10 @@ class ModelZooYaml(YamlConfig):
                     temp_dict[leaf_value_item] = paths[index]
 
     def model_detail_config(self):
-
+        """_summary_"""
         model_index = 1
         self.models = {}
+        self.models_ = {}
         for leaf_item in self.leafs:
             prefix_, key_, value_ = leaf_item
             if prefix_.startswith("models."):
@@ -72,10 +104,12 @@ class ModelZooYaml(YamlConfig):
 
                 if model_ in self.models:
                     self.models[model_][key_] = (prefix_, value_)
+                    self.models_[model_][key_] = value_
                 else:
                     self.models[model_] = {key_: (prefix_, value_)}
+                    self.models_[model_] = {key_: value_}
 
-    def get_mapping(self, *keys: str) -> OrderedDict:
+    def get_mapping(self, *keys) -> OrderedDict:
         """get mappings for huggingface models
 
         example:
@@ -107,9 +141,17 @@ class ModelZooYaml(YamlConfig):
 
         return OrderedDict(mapping_list)
 
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        return self.models_.get(key, default)
+
     def __getitem__(self, key: str):
-        return super().__getitem__(key)
+        if not hasattr(self, "models"):
+            self.model_detail_config()
+        if self.models.get(key, None) is not None:
+            return self.models[key]
+        raise KeyError(key)
 
 
 MODELZOO_CONFIG = ModelZooYaml.yaml_reader(MODEL_CONFIG_PATH)
+MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH)
 MODELZOO_CONFIG.check()

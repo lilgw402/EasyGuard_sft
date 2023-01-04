@@ -1,0 +1,8 @@
+# specific pretrained models
+deberta_base_6l: 
+  url_or_path: /root/.cache/easyguard/models/deberta
+  type: deberta
+bert-base-uncased:
+  type: bert
+facebook/bart-large:
+  type: bart

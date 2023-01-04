@@ -7,6 +7,10 @@ import logging as python_logging
 __version__ = "0.0.2"
 
 from .modelzoo.tokenization_utils import PreTrainedTokenizer
+from .utils import EASYGUARD_CACHE
+
+# set the easyguard cache directory
+os.environ["EASYGUARD_CACHE"] = EASYGUARD_CACHE
 
 _logger = python_logging.getLogger("fex")
 _logger.setLevel(python_logging.INFO)

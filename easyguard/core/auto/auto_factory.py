@@ -16,349 +16,24 @@
 import importlib
 from collections import OrderedDict
 
-from ...modelzoo.configuration_utils import PretrainedConfig
+from ...modelzoo.configuration_utils import PretrainedConfig, ConfigBase
+from ...modelzoo.modeling_utils import ModelBase
 from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
-from ...utils import copy_func, logging
-from .configuration_auto import (
-    AutoConfig,
-    model_type_to_module_name,
-    replace_list_option_in_docstrings,
+from ...utils import copy_func, logging, lazy_model_import, cache_file
+from .configuration_auto_hf import model_type_to_module_name
+from .configuration_auto import AutoConfig
+from . import (
+    HF_PATH,
+    BACKENDS,
+    MODELZOO_CONFIG,
+    MODEL_ARCHIVE_CONFIG,
+    MODEL_SAVE_NAMES,
+    MODEL_CONFIG_NAMES,
 )
-from . import HF_PATH
 
 # TODO (junwei.Dong): 需要简化一下工厂函数的逻辑
 
 logger = logging.get_logger(__name__)
-
-
-CLASS_DOCSTRING = """
-    This is a generic model class that will be instantiated as one of the model classes of the library when created
-    with the [`~BaseAutoModelClass.from_pretrained`] class method or the [`~BaseAutoModelClass.from_config`] class
-    method.
-
-    This class cannot be instantiated directly using `__init__()` (throws an error).
-"""
-
-FROM_CONFIG_DOCSTRING = """
-        Instantiates one of the model classes of the library from a configuration.
-
-        Note:
-            Loading a model from its configuration file does **not** load the model weights. It only affects the
-            model's configuration. Use [`~BaseAutoModelClass.from_pretrained`] to load the model weights.
-
-        Args:
-            config ([`PretrainedConfig`]):
-                The model class to instantiate is selected based on the configuration class:
-
-                List options
-
-        Examples:
-
-        ```python
-        >>> from transformers import AutoConfig, BaseAutoModelClass
-
-        >>> # Download configuration from huggingface.co and cache.
-        >>> config = AutoConfig.from_pretrained("checkpoint_placeholder")
-        >>> model = BaseAutoModelClass.from_config(config)
-        ```
-"""
-
-FROM_PRETRAINED_TORCH_DOCSTRING = """
-        Instantiate one of the model classes of the library from a pretrained model.
-
-        The model class to instantiate is selected based on the `model_type` property of the config object (either
-        passed as an argument or loaded from `pretrained_model_name_or_path` if possible), or when it's missing, by
-        falling back to using pattern matching on `pretrained_model_name_or_path`:
-
-        List options
-
-        The model is set in evaluation mode by default using `model.eval()` (so for instance, dropout modules are
-        deactivated). To train the model, you should first set it back in training mode with `model.train()`
-
-        Args:
-            pretrained_model_name_or_path (`str` or `os.PathLike`):
-                Can be either:
-
-                    - A string, the *model id* of a pretrained model hosted inside a model repo on huggingface.co.
-                      Valid model ids can be located at the root-level, like `bert-base-uncased`, or namespaced under a
-                      user or organization name, like `dbmdz/bert-base-german-cased`.
-                    - A path to a *directory* containing model weights saved using
-                      [`~PreTrainedModel.save_pretrained`], e.g., `./my_model_directory/`.
-                    - A path or url to a *tensorflow index checkpoint file* (e.g, `./tf_model/model.ckpt.index`). In
-                      this case, `from_tf` should be set to `True` and a configuration object should be provided as
-                      `config` argument. This loading path is slower than converting the TensorFlow checkpoint in a
-                      PyTorch model using the provided conversion scripts and loading the PyTorch model afterwards.
-            model_args (additional positional arguments, *optional*):
-                Will be passed along to the underlying model `__init__()` method.
-            config ([`PretrainedConfig`], *optional*):
-                Configuration for the model to use instead of an automatically loaded configuration. Configuration can
-                be automatically loaded when:
-
-                    - The model is a model provided by the library (loaded with the *model id* string of a pretrained
-                      model).
-                    - The model was saved using [`~PreTrainedModel.save_pretrained`] and is reloaded by supplying the
-                      save directory.
-                    - The model is loaded by supplying a local directory as `pretrained_model_name_or_path` and a
-                      configuration JSON file named *config.json* is found in the directory.
-            state_dict (*Dict[str, torch.Tensor]*, *optional*):
-                A state dictionary to use instead of a state dictionary loaded from saved weights file.
-
-                This option can be used if you want to create a model from a pretrained configuration but load your own
-                weights. In this case though, you should check if using [`~PreTrainedModel.save_pretrained`] and
-                [`~PreTrainedModel.from_pretrained`] is not a simpler option.
-            cache_dir (`str` or `os.PathLike`, *optional*):
-                Path to a directory in which a downloaded pretrained model configuration should be cached if the
-                standard cache should not be used.
-            from_tf (`bool`, *optional*, defaults to `False`):
-                Load the model weights from a TensorFlow checkpoint save file (see docstring of
-                `pretrained_model_name_or_path` argument).
-            force_download (`bool`, *optional*, defaults to `False`):
-                Whether or not to force the (re-)download of the model weights and configuration files, overriding the
-                cached versions if they exist.
-            resume_download (`bool`, *optional*, defaults to `False`):
-                Whether or not to delete incompletely received files. Will attempt to resume the download if such a
-                file exists.
-            proxies (`Dict[str, str]`, *optional*):
-                A dictionary of proxy servers to use by protocol or endpoint, e.g., `{'http': 'foo.bar:3128',
-                'http://hostname': 'foo.bar:4012'}`. The proxies are used on each request.
-            output_loading_info(`bool`, *optional*, defaults to `False`):
-                Whether ot not to also return a dictionary containing missing keys, unexpected keys and error messages.
-            local_files_only(`bool`, *optional*, defaults to `False`):
-                Whether or not to only look at local files (e.g., not try downloading the model).
-            revision (`str`, *optional*, defaults to `"main"`):
-                The specific model version to use. It can be a branch name, a tag name, or a commit id, since we use a
-                git-based system for storing models and other artifacts on huggingface.co, so `revision` can be any
-                identifier allowed by git.
-            trust_remote_code (`bool`, *optional*, defaults to `False`):
-                Whether or not to allow for custom models defined on the Hub in their own modeling files. This option
-                should only be set to `True` for repositories you trust and in which you have read the code, as it will
-                execute code present on the Hub on your local machine.
-            kwargs (additional keyword arguments, *optional*):
-                Can be used to update the configuration object (after it being loaded) and initiate the model (e.g.,
-                `output_attentions=True`). Behaves differently depending on whether a `config` is provided or
-                automatically loaded:
-
-                    - If a configuration is provided with `config`, `**kwargs` will be directly passed to the
-                      underlying model's `__init__` method (we assume all relevant updates to the configuration have
-                      already been done)
-                    - If a configuration is not provided, `kwargs` will be first passed to the configuration class
-                      initialization function ([`~PretrainedConfig.from_pretrained`]). Each key of `kwargs` that
-                      corresponds to a configuration attribute will be used to override said attribute with the
-                      supplied `kwargs` value. Remaining keys that do not correspond to any configuration attribute
-                      will be passed to the underlying model's `__init__` function.
-
-        Examples:
-
-        ```python
-        >>> from transformers import AutoConfig, BaseAutoModelClass
-
-        >>> # Download model and configuration from huggingface.co and cache.
-        >>> model = BaseAutoModelClass.from_pretrained("checkpoint_placeholder")
-
-        >>> # Update configuration during loading
-        >>> model = BaseAutoModelClass.from_pretrained("checkpoint_placeholder", output_attentions=True)
-        >>> model.config.output_attentions
-        True
-
-        >>> # Loading from a TF checkpoint file instead of a PyTorch model (slower)
-        >>> config = AutoConfig.from_pretrained("./tf_model/shortcut_placeholder_tf_model_config.json")
-        >>> model = BaseAutoModelClass.from_pretrained(
-        ...     "./tf_model/shortcut_placeholder_tf_checkpoint.ckpt.index", from_tf=True, config=config
-        ... )
-        ```
-"""
-
-FROM_PRETRAINED_TF_DOCSTRING = """
-        Instantiate one of the model classes of the library from a pretrained model.
-
-        The model class to instantiate is selected based on the `model_type` property of the config object (either
-        passed as an argument or loaded from `pretrained_model_name_or_path` if possible), or when it's missing, by
-        falling back to using pattern matching on `pretrained_model_name_or_path`:
-
-        List options
-
-        Args:
-            pretrained_model_name_or_path (`str` or `os.PathLike`):
-                Can be either:
-
-                    - A string, the *model id* of a pretrained model hosted inside a model repo on huggingface.co.
-                      Valid model ids can be located at the root-level, like `bert-base-uncased`, or namespaced under a
-                      user or organization name, like `dbmdz/bert-base-german-cased`.
-                    - A path to a *directory* containing model weights saved using
-                      [`~PreTrainedModel.save_pretrained`], e.g., `./my_model_directory/`.
-                    - A path or url to a *PyTorch state_dict save file* (e.g, `./pt_model/pytorch_model.bin`). In this
-                      case, `from_pt` should be set to `True` and a configuration object should be provided as `config`
-                      argument. This loading path is slower than converting the PyTorch model in a TensorFlow model
-                      using the provided conversion scripts and loading the TensorFlow model afterwards.
-            model_args (additional positional arguments, *optional*):
-                Will be passed along to the underlying model `__init__()` method.
-            config ([`PretrainedConfig`], *optional*):
-                Configuration for the model to use instead of an automatically loaded configuration. Configuration can
-                be automatically loaded when:
-
-                    - The model is a model provided by the library (loaded with the *model id* string of a pretrained
-                      model).
-                    - The model was saved using [`~PreTrainedModel.save_pretrained`] and is reloaded by supplying the
-                      save directory.
-                    - The model is loaded by supplying a local directory as `pretrained_model_name_or_path` and a
-                      configuration JSON file named *config.json* is found in the directory.
-            cache_dir (`str` or `os.PathLike`, *optional*):
-                Path to a directory in which a downloaded pretrained model configuration should be cached if the
-                standard cache should not be used.
-            from_pt (`bool`, *optional*, defaults to `False`):
-                Load the model weights from a PyTorch checkpoint save file (see docstring of
-                `pretrained_model_name_or_path` argument).
-            force_download (`bool`, *optional*, defaults to `False`):
-                Whether or not to force the (re-)download of the model weights and configuration files, overriding the
-                cached versions if they exist.
-            resume_download (`bool`, *optional*, defaults to `False`):
-                Whether or not to delete incompletely received files. Will attempt to resume the download if such a
-                file exists.
-            proxies (`Dict[str, str]`, *optional*):
-                A dictionary of proxy servers to use by protocol or endpoint, e.g., `{'http': 'foo.bar:3128',
-                'http://hostname': 'foo.bar:4012'}`. The proxies are used on each request.
-            output_loading_info(`bool`, *optional*, defaults to `False`):
-                Whether ot not to also return a dictionary containing missing keys, unexpected keys and error messages.
-            local_files_only(`bool`, *optional*, defaults to `False`):
-                Whether or not to only look at local files (e.g., not try downloading the model).
-            revision (`str`, *optional*, defaults to `"main"`):
-                The specific model version to use. It can be a branch name, a tag name, or a commit id, since we use a
-                git-based system for storing models and other artifacts on huggingface.co, so `revision` can be any
-                identifier allowed by git.
-            trust_remote_code (`bool`, *optional*, defaults to `False`):
-                Whether or not to allow for custom models defined on the Hub in their own modeling files. This option
-                should only be set to `True` for repositories you trust and in which you have read the code, as it will
-                execute code present on the Hub on your local machine.
-            kwargs (additional keyword arguments, *optional*):
-                Can be used to update the configuration object (after it being loaded) and initiate the model (e.g.,
-                `output_attentions=True`). Behaves differently depending on whether a `config` is provided or
-                automatically loaded:
-
-                    - If a configuration is provided with `config`, `**kwargs` will be directly passed to the
-                      underlying model's `__init__` method (we assume all relevant updates to the configuration have
-                      already been done)
-                    - If a configuration is not provided, `kwargs` will be first passed to the configuration class
-                      initialization function ([`~PretrainedConfig.from_pretrained`]). Each key of `kwargs` that
-                      corresponds to a configuration attribute will be used to override said attribute with the
-                      supplied `kwargs` value. Remaining keys that do not correspond to any configuration attribute
-                      will be passed to the underlying model's `__init__` function.
-
-        Examples:
-
-        ```python
-        >>> from transformers import AutoConfig, BaseAutoModelClass
-
-        >>> # Download model and configuration from huggingface.co and cache.
-        >>> model = BaseAutoModelClass.from_pretrained("checkpoint_placeholder")
-
-        >>> # Update configuration during loading
-        >>> model = BaseAutoModelClass.from_pretrained("checkpoint_placeholder", output_attentions=True)
-        >>> model.config.output_attentions
-        True
-
-        >>> # Loading from a PyTorch checkpoint file instead of a TensorFlow model (slower)
-        >>> config = AutoConfig.from_pretrained("./pt_model/shortcut_placeholder_pt_model_config.json")
-        >>> model = BaseAutoModelClass.from_pretrained(
-        ...     "./pt_model/shortcut_placeholder_pytorch_model.bin", from_pt=True, config=config
-        ... )
-        ```
-"""
-
-FROM_PRETRAINED_FLAX_DOCSTRING = """
-        Instantiate one of the model classes of the library from a pretrained model.
-
-        The model class to instantiate is selected based on the `model_type` property of the config object (either
-        passed as an argument or loaded from `pretrained_model_name_or_path` if possible), or when it's missing, by
-        falling back to using pattern matching on `pretrained_model_name_or_path`:
-
-        List options
-
-        Args:
-            pretrained_model_name_or_path (`str` or `os.PathLike`):
-                Can be either:
-
-                    - A string, the *model id* of a pretrained model hosted inside a model repo on huggingface.co.
-                      Valid model ids can be located at the root-level, like `bert-base-uncased`, or namespaced under a
-                      user or organization name, like `dbmdz/bert-base-german-cased`.
-                    - A path to a *directory* containing model weights saved using
-                      [`~PreTrainedModel.save_pretrained`], e.g., `./my_model_directory/`.
-                    - A path or url to a *PyTorch state_dict save file* (e.g, `./pt_model/pytorch_model.bin`). In this
-                      case, `from_pt` should be set to `True` and a configuration object should be provided as `config`
-                      argument. This loading path is slower than converting the PyTorch model in a TensorFlow model
-                      using the provided conversion scripts and loading the TensorFlow model afterwards.
-            model_args (additional positional arguments, *optional*):
-                Will be passed along to the underlying model `__init__()` method.
-            config ([`PretrainedConfig`], *optional*):
-                Configuration for the model to use instead of an automatically loaded configuration. Configuration can
-                be automatically loaded when:
-
-                    - The model is a model provided by the library (loaded with the *model id* string of a pretrained
-                      model).
-                    - The model was saved using [`~PreTrainedModel.save_pretrained`] and is reloaded by supplying the
-                      save directory.
-                    - The model is loaded by supplying a local directory as `pretrained_model_name_or_path` and a
-                      configuration JSON file named *config.json* is found in the directory.
-            cache_dir (`str` or `os.PathLike`, *optional*):
-                Path to a directory in which a downloaded pretrained model configuration should be cached if the
-                standard cache should not be used.
-            from_pt (`bool`, *optional*, defaults to `False`):
-                Load the model weights from a PyTorch checkpoint save file (see docstring of
-                `pretrained_model_name_or_path` argument).
-            force_download (`bool`, *optional*, defaults to `False`):
-                Whether or not to force the (re-)download of the model weights and configuration files, overriding the
-                cached versions if they exist.
-            resume_download (`bool`, *optional*, defaults to `False`):
-                Whether or not to delete incompletely received files. Will attempt to resume the download if such a
-                file exists.
-            proxies (`Dict[str, str]`, *optional*):
-                A dictionary of proxy servers to use by protocol or endpoint, e.g., `{'http': 'foo.bar:3128',
-                'http://hostname': 'foo.bar:4012'}`. The proxies are used on each request.
-            output_loading_info(`bool`, *optional*, defaults to `False`):
-                Whether ot not to also return a dictionary containing missing keys, unexpected keys and error messages.
-            local_files_only(`bool`, *optional*, defaults to `False`):
-                Whether or not to only look at local files (e.g., not try downloading the model).
-            revision (`str`, *optional*, defaults to `"main"`):
-                The specific model version to use. It can be a branch name, a tag name, or a commit id, since we use a
-                git-based system for storing models and other artifacts on huggingface.co, so `revision` can be any
-                identifier allowed by git.
-            trust_remote_code (`bool`, *optional*, defaults to `False`):
-                Whether or not to allow for custom models defined on the Hub in their own modeling files. This option
-                should only be set to `True` for repositories you trust and in which you have read the code, as it will
-                execute code present on the Hub on your local machine.
-            kwargs (additional keyword arguments, *optional*):
-                Can be used to update the configuration object (after it being loaded) and initiate the model (e.g.,
-                `output_attentions=True`). Behaves differently depending on whether a `config` is provided or
-                automatically loaded:
-
-                    - If a configuration is provided with `config`, `**kwargs` will be directly passed to the
-                      underlying model's `__init__` method (we assume all relevant updates to the configuration have
-                      already been done)
-                    - If a configuration is not provided, `kwargs` will be first passed to the configuration class
-                      initialization function ([`~PretrainedConfig.from_pretrained`]). Each key of `kwargs` that
-                      corresponds to a configuration attribute will be used to override said attribute with the
-                      supplied `kwargs` value. Remaining keys that do not correspond to any configuration attribute
-                      will be passed to the underlying model's `__init__` function.
-
-        Examples:
-
-        ```python
-        >>> from transformers import AutoConfig, BaseAutoModelClass
-
-        >>> # Download model and configuration from huggingface.co and cache.
-        >>> model = BaseAutoModelClass.from_pretrained("checkpoint_placeholder")
-
-        >>> # Update configuration during loading
-        >>> model = BaseAutoModelClass.from_pretrained("checkpoint_placeholder", output_attentions=True)
-        >>> model.config.output_attentions
-        True
-
-        >>> # Loading from a PyTorch checkpoint file instead of a TensorFlow model (slower)
-        >>> config = AutoConfig.from_pretrained("./pt_model/shortcut_placeholder_pt_model_config.json")
-        >>> model = BaseAutoModelClass.from_pretrained(
-        ...     "./pt_model/shortcut_placeholder_pytorch_model.bin", from_pt=True, config=config
-        ... )
-        ```
-"""
 
 
 def _get_model_class(config, model_mapping):
@@ -381,7 +56,7 @@ def _get_model_class(config, model_mapping):
     return supported_models[0]
 
 
-class _BaseAutoModelClass:
+class HFBaseAutoModelClass:
     # Base class for auto models.
     _model_mapping = None
 
@@ -513,63 +188,93 @@ class _BaseAutoModelClass:
         cls._model_mapping.register(config_class, model_class)
 
 
-def insert_head_doc(docstring, head_doc=""):
-    if len(head_doc) > 0:
-        return docstring.replace(
-            "one of the model classes of the library ",
-            f"one of the model classes of the library (with a {head_doc} head) ",
+class _BaseAutoModelClass:
+    # Base class for auto models.
+    _model_mapping = None
+    _model_key = None
+
+    def __init__(self, *args, **kwargs):
+        raise EnvironmentError(
+            f"{self.__class__.__name__} is designed to be instantiated "
+            f"using the `{self.__class__.__name__}.from_pretrained(pretrained_model_name_or_path)` or "
+            f"`{self.__class__.__name__}.from_config(config)` methods."
         )
-    return docstring.replace(
-        "one of the model classes of the library ",
-        "one of the base model classes of the library ",
-    )
+
+    @classmethod
+    def from_config(cls, config, **kwargs):
+        ...
+
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name_or_path: str, *model_args, **kwargs):
+        if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
+            # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
+            raise KeyError(pretrained_model_name_or_path)
+        else:
+            model_archive = MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path]
+            model_type = model_archive.get("type", None)
+            model_url = model_archive.get("url_or_path", None)
+            model_config = MODELZOO_CONFIG.get(model_type, None)
+            assert (
+                model_config is not None
+            ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
+
+            backend = model_config.get("backend", None)
+            assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
+            backend_default_flag = False
+            if backend == "hf":
+                HFBaseAutoModelClass._model_mapping = cls._model_mapping
+                return HFBaseAutoModelClass.from_pretrained(
+                    pretrained_model_name_or_path, *model_args, **kwargs
+                )
+            elif backend == "titan":
+                # TODO (junwei.Dong): 支持特殊的titan模型
+                raise NotImplementedError(backend)
+            elif backend == "fex":
+                # TODO (junwei.Dong): 支持特殊的fex模型
+                raise NotImplementedError(backend)
+            else:
+                backend_default_flag = True
+
+            if backend_default_flag == True:
+                model_name_tuple = MODELZOO_CONFIG[model_type][cls._model_key]
+                model_module_package, model_module_name = MODELZOO_CONFIG.to_module(
+                    model_name_tuple
+                )
+                # obtain model class
+                model_class = lazy_model_import(model_module_package, model_module_name)
+
+                extra_dict = {
+                    "model_type": model_type,
+                    "remote_url": model_url,
+                    "backend": backend,
+                }
+                # obtain model config class
+                model_config_class_: ConfigBase = AutoConfig.from_pretrained(
+                    pretrained_model_name_or_path, **extra_dict
+                )
+                model_config_class_.config_update_for_pretrained(**kwargs)
+                # obtain model weight file path
+                model_weight_file_path = cache_file(
+                    pretrained_model_name_or_path, MODEL_SAVE_NAMES, **extra_dict
+                )
+                # instantiate model
+                model_: ModelBase = model_class(**model_config_class_.asdict())
+                # load weights
+                model_.load_pretrained_weights(model_weight_file_path, **kwargs)
+
+                return model_
 
 
-def auto_class_update(cls, checkpoint_for_example="bert-base-cased", head_doc=""):
+def auto_class_update(cls):
     # Create a new class with the right name from the base class
-    model_mapping = cls._model_mapping
-    name = cls.__name__
-    class_docstring = insert_head_doc(CLASS_DOCSTRING, head_doc=head_doc)
-    cls.__doc__ = class_docstring.replace("BaseAutoModelClass", name)
-
     # Now we need to copy and re-register `from_config` and `from_pretrained` as class methods otherwise we can't
     # have a specific docstrings for them.
     from_config = copy_func(_BaseAutoModelClass.from_config)
-    from_config_docstring = insert_head_doc(FROM_CONFIG_DOCSTRING, head_doc=head_doc)
-    from_config_docstring = from_config_docstring.replace("BaseAutoModelClass", name)
-    from_config_docstring = from_config_docstring.replace(
-        "checkpoint_placeholder", checkpoint_for_example
-    )
-    from_config.__doc__ = from_config_docstring
-    from_config = replace_list_option_in_docstrings(
-        model_mapping._model_mapping, use_model_types=False
-    )(from_config)
+
     cls.from_config = classmethod(from_config)
 
-    if name.startswith("TF"):
-        from_pretrained_docstring = FROM_PRETRAINED_TF_DOCSTRING
-    elif name.startswith("Flax"):
-        from_pretrained_docstring = FROM_PRETRAINED_FLAX_DOCSTRING
-    else:
-        from_pretrained_docstring = FROM_PRETRAINED_TORCH_DOCSTRING
     from_pretrained = copy_func(_BaseAutoModelClass.from_pretrained)
-    from_pretrained_docstring = insert_head_doc(
-        from_pretrained_docstring, head_doc=head_doc
-    )
-    from_pretrained_docstring = from_pretrained_docstring.replace(
-        "BaseAutoModelClass", name
-    )
-    from_pretrained_docstring = from_pretrained_docstring.replace(
-        "checkpoint_placeholder", checkpoint_for_example
-    )
-    shortcut = checkpoint_for_example.split("/")[-1].split("-")[0]
-    from_pretrained_docstring = from_pretrained_docstring.replace(
-        "shortcut_placeholder", shortcut
-    )
-    from_pretrained.__doc__ = from_pretrained_docstring
-    from_pretrained = replace_list_option_in_docstrings(model_mapping._model_mapping)(
-        from_pretrained
-    )
+
     cls.from_pretrained = classmethod(from_pretrained)
     return cls
 
@@ -640,12 +345,16 @@ class _LazyAutoMapping(OrderedDict):
         raise KeyError(key)
 
     def _load_attr_from_module(self, model_type, attr):
-        module_name = model_type_to_module_name(model_type)
-        if module_name not in self._modules:
-            self._modules[module_name] = importlib.import_module(
-                f".{module_name}", HF_PATH
-            )
-        return getattribute_from_module(self._modules[module_name], attr)
+        # easyguard: 为了不强制懒加载，加了try...except...
+        try:
+            module_name = model_type_to_module_name(model_type)
+            if module_name not in self._modules:
+                self._modules[module_name] = importlib.import_module(
+                    f".{module_name}", HF_PATH
+                )
+            return getattribute_from_module(self._modules[module_name], attr)
+        except:
+            ...
 
     def keys(self):
         mapping_keys = [

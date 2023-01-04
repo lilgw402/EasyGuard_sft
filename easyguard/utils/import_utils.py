@@ -1192,3 +1192,52 @@ class _LazyModule(ModuleType):
 
 class OptionalDependencyNotAvailable(BaseException):
     """Internally used error class for signalling an optional dependency was not found."""
+
+
+# easyguard import utils
+from collections import defaultdict
+
+EASYGUARD_PATH = "easyguard.modelzoo"
+EASYGUARD_PACKAGES = OrderedDict()
+
+
+def lazy_model_import(package: str, module: str):
+    # TODO (junwei.Dong): 之后可以变更为类, 用类的方式来处理更加合理, 扩展性更强
+    """配合models.yaml实现模块的的懒加载
+
+    Parameters
+    ----------
+    package : str
+        package name
+        example:
+            'models.deberta.modeling_deberta'
+    module : str
+        module name
+        example:
+            'DeBERTaModel'
+
+    Returns
+    -------
+    _type_
+        module class
+
+    Raises
+    ------
+    KeyError
+        module class does not exist
+    """
+    import importlib
+
+    if package not in EASYGUARD_PACKAGES:
+        module_exist = importlib.util.find_spec("." + package, EASYGUARD_PATH)
+        assert (
+            module_exist is not None
+        ), f"module `{'.'.join([EASYGUARD_PATH, module])}` doesn't exist"
+        EASYGUARD_PACKAGES[package] = importlib.import_module(
+            "." + package, EASYGUARD_PATH
+        )
+
+    package_class = EASYGUARD_PACKAGES[package]
+    if hasattr(package_class, module):
+        return getattr(package_class, module)
+    raise AttributeError(f"{'.'.join([EASYGUARD_PATH, package, module])}")
