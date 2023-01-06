@@ -3,12 +3,13 @@ import os
 from typing import Dict, Any, List, Optional
 from collections import OrderedDict
 
-from ...utils.yaml_utils import YamlConfig, load_yaml
-
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
 MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
+MODEL_REMOTE_ZOO = "hdfs://haruna/home/byte_ecom_govern/easyguard/models"
 MODELZOO_NAME = "models"
 YAML_DEEP = 3
+
+from ...utils.yaml_utils import YamlConfig, load_yaml
 
 """
 config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多操作就可以借助models.yaml来进行简化,

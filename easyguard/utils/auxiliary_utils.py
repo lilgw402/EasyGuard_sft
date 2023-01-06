@@ -2,18 +2,34 @@ import hashlib
 import os
 import torch
 
-from . import hmget
-from .logging import get_logger
 from typing import Optional, Union
 
 EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
 EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
 REMOTE_PATH_SEP = "/"
 
+from . import hmget, hexists, file_read
+from .logging import get_logger
+from ..modelzoo.config import MODEL_ARCHIVE_PATH
+
 logger = get_logger(__name__)
 
 
 def file_exist(prefix: str, choices: Union[str, set]) -> Optional[str]:
+    """check
+
+    Parameters
+    ----------
+    prefix : str
+        _description_
+    choices : Union[str, set]
+        _description_
+
+    Returns
+    -------
+    Optional[str]
+        _description_
+    """
     if isinstance(choices, str):
         path_ = os.path.join(prefix, choices)
         if os.path.exists(path_):
@@ -58,7 +74,6 @@ def cache_file(
     NotImplementedError
         _description_
     """
-    global REMOTE_PATH_SEP
     model_type = kwargs.pop("model_type", None)
     if os.path.exists(model_name_path):
         return model_name_path
@@ -67,6 +82,7 @@ def cache_file(
         model_path_local = os.path.join(EASYGUARD_MODEL_CACHE, model_type, _hash)
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
+            logger.warning(f"obtain the local file `{model_file_local}`")
             return model_file_local
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
@@ -79,7 +95,6 @@ def cache_file(
                 model_file_remote_list = [
                     REMOTE_PATH_SEP.join([model_path_remote, file_name])
                 ]
-                model_file_local_list = [os.path.join(model_path_local, file_name)]
             else:
                 model_file_remote_list = list(
                     map(
@@ -87,19 +102,30 @@ def cache_file(
                         file_name,
                     )
                 )
-                model_file_local_list = list(
-                    map(
-                        lambda x: os.path.join(model_path_local, x),
-                        file_name,
-                    )
-                )
             # diffent servers, different processes
             if model_path_remote.startswith("hdfs://"):
-                hmget(model_file_remote_list, model_path_local)
-                # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
-                for path_ in model_file_local_list:
-                    if os.path.getsize(path_) == 0:
-                        os.remove(path_)
+                model_file_path_remote = None
+                for remote_path_ in model_file_remote_list:
+                    if hexists(remote_path_):
+                        model_file_path_remote = remote_path_
+                        break
+                if model_file_path_remote:
+                    logger.warning(f"start to download `{model_file_path_remote}`")
+                    hmget([model_file_path_remote], model_path_local)
+                    # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
+                    model_file_path_local = os.path.join(
+                        model_path_local,
+                        model_file_path_remote.split(REMOTE_PATH_SEP)[-1],
+                    )
+                    if os.path.getsize(model_file_path_local) == 0:
+                        os.remove(model_file_path_local)
+                        logger.warning(
+                            f"fail to download `{model_file_path_remote}`, please check the network or the remote file path"
+                        )
+                else:
+                    raise FileNotFoundError(
+                        f"`{model_file_remote_list}` can not find in remote server"
+                    )
 
             final_file_path = file_exist(model_path_local, file_name)
             if final_file_path:
@@ -113,6 +139,23 @@ def cache_file(
         # TODO (junwei.Dong): 不是模型的文件该如何从远程获取并存放在缓存目录
         raise NotImplementedError(f"Just support model cache")
     ...
+
+
+def list_pretrained_models():
+    """list all pretrained models from archive.yaml"""
+    from prettytable import PrettyTable
+
+    model_archive = file_read(MODEL_ARCHIVE_PATH)
+    model_archive_table = PrettyTable()
+    filed_names = list()
+    for key_, value_ in model_archive.items():
+        filed_names += list(value_.keys())
+    filed_names = list(set(filed_names))
+    model_archive_table.field_names = ["model_name"] + filed_names
+    for key_, value_ in model_archive.items():
+        temp_ = [key_] + [value_.get(_, None) for _ in filed_names]
+        model_archive_table.add_row(temp_)
+    logger.info(model_archive_table)
 
 
 # from titan
@@ -137,6 +180,19 @@ def get_configs(**kwargs):
 def load_pretrained_model_weights(
     model, model_path, strict=False, rm_deberta_prefix=False, **kwargs
 ):
+    """load pretrained model weights
+
+    Parameters
+    ----------
+    model : _type_
+        _description_
+    model_path : _type_
+        _description_
+    strict : bool, optional
+        _description_, by default False
+    rm_deberta_prefix : bool, optional
+        _description_, by default False
+    """
     if model_path is None:
         # rank zero only mode, other rank skip loading
         return

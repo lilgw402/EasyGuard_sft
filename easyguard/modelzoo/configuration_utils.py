@@ -1015,6 +1015,5 @@ class ConfigBase(ABC):
     def asdict(self) -> Dict[str, Any]:
         return asdict(self)
 
-    @abstractmethod
     def config_update_for_pretrained(self, **kwargs):
-        raise NotImplementedError()
+        ...

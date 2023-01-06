@@ -167,6 +167,7 @@ from .auxiliary_utils import (
     cache_file,
     get_configs,
     load_pretrained_model_weights,
+    list_pretrained_models,
 )
 
 WEIGHTS_NAME = "pytorch_model.bin"

@@ -1,4 +1,4 @@
-from easyguard.utils import sha256, cache_file
+from easyguard.utils.auxiliary_utils import *
 
 
 def test_sha256(data: str) -> str:
@@ -15,8 +15,12 @@ def test_cache_file():
     )
 
 
+def test_list_pretrained_models():
+    list_pretrained_models()
+
+
 if __name__ == "__main__":
     data = "hello world~"
     test_sha256(data)
     test_cache_file()
-    ...
+    test_list_pretrained_models()

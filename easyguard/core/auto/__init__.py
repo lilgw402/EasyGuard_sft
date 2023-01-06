@@ -1,6 +1,7 @@
 # be used for the huggingface model import
 
 HF_PATH = "easyguard.modelzoo.models"
+EASYGUARD_PATH = "easyguard.modelzoo.models"
 BACKENDS = set(["default", "hf", "titan", "fex"])
 MODEL_CONFIG_NAMES = set(["config.yaml", "config.json"])
 PYTORCH_MODLE = "pytorch_model"

@@ -20,7 +20,7 @@ import unicodedata
 
 from ...tokenization_utils_base import TokenizerBase
 
-"""Deberta Tokenization classes"""
+"""Deberta Tokenization class"""
 
 
 def whitespace_tokenize(text):

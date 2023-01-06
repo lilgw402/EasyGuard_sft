@@ -1,6 +1,6 @@
 # specific pretrained models
 deberta_base_6l: 
-  url_or_path: /root/.cache/easyguard/models/deberta
+  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/deberta_base_6l
   type: deberta
 bert-base-uncased:
   type: bert

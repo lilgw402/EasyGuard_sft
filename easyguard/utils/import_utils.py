@@ -1195,9 +1195,10 @@ class OptionalDependencyNotAvailable(BaseException):
 
 
 # easyguard import utils
-from collections import defaultdict
+# from ..core.auto import EASYGUARD_PATH
 
 EASYGUARD_PATH = "easyguard.modelzoo"
+
 EASYGUARD_PACKAGES = OrderedDict()
 
 
