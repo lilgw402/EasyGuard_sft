@@ -1,10 +1,13 @@
 from easyguard.core import AutoModel, AutoTokenizer
 
+archive = "fashion-deberta"
+# archive = "fashion-deberta-asr"
+# archive = "fashion-deberta-ccr-order"
+
 
 def main():
     import torch
 
-    archive = "fashion-deberta"
     my_tokenizer = AutoTokenizer.from_pretrained(archive)
     my_model = AutoModel.from_pretrained(
         archive, dim_shrink=128, rm_deberta_prefix=True
