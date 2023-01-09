@@ -1,0 +1,20 @@
+# specific pretrained models
+deberta_base_6l: 
+  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/deberta_base_6l
+  type: deberta
+fashion-deberta:
+  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta
+  type: deberta
+  description: CCR + ASR 各1亿 MLM
+fashion-deberta-asr:
+  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_asr
+  type: deberta
+  description: 风险预测task, 6层deberta
+fashion-deberta-ccr-order:
+  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order
+  type: deberta
+  description: 订单型 + VOC
+bert-base-uncased:
+  type: bert
+facebook/bart-large:
+  type: bart

@@ -1,0 +1,276 @@
+image: ''
+resProfiles: []
+apt:
+  - tree
+paramGroups: []
+gitRepo:
+  branchName: master
+  mnt: /opt/tiger/titan
+  repoName: lab/titan
+pip: []
+pip3:
+  - requests
+  - pyyaml
+  - packaging
+  - python-consul
+  - thop
+  - bytedpymongo
+  - timm
+  - hiddenlayer
+  - nni==2.4
+  - einops
+params:
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: converting_yaml
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 模型转换配置文件，请给出完整hdfs路径
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: model_name
+    isAdvance: false
+    defaultValue: ''
+    required: true
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 模型名称，如resnet50
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: pretrained
+    isAdvance: false
+    defaultValue: 'false'
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: BOOL
+    hintMsg: 是否使用预训练模型
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: tos_bucket
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 预训练模型所在tos bucket
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: tos_access_key
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 预训练模型所在tos bucket ak
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: backend
+    isAdvance: false
+    defaultValue: titan
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions:
+      - titan
+      - timm
+    type: SELECT
+    hintMsg: 目前只支持titan或timm，默认为titan
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: pretrained_version
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 如果预训练模型来自tos，请在此参数中指定版本名称，如imagenet1k
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: pretrained_uri
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 如果预训练模型来自hdfs或http url，请在此参数中指定完整路径
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: input_shape
+    isAdvance: false
+    defaultValue: '3,224,224'
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 模型输入尺寸，用逗号分隔
+  - arrayItemParams: {}
+    multiDefaultValue:
+      - TRT
+    name: convert_types
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions:
+      - ONNX
+      - TorchScript
+      - Lego
+      - TRT
+    type: MULTISELECT
+    hintMsg: 转换后模型类型
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: input_path
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 输入模型在hdfs上的路径。如果要转换lego，需提供torchscript原生模型路径。
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: output_path
+    isAdvance: false
+    defaultValue: ''
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: STRING
+    hintMsg: 输出模型在hdfs上的路径
+  - arrayItemParams: {}
+    multiDefaultValue: []
+    name: verify
+    isAdvance: false
+    defaultValue: 'true'
+    required: false
+    allowCustom: false
+    hideParamByDefault: false
+    groupName: ''
+    selectOptions: []
+    type: BOOL
+    hintMsg: 是否验证转换前后模型输出是否一致，默认为true
+env:
+  QS_V2_ROOT: /opt/tiger/core_trt8_2/bytedfermion/bytedfermion
+  DMLC_ENABLE_RDMA: '1'
+  GLOG_minloglevel: '2'
+  ANYON_HADOOP_BINARY: /opt/tiger/yarn_deploy/hadoop/bin/hdfs
+  IS_PY3: '1'
+scms:
+  - pypath:
+      - /opt/tiger/arnold/arnold_entrypoint
+    version: 1.0.0.704
+    mnt: /opt/tiger/arnold/arnold_entrypoint
+    name: dlp/dlp_entrypoint
+  - pypath:
+      - /opt/tiger/arnold_toolbox
+    version: 1.0.0.582
+    mnt: /opt/tiger/arnold_toolbox
+    name: lab/arnold/toolbox
+  - pypath:
+      - /opt/tiger/anyon2
+    version: 1.0.0.198
+    mnt: /opt/tiger/anyon2
+    name: lab/anyon/anyon2
+  - pypath:
+      - /opt/tiger/core_trt8_2/bytedfermion
+    version: 1.0.0.81
+    mnt: /opt/tiger/core_trt8_2/bytedfermion
+    name: lab/fermion/core_trt8_2
+  - pypath:
+      - /opt/tiger/deps_anyon/plugin_lib
+    version: 1.0.0.11
+    mnt: /opt/tiger/deps_anyon/plugin_lib
+    name: lab/anyon/trt_plugin_lib
+  - pypath:
+      - /opt/tiger/qps_tools
+    version: 1.0.0.2
+    mnt: /opt/tiger/qps_tools
+    name: lab/arnold/qps_tools
+  - pypath:
+      - /opt/tiger/anyon_trt_convert
+    version: 1.0.0.2
+    mnt: /opt/tiger/anyon_trt_convert
+    name: lab/titan/anyon_trt_convert
+inputs: []
+outputs: []
+defaultResProfileTitle: ''
+entryPoint: /opt/tiger/titan/rh2_jobs/converter/run.sh
+paramBinders:
+  pretrained:
+    valueBinders:
+      'true':
+        childParams:
+          - tos_bucket
+          - tos_access_key
+          - backend
+          - pretrained_version
+          - pretrained_uri
+resource:
+  cpu: 10
+  memory: 40960
+  gpu: 1
+  gpuType: NONE
+  arnoldConfig:
+    maskHosts: []
+    retryTimes: 0
+    roles:
+      - gpu: 1
+        num: 1
+        cpu: 10
+        name: worker
+        memory: 40960
+    resSchedulingPolicy: ''
+    clusterName: ''
+    multipleMachine: false
+    preemptible: false
+    clusterId: 17
+    groupNames: []
+    bytedriveVolumes: []
+    clusterSlice: ''
+    groupIds:
+      - 119
+    protectHours: 0
+    batchServer: false
+    quotaPool: default
+    gpuType: NONE
+  backend: ARNOLD
+name: lab.titan.converter
+codeRepoVersionNum: 0
+pythonVersion: PYTHON3
+resProfileComments: ''
+codeRepoName: ''
+icmImage: 'lab.anyon_trt8:trt823_lego_rc4'

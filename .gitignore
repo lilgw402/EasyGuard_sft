@@ -139,3 +139,11 @@ wandb/*
 cruise_logs/*
 
 .idea
+
+# npm modules
+node_modules/
+.pre-commit-config.yaml
+
+# train weight
+*.ckpt
+events.out*

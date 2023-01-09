@@ -18,10 +18,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import torch
 from torch import nn
 
-from ...modeling_outputs import (
+from ....modeling_outputs import (
     BaseModelOutputWithPooling,
 )
-from ...modeling_utils import (
+from ....modeling_utils import (
     PreTrainedModel,)
 
 class TextCNNEncoder(PreTrainedModel):
