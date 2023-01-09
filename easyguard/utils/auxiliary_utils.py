@@ -78,11 +78,11 @@ def cache_file(
     if os.path.exists(model_name_path):
         return model_name_path
     elif model_type is not None:
-        _hash = sha256(model_name_path)
-        model_path_local = os.path.join(EASYGUARD_MODEL_CACHE, model_type, _hash)
+        hash_ = sha256(model_name_path)
+        model_path_local = os.path.join(EASYGUARD_MODEL_CACHE, model_type, hash_)
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
-            logger.warning(f"obtain the local file `{model_file_local}`")
+            logger.info(f"obtain the local file `{model_file_local}`")
             return model_file_local
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
@@ -110,7 +110,9 @@ def cache_file(
                         model_file_path_remote = remote_path_
                         break
                 if model_file_path_remote:
-                    logger.warning(f"start to download `{model_file_path_remote}`")
+                    logger.info(
+                        f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                    )
                     hmget([model_file_path_remote], model_path_local)
                     # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
                     model_file_path_local = os.path.join(
@@ -155,7 +157,7 @@ def list_pretrained_models():
     for key_, value_ in model_archive.items():
         temp_ = [key_] + [value_.get(_, None) for _ in filed_names]
         model_archive_table.add_row(temp_)
-    logger.info(model_archive_table)
+    logger.info("\n" + str(model_archive_table))
 
 
 # from titan

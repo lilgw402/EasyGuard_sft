@@ -22,5 +22,5 @@ def test_list_pretrained_models():
 if __name__ == "__main__":
     data = "hello world~"
     test_sha256(data)
-    test_cache_file()
+    # test_cache_file()
     test_list_pretrained_models()

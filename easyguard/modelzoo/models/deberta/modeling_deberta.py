@@ -7,36 +7,43 @@ import torch.nn as nn
 from typing import Dict, List, Optional
 from functools import partial
 from ....utils import logging
-from titan.models.components.bert_components import (
+from ...components.bert_components import (
     BertEmbedding,
     BertEmbeddingPinyin,
     BertPooler,
     init_weights,
     BertPreTrainingHeads,
 )
-from titan.models.components.transformer_encoder_decoder import (
+from ...components.transformer_encoder_decoder import (
     BareTransformerEncoderLayer,
     BareTransformerEncoder,
     _expand_mask,
 )
-from titan.models.components.transformer_encoder_decoder import (
+from ...components.transformer_encoder_decoder import (
     TransformerEncoderLayerOutput,
     TransformerEncoderOutput,
 )
-from titan.models.components.disentangled_attention import (
+from ...components.disentangled_attention import (
     DisentangledMHA,
     DAConfig,
     build_relative_position,
 )
-from titan.utils.registry import register_model
-from titan.utils.helper import (
-    download_weights,
-    get_configs,
-    load_pretrained_model_weights,
-)
+
 from ...modeling_utils import ModelBase
 
 from transformers import DebertaV2Model, DebertaV2Config, DebertaV2ForMaskedLM
+
+
+def download_weights():
+    ...
+
+
+def get_configs():
+    ...
+
+
+def load_pretrained_model_weights():
+    ...
 
 
 """Deberta model"""
@@ -1217,7 +1224,6 @@ class DebertaModelPinyin(DebertaBarePinyin):
         }
 
 
-@register_model
 def deberta_base_6l(pretrained=False, **kwargs):
     model_name = "deberta_base_6l"
     pretrained_config, model_config = get_configs(**kwargs)
@@ -1297,7 +1303,6 @@ def deberta_base_6l(pretrained=False, **kwargs):
     return model
 
 
-@register_model
 def deberta_base_12l(pretrained=False, **kwargs):
     model_name = "deberta_base_12l"
     pretrained_config, model_config = get_configs(**kwargs)
@@ -1375,7 +1380,6 @@ def deberta_base_12l(pretrained=False, **kwargs):
     return model
 
 
-@register_model
 def deberta_base_12l_erlangshen(pretrained=False, **kwargs):
     model_name = "deberta_base_12l_erlangshen"
     pretrained_config, model_config = get_configs(**kwargs)
@@ -1434,7 +1438,6 @@ def deberta_base_12l_erlangshen(pretrained=False, **kwargs):
     return model
 
 
-@register_model
 def deberta_base_6l_pinyin(pretrained=False, **kwargs):
     model_name = "deberta_base_6l_pinyin"
     pretrained_config, model_config = get_configs(**kwargs)
@@ -1516,7 +1519,6 @@ def deberta_base_6l_pinyin(pretrained=False, **kwargs):
     return model
 
 
-@register_model
 def deberta_base_moe_6l(pretrained=False, **kwargs):
     model_name = "deberta_base_moe_6l"
     pretrained_config, model_config = get_configs(**kwargs)
@@ -1609,7 +1611,6 @@ def deberta_base_moe_6l(pretrained=False, **kwargs):
     return model
 
 
-@register_model
 def deberta_base_24l(pretrained=False, **kwargs):
     model_name = "deberta_base_24l"
     pretrained_config, model_config = get_configs(**kwargs)

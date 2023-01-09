@@ -48,6 +48,7 @@ class YourModel(nn.Module):
 
 def test():
     my_model = YourModel()
+    my_model.eval()
     vocab_file = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt"
     # vocab = build_vocab(vocab_file)
     my_tokenizer = BertTokenizer(
@@ -72,7 +73,8 @@ def test():
     input_ids = torch.tensor([input_ids])
     input_mask = torch.tensor([input_mask])
     input_segment_ids = torch.tensor([input_segment_ids])
-    result = my_model(input_ids, input_mask, input_segment_ids)
+    with torch.no_grad():
+        result = my_model(input_ids, input_mask, input_segment_ids)
     print(result)
 
 

@@ -1,23 +1,10 @@
 from easyguard.core import AutoModel, AutoTokenizer
 
-archive = "deberta_base_6l"
-# archive = "bert-base-uncased"
-# archive = "facebook/bart-large"
 
-
-def auto_model_test():
-    tokenizer = AutoTokenizer.from_pretrained(archive)
-    model = AutoModel.from_pretrained(archive)
-    inputs = tokenizer("Hello world!", return_tensors="pt")
-    print(inputs)
-    ouputs = model(**inputs)
-    print(ouputs)
-
-
-def test_deberta_model():
+def main():
     import torch
 
-    archive = "fashion-deberta-ccr-order"
+    archive = "fashion-deberta"
     my_tokenizer = AutoTokenizer.from_pretrained(archive)
     my_model = AutoModel.from_pretrained(
         archive, dim_shrink=128, rm_deberta_prefix=True
@@ -51,4 +38,4 @@ def test_deberta_model():
 
 if __name__ == "__main__":
     # auto_model_test()
-    test_deberta_model()
+    main()
