@@ -1,6 +1,7 @@
 Pre-trained models
 
 *** run EasyGuard model ***
+
 ``` python
     from easyguard.core import AutoModel, AutoTokenizer
     my_model = AutoModel.from_pretrained("fashion-deberta")
