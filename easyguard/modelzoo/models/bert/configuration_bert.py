@@ -15,9 +15,8 @@
 # limitations under the License.
 """ BERT model configuration """
 
-from ...configuration_utils import PretrainedConfig
 from ....utils import logging
-
+from ...configuration_utils import PretrainedConfig
 
 logger = logging.get_logger(__name__)
 
@@ -97,7 +96,7 @@ class BertConfig(PretrainedConfig):
         gradient_checkpointing=False,
         position_embedding_type="absolute",
         use_cache=True,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(pad_token_id=pad_token_id, **kwargs)
 

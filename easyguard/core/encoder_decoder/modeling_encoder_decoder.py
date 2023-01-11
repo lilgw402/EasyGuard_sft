@@ -33,7 +33,6 @@ from ..auto.configuration_auto import AutoConfig
 from ..auto.modeling_auto import AutoModel, AutoModelForCausalLM
 from .configuration_encoder_decoder import EncoderDecoderConfig
 
-
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "EncoderDecoderConfig"
@@ -204,7 +203,10 @@ class EncoderDecoderModel(PreTrainedModel):
                 )
 
         if config.decoder.cross_attention_hidden_size is not None:
-            if config.decoder.cross_attention_hidden_size != config.encoder.hidden_size:
+            if (
+                config.decoder.cross_attention_hidden_size
+                != config.encoder.hidden_size
+            ):
                 raise ValueError(
                     "If `cross_attention_hidden_size` is specified in the decoder's configuration, it has to be equal"
                     f" to the encoder's `hidden_size`. Got {config.decoder.cross_attention_hidden_size} for"
@@ -293,7 +295,9 @@ class EncoderDecoderModel(PreTrainedModel):
         return self.decoder.set_output_embeddings(new_embeddings)
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+    def from_pretrained(
+        cls, pretrained_model_name_or_path, *model_args, **kwargs
+    ):
         r"""
         Example:
 
@@ -330,10 +334,14 @@ class EncoderDecoderModel(PreTrainedModel):
 
             # Get the variable correspondence between `_tf_model` and `encoder` and `decoder`
             encoder_variables = {}
-            for v in encoder.trainable_variables + encoder.non_trainable_variables:
+            for v in (
+                encoder.trainable_variables + encoder.non_trainable_variables
+            ):
                 encoder_variables["/".join(v.name.split("/")[1:])] = v
             decoder_variables = {}
-            for v in decoder.trainable_variables + decoder.non_trainable_variables:
+            for v in (
+                decoder.trainable_variables + decoder.non_trainable_variables
+            ):
                 decoder_variables["/".join(v.name.split("/")[1:])] = v
 
             _encoder_variables = {}
@@ -360,8 +368,12 @@ class EncoderDecoderModel(PreTrainedModel):
             # Deal with `enc_to_dec_proj`
             if hasattr(_tf_model, "enc_to_dec_proj"):
                 tf_model(tf_model.dummy_inputs)
-                tf_model.enc_to_dec_proj.kernel.assign(_tf_model.enc_to_dec_proj.kernel)
-                tf_model.enc_to_dec_proj.bias.assign(_tf_model.enc_to_dec_proj.bias)
+                tf_model.enc_to_dec_proj.kernel.assign(
+                    _tf_model.enc_to_dec_proj.kernel
+                )
+                tf_model.enc_to_dec_proj.bias.assign(
+                    _tf_model.enc_to_dec_proj.bias
+                )
 
             with tempfile.TemporaryDirectory() as tmpdirname:
                 encoder_dir = os.path.join(tmpdirname, "encoder")
@@ -371,7 +383,11 @@ class EncoderDecoderModel(PreTrainedModel):
 
                 if hasattr(tf_model, "enc_to_dec_proj"):
                     enc_to_dec_proj_weight = torch.transpose(
-                        torch.from_numpy(tf_model.enc_to_dec_proj.kernel.numpy()), 1, 0
+                        torch.from_numpy(
+                            tf_model.enc_to_dec_proj.kernel.numpy()
+                        ),
+                        1,
+                        0,
                     )
                     enc_to_dec_proj_bias = torch.from_numpy(
                         tf_model.enc_to_dec_proj.bias.numpy()
@@ -382,7 +398,10 @@ class EncoderDecoderModel(PreTrainedModel):
                 gc.collect()
 
                 model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-                    encoder_dir, decoder_dir, encoder_from_tf=True, decoder_from_tf=True
+                    encoder_dir,
+                    decoder_dir,
+                    encoder_from_tf=True,
+                    decoder_from_tf=True,
                 )
                 # This is only for copying some specific attributes of this particular model.
                 model.config = config
@@ -524,7 +543,9 @@ class EncoderDecoderModel(PreTrainedModel):
                 kwargs_encoder["config"] = encoder_config
 
             encoder = AutoModel.from_pretrained(
-                encoder_pretrained_model_name_or_path, *model_args, **kwargs_encoder
+                encoder_pretrained_model_name_or_path,
+                *model_args,
+                **kwargs_encoder,
             )
 
         decoder = kwargs_decoder.pop("model", None)
@@ -627,7 +648,9 @@ class EncoderDecoderModel(PreTrainedModel):
         >>> generated = model.generate(input_ids)
         ```"""
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
 
         kwargs_encoder = {
@@ -668,7 +691,9 @@ class EncoderDecoderModel(PreTrainedModel):
             decoder_input_ids is None and decoder_inputs_embeds is None
         ):
             decoder_input_ids = shift_tokens_right(
-                labels, self.config.pad_token_id, self.config.decoder_start_token_id
+                labels,
+                self.config.pad_token_id,
+                self.config.decoder_start_token_id,
             )
 
         # Decode
@@ -690,10 +715,13 @@ class EncoderDecoderModel(PreTrainedModel):
         loss = None
         if labels is not None:
             warnings.warn(DEPRECATION_WARNING, FutureWarning)
-            logits = decoder_outputs.logits if return_dict else decoder_outputs[0]
+            logits = (
+                decoder_outputs.logits if return_dict else decoder_outputs[0]
+            )
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(
-                logits.reshape(-1, self.decoder.config.vocab_size), labels.view(-1)
+                logits.reshape(-1, self.decoder.config.vocab_size),
+                labels.view(-1),
             )
 
         if not return_dict:

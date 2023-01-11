@@ -26,7 +26,6 @@ from ....utils import (
     is_torch_available,
 )
 
-
 _import_structure = {
     "configuration_bart": ["BART_PRETRAINED_CONFIG_ARCHIVE_MAP", "BartConfig"],
     "tokenization_bart": ["BartTokenizer"],

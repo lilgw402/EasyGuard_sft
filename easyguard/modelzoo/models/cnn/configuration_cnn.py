@@ -13,14 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
+
 from ....configuration_utils import PretrainedConfig
 from ..bert import BertConfig
-
 
 CNN_PRETRAINED_CONFIG_ARCHIVE_MAP = {
     "alibaba-pai/textcnn-en": "https://atp-modelzoo-sh.oss-cn-shanghai.aliyuncs.com/release/easynlp_modelzoo/alibaba-pai/textcnn-en/config.json",
 }
+
 
 # Currently not used, but will be used if we modify the from_pretrained method
 class TextCNNConfig(BertConfig):
@@ -55,7 +61,17 @@ class TextCNNConfig(BertConfig):
         >>> model = CNNTextClassify(configuration)
     """
     model_type = "cnn"
-    def __init__(self, conv_dim=100, kernel_sizes=[1,2,3], embed_size=300, vocab_size=21128, sequence_length=128, linear_hidden_size=None, **kwargs):
+
+    def __init__(
+        self,
+        conv_dim=100,
+        kernel_sizes=[1, 2, 3],
+        embed_size=300,
+        vocab_size=21128,
+        sequence_length=128,
+        linear_hidden_size=None,
+        **kwargs,
+    ):
         super(TextCNNConfig, self).__init__()
         self.conv_dim = conv_dim
         self.kernel_sizes = kernel_sizes
@@ -82,12 +98,19 @@ class TextCNNConfig(BertConfig):
             :class:`PretrainedConfig`: The configuration object instantiated from those parameters.
         """
         return_unused_kwargs = kwargs.pop("return_unused_kwargs", False)
-        config = cls(conv_dim=config_dict['conv_dim'], kernel_sizes=config_dict['kernel_sizes'],
-                     linear_hidden_size=config_dict['hidden_size'], embed_size=config_dict['embed_size'],
-                     vocab_size=config_dict['vocab_size'], sequence_length=config_dict['sequence_length'])
+        config = cls(
+            conv_dim=config_dict["conv_dim"],
+            kernel_sizes=config_dict["kernel_sizes"],
+            linear_hidden_size=config_dict["hidden_size"],
+            embed_size=config_dict["embed_size"],
+            vocab_size=config_dict["vocab_size"],
+            sequence_length=config_dict["sequence_length"],
+        )
 
         if hasattr(config, "pruned_heads"):
-            config.pruned_heads = dict((int(key), value) for key, value in config.pruned_heads.items())
+            config.pruned_heads = dict(
+                (int(key), value) for key, value in config.pruned_heads.items()
+            )
 
         # Update config with kwargs if needed
         to_remove = []

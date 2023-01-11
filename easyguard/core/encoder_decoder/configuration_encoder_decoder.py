@@ -19,7 +19,6 @@ import copy
 from ...modelzoo.configuration_utils import PretrainedConfig
 from ...utils import logging
 
-
 logger = logging.get_logger(__name__)
 
 
@@ -84,13 +83,20 @@ class EncoderDecoderConfig(PretrainedConfig):
 
         from ..auto.configuration_auto import AutoConfig
 
-        self.encoder = AutoConfig.for_model(encoder_model_type, **encoder_config)
-        self.decoder = AutoConfig.for_model(decoder_model_type, **decoder_config)
+        self.encoder = AutoConfig.for_model(
+            encoder_model_type, **encoder_config
+        )
+        self.decoder = AutoConfig.for_model(
+            decoder_model_type, **decoder_config
+        )
         self.is_encoder_decoder = True
 
     @classmethod
     def from_encoder_decoder_configs(
-        cls, encoder_config: PretrainedConfig, decoder_config: PretrainedConfig, **kwargs
+        cls,
+        encoder_config: PretrainedConfig,
+        decoder_config: PretrainedConfig,
+        **kwargs,
     ) -> PretrainedConfig:
         r"""
         Instantiate a [`EncoderDecoderConfig`] (or a derived class) from a pre-trained encoder model configuration and
@@ -99,11 +105,17 @@ class EncoderDecoderConfig(PretrainedConfig):
         Returns:
             [`EncoderDecoderConfig`]: An instance of a configuration object
         """
-        logger.info("Set `config.is_decoder=True` and `config.add_cross_attention=True` for decoder_config")
+        logger.info(
+            "Set `config.is_decoder=True` and `config.add_cross_attention=True` for decoder_config"
+        )
         decoder_config.is_decoder = True
         decoder_config.add_cross_attention = True
 
-        return cls(encoder=encoder_config.to_dict(), decoder=decoder_config.to_dict(), **kwargs)
+        return cls(
+            encoder=encoder_config.to_dict(),
+            decoder=decoder_config.to_dict(),
+            **kwargs,
+        )
 
     def to_dict(self):
         """

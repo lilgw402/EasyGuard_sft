@@ -23,7 +23,6 @@ from functools import partialmethod
 # from .dependency_versions_check import dep_version_check
 from ..utils import is_accelerate_available, is_torch_available, logging
 
-
 if is_torch_available():
     import torch
 
@@ -80,7 +79,9 @@ class HfTrainerDeepSpeedConfig(HfDeepSpeedConfig):
 
     def dtype(self):
         if self._dtype is None:
-            raise ValueError("trainer_config_process() wasn't called yet to tell dtype")
+            raise ValueError(
+                "trainer_config_process() wasn't called yet to tell dtype"
+            )
         return self._dtype
 
     def fill_match(self, ds_key_long, hf_val, hf_key=None, must_match=True):
@@ -136,24 +137,34 @@ class HfTrainerDeepSpeedConfig(HfDeepSpeedConfig):
             "gradient_accumulation_steps",
         )
         self.fill_match(
-            "train_batch_size", train_batch_size, "train_batch_size (calculated)"
+            "train_batch_size",
+            train_batch_size,
+            "train_batch_size (calculated)",
         )
-        self.fill_match("gradient_clipping", args.max_grad_norm, "max_grad_norm")
+        self.fill_match(
+            "gradient_clipping", args.max_grad_norm, "max_grad_norm"
+        )
 
-        self.fill_match("optimizer.params.lr", args.learning_rate, "learning_rate")
+        self.fill_match(
+            "optimizer.params.lr", args.learning_rate, "learning_rate"
+        )
         self.fill_match(
             "optimizer.params.betas",
             [args.adam_beta1, args.adam_beta2],
             "adam_beta1+adam_beta2",
         )
-        self.fill_match("optimizer.params.eps", args.adam_epsilon, "adam_epsilon")
+        self.fill_match(
+            "optimizer.params.eps", args.adam_epsilon, "adam_epsilon"
+        )
         self.fill_match(
             "optimizer.params.weight_decay", args.weight_decay, "weight_decay"
         )
 
         self.fill_only("scheduler.params.warmup_min_lr", 0)  # not a trainer arg
         self.fill_match(
-            "scheduler.params.warmup_max_lr", args.learning_rate, "learning_rate"
+            "scheduler.params.warmup_max_lr",
+            args.learning_rate,
+            "learning_rate",
         )
         # total_num_steps - will get set in trainer_config_finalize
 
@@ -179,7 +190,9 @@ class HfTrainerDeepSpeedConfig(HfDeepSpeedConfig):
         self.fill_match("amp.opt_level", args.fp16_opt_level, "fp16_opt_level")
 
         self.fill_match(
-            "bf16.enabled", (args.bf16 or args.bf16_full_eval), "bf16|bf16_full_eval"
+            "bf16.enabled",
+            (args.bf16 or args.bf16_full_eval),
+            "bf16|bf16_full_eval",
         )
 
         # deepspeed's default mode is fp16 unless there is a config that says differently
@@ -208,7 +221,8 @@ class HfTrainerDeepSpeedConfig(HfDeepSpeedConfig):
                 0.9 * hidden_size * hidden_size,
             )
             self.fill_only(
-                "zero_optimization.stage3_param_persistence_threshold", 10 * hidden_size
+                "zero_optimization.stage3_param_persistence_threshold",
+                10 * hidden_size,
             )
 
         # scheduler
@@ -269,7 +283,9 @@ def deepspeed_config():
         return None
 
 
-def deepspeed_optim_sched(trainer, hf_deepspeed_config, args, num_training_steps):
+def deepspeed_optim_sched(
+    trainer, hf_deepspeed_config, args, num_training_steps
+):
     """
     A convenience wrapper that deals with optimizer and lr scheduler configuration.
     """
@@ -349,8 +365,9 @@ def deepspeed_init(
     can't resume from a checkpoint after it did some stepping https://github.com/microsoft/DeepSpeed/issues/1612
 
     """
-    import EasyGuard.easyguard.modelzoo.deepspeed as deepspeed
     from deepspeed.utils import logger as ds_logger
+
+    import EasyGuard.easyguard.modelzoo.deepspeed as deepspeed
 
     model = trainer.model
     args = trainer.args
@@ -381,11 +398,15 @@ def deepspeed_init(
         optimizer, lr_scheduler = None, None
         model_parameters = None
     else:
-        trainer.optimizer = None  # important for when deepspeed_init is used as re-init
+        trainer.optimizer = (
+            None  # important for when deepspeed_init is used as re-init
+        )
         optimizer, lr_scheduler = deepspeed_optim_sched(
             trainer, hf_deepspeed_config, args, num_training_steps
         )
-        model_parameters = list(filter(lambda p: p.requires_grad, model.parameters()))
+        model_parameters = list(
+            filter(lambda p: p.requires_grad, model.parameters())
+        )
 
     # keep for quick debug:
     # from pprint import pprint; pprint(config)
@@ -398,10 +419,11 @@ def deepspeed_init(
         lr_scheduler=lr_scheduler,
     )
 
-    deepspeed_engine, optimizer, _, lr_scheduler = deepspeed.initialize(**kwargs)
+    deepspeed_engine, optimizer, _, lr_scheduler = deepspeed.initialize(
+        **kwargs
+    )
 
     if resume_from_checkpoint is not None:
-
         # it's possible that the user is trying to resume from model_path, which doesn't necessarily
         # contain a deepspeed checkpoint. e.g. examples just check if the dir exists and assume it's
         # a resume from a checkpoint and not just a local pretrained weight. So we check here if the

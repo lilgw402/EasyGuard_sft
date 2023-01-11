@@ -19,14 +19,14 @@ import warnings
 from collections import OrderedDict
 from typing import List, Union
 
+from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import PretrainedConfig
 from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
 from ...utils import CONFIG_NAME, logging
-from ...modelzoo import MODELZOO_CONFIG
 from . import HF_PATH
 from .configuration_auto import (
-    CONFIG_MAPPING_NAMES,
     CONFIG_ARCHIVE_MAP_MAPPING_NAMES,
+    CONFIG_MAPPING_NAMES,
     MODEL_NAMES_MAPPING,
 )
 
@@ -107,7 +107,9 @@ class _LazyConfigMapping(OrderedDict):
         )
 
     def __iter__(self):
-        return iter(list(self._mapping.keys()) + list(self._extra_content.keys()))
+        return iter(
+            list(self._mapping.keys()) + list(self._extra_content.keys())
+        )
 
     def __contains__(self, item):
         return item in self._mapping or item in self._extra_content
@@ -232,19 +234,26 @@ def _list_model_options(indent, config_to_class=None, use_model_types=True):
     return "\n".join(lines)
 
 
-def replace_list_option_in_docstrings(config_to_class=None, use_model_types=True):
+def replace_list_option_in_docstrings(
+    config_to_class=None, use_model_types=True
+):
     def docstring_decorator(fn):
         docstrings = fn.__doc__
         lines = docstrings.split("\n")
         i = 0
-        while i < len(lines) and re.search(r"^(\s*)List options\s*$", lines[i]) is None:
+        while (
+            i < len(lines)
+            and re.search(r"^(\s*)List options\s*$", lines[i]) is None
+        ):
             i += 1
         if i < len(lines):
             indent = re.search(r"^(\s*)List options\s*$", lines[i]).groups()[0]
             if use_model_types:
                 indent = f"{indent}    "
             lines[i] = _list_model_options(
-                indent, config_to_class=config_to_class, use_model_types=use_model_types
+                indent,
+                config_to_class=config_to_class,
+                use_model_types=use_model_types,
             )
             docstrings = "\n".join(lines)
         else:
@@ -372,7 +381,10 @@ class HFAutoConfig:
         config_dict, unused_kwargs = PretrainedConfig.get_config_dict(
             pretrained_model_name_or_path, **kwargs
         )
-        if "auto_map" in config_dict and "AutoConfig" in config_dict["auto_map"]:
+        if (
+            "auto_map" in config_dict
+            and "AutoConfig" in config_dict["auto_map"]
+        ):
             if not trust_remote_code:
                 raise ValueError(
                     f"Loading {pretrained_model_name_or_path} requires you to execute the configuration file in that"
@@ -387,9 +399,14 @@ class HFAutoConfig:
             class_ref = config_dict["auto_map"]["AutoConfig"]
             module_file, class_name = class_ref.split(".")
             config_class = get_class_from_dynamic_module(
-                pretrained_model_name_or_path, module_file + ".py", class_name, **kwargs
+                pretrained_model_name_or_path,
+                module_file + ".py",
+                class_name,
+                **kwargs,
             )
-            return config_class.from_pretrained(pretrained_model_name_or_path, **kwargs)
+            return config_class.from_pretrained(
+                pretrained_model_name_or_path, **kwargs
+            )
         elif "model_type" in config_dict:
             config_class = CONFIG_MAPPING[config_dict["model_type"]]
             return config_class.from_dict(config_dict, **unused_kwargs)
@@ -417,7 +434,10 @@ class HFAutoConfig:
             model_type (`str`): The model type like "bert" or "gpt".
             config ([`PretrainedConfig`]): The config to register.
         """
-        if issubclass(config, PretrainedConfig) and config.model_type != model_type:
+        if (
+            issubclass(config, PretrainedConfig)
+            and config.model_type != model_type
+        ):
             raise ValueError(
                 "The config you are passing has a `model_type` attribute that is not consistent with the model type "
                 f"you passed (config has {config.model_type} and you passed {model_type}. Fix one of those so they "

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict
-from ....utils import logging, get_configs
+
+from ....utils import get_configs, logging
 from ...configuration_utils import ConfigBase
 
 """Deberta configuration"""

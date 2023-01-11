@@ -1,7 +1,6 @@
 import os
-
-from typing import Dict, Any, List, Optional
 from collections import OrderedDict
+from typing import Any, Dict, List, Optional
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
 MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
@@ -62,8 +61,9 @@ class ModelZooYaml(YamlConfig):
         leafs = {}
         prefix = MODELZOO_NAME
 
-        def dfs_leafs(data: Dict[str, Any], deep: int, leafs: List[str], prefix: str):
-
+        def dfs_leafs(
+            data: Dict[str, Any], deep: int, leafs: List[str], prefix: str
+        ):
             global YAML_DEEP
             deep_ = deep + 1
             for key_item, value in data.items():
@@ -138,7 +138,9 @@ class ModelZooYaml(YamlConfig):
                 if model_value_ is not None:
                     mapping[model_] = model_value_
 
-        mapping_list = [(key_item, value) for key_item, value in mapping.items()]
+        mapping_list = [
+            (key_item, value) for key_item, value in mapping.items()
+        ]
 
         return OrderedDict(mapping_list)
 

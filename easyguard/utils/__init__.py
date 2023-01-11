@@ -1,7 +1,7 @@
-from .. import __version__
 from typing import TYPE_CHECKING
-from .import_utils import _LazyPackage
 
+from .. import __version__
+from .import_utils import _LazyPackage
 
 WEIGHTS_NAME = "pytorch_model.bin"
 WEIGHTS_INDEX_NAME = "pytorch_model.bin.index.json"
@@ -194,8 +194,14 @@ _import_structure = {
 
 # keep each module independent
 if TYPE_CHECKING:
-
-    from .yaml_utils import *
+    from .auxiliary_utils import (
+        EASYGUARD_CACHE,
+        cache_file,
+        get_configs,
+        list_pretrained_models,
+        load_pretrained_model_weights,
+        sha256,
+    )
     from .doc import (
         add_code_sample_docstrings,
         add_end_docstrings,
@@ -230,6 +236,18 @@ if TYPE_CHECKING:
         transpose,
         working_or_temp_dir,
     )
+    from .hdfs_utils import (
+        hcopy,
+        hcountline,
+        hexists,
+        hglob,
+        hisdir,
+        hlist_files,
+        hmget,
+        hmkdir,
+        hopen,
+        hrm,
+    )
     from .hub import (
         CLOUDFRONT_DISTRIB_PREFIX,
         DISABLE_TELEMETRY,
@@ -260,7 +278,6 @@ if TYPE_CHECKING:
         move_cache,
         send_example_telemetry,
     )
-
     from .import_utils import (
         ENV_VARS_TRUE_AND_AUTO_VALUES,
         ENV_VARS_TRUE_VALUES,
@@ -337,35 +354,14 @@ if TYPE_CHECKING:
         is_torchdynamo_available,
         is_training_run_on_sagemaker,
         is_vision_available,
+        lazy_model_import,
         requires_backends,
         tf_required,
         torch_only_method,
         torch_required,
         torch_version,
-        lazy_model_import,
     )
-
-    from .hdfs_utils import (
-        hlist_files,
-        hopen,
-        hexists,
-        hmkdir,
-        hglob,
-        hisdir,
-        hcountline,
-        hrm,
-        hcopy,
-        hmget,
-    )
-
-    from .auxiliary_utils import (
-        sha256,
-        EASYGUARD_CACHE,
-        cache_file,
-        get_configs,
-        load_pretrained_model_weights,
-        list_pretrained_models,
-    )
+    from .yaml_utils import *
 else:
     import sys
 

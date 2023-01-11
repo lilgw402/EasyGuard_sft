@@ -1,5 +1,5 @@
-from functools import lru_cache  # noqa
 from dataclasses import dataclass
+from functools import lru_cache  # noqa
 
 import numpy as np  # noqa
 import torch
@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 # FT ops are not enabled in titan
 FTDAGather = FTLinearTranspose = FTTransposeV1 = FTMatMul = FTSoftmax = None
-from .transformer_encoder_decoder import Config, MultiHeadAttention, MHAOutput
+from .transformer_encoder_decoder import Config, MHAOutput, MultiHeadAttention
 
 
 @torch.no_grad()
@@ -36,7 +36,9 @@ def make_log_bucket_position(
         ).long()
         + mid
     )
-    bucket_pos = torch.where(abs_pos <= mid, relative_pos, log_pos * sign).long()
+    bucket_pos = torch.where(
+        abs_pos <= mid, relative_pos, log_pos * sign
+    ).long()
 
     return bucket_pos
 
@@ -88,7 +90,9 @@ def build_relative_position(
             ).long()
             + mid
         )
-        bucket_pos = torch.where(abs_pos <= mid, rel_pos_ids, log_pos * sign).long()
+        bucket_pos = torch.where(
+            abs_pos <= mid, rel_pos_ids, log_pos * sign
+        ).long()
         rel_pos_ids = bucket_pos
 
     rel_pos_ids = rel_pos_ids[:query_size, :]
@@ -284,8 +288,12 @@ class DisentangledMHA(nn.Module):
             )  # (bsz, n_heads, q_len, att_span*2)
 
             if not self.config.use_tricky_gather:
-                c2p_pos = torch.clamp(relative_pos + att_span - 1, 0, att_span * 2 - 1)
-                c2p_pos = c2p_pos.expand([c2p_att.size(0), c2p_att.size(1), -1, -1])
+                c2p_pos = torch.clamp(
+                    relative_pos + att_span - 1, 0, att_span * 2 - 1
+                )
+                c2p_pos = c2p_pos.expand(
+                    [c2p_att.size(0), c2p_att.size(1), -1, -1]
+                )
                 c2p_att = torch.gather(c2p_att, dim=-1, index=c2p_pos)
             else:
                 c2p_att = c2p_att.view(c2p_att.size(0), c2p_att.size(1), -1)
@@ -295,7 +303,10 @@ class DisentangledMHA(nn.Module):
                 # c2p_att = torch.flip(c2p_att, [-1])
                 c2p_att = c2p_att.view(
                     c2p_att.size(0), c2p_att.size(1), att_span, 2 * att_span + 1
-                )[..., torch.arange(att_span - 1, -1, -1, device=c2p_att.device)]
+                )[
+                    ...,
+                    torch.arange(att_span - 1, -1, -1, device=c2p_att.device),
+                ]
 
             score = c2p_att
 
@@ -323,7 +334,9 @@ class DisentangledMHA(nn.Module):
                     r_pos = relative_pos
 
                 p2c_pos = torch.clamp(r_pos + att_span - 1, 0, att_span * 2 - 1)
-                p2c_pos = p2c_pos.expand([p2c_att.size(0), p2c_att.size(1), -1, -1])
+                p2c_pos = p2c_pos.expand(
+                    [p2c_att.size(0), p2c_att.size(1), -1, -1]
+                )
                 p2c_att = torch.gather(p2c_att, dim=-1, index=p2c_pos)
             else:
                 p2c_att = p2c_att.view(p2c_att.size(0), p2c_att.size(1), -1)
@@ -333,7 +346,10 @@ class DisentangledMHA(nn.Module):
                 # p2c_att = torch.flip(p2c_att, [-1])
                 p2c_att = p2c_att.view(
                     p2c_att.size(0), p2c_att.size(1), att_span, 2 * att_span + 1
-                )[..., torch.arange(att_span - 1, -1, -1, device=p2c_att.device)]
+                )[
+                    ...,
+                    torch.arange(att_span - 1, -1, -1, device=p2c_att.device),
+                ]
 
             if q_len != k_len:  # TODO: ensure
                 pos_index = relative_pos[:, :, :, 0].unsqueeze(-1)
@@ -341,7 +357,8 @@ class DisentangledMHA(nn.Module):
                     p2c_att,
                     dim=-2,
                     index=pos_index.expand(
-                        p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2))
+                        p2c_att.size()[:2]
+                        + (pos_index.size(-2), key_layer.size(-2))
                     ),
                 )
 
@@ -405,7 +422,9 @@ class DisentangledMHA(nn.Module):
             pos_key_layer = pos_key_layer.unsqueeze(1).expand(
                 -1, q_len, -1, -1
             )  # (n_heads, q_len, head_dim, att_span*2)
-            c2p_pos = torch.clamp(relative_pos + att_span - 1, 0, att_span * 2 - 1)
+            c2p_pos = torch.clamp(
+                relative_pos + att_span - 1, 0, att_span * 2 - 1
+            )
             c2p_pos = c2p_pos.squeeze(0).unsqueeze(2)
             c2p_pos = c2p_pos.expand(
                 [pos_key_layer.size(0), -1, pos_key_layer.size(2), -1]
@@ -453,7 +472,8 @@ class DisentangledMHA(nn.Module):
                     p2c_att,
                     dim=-2,
                     index=pos_index.expand(
-                        p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2))
+                        p2c_att.size()[:2]
+                        + (pos_index.size(-2), key_layer.size(-2))
                     ),
                 )
 
@@ -505,8 +525,12 @@ class DisentangledMHA(nn.Module):
 
         attn_weights = attn_weights + attn_mask
 
-        attn_probs = F.softmax(attn_weights, dim=-1)  # (bsz, n_heads, seq_len, seq_len)
-        attn_probs = self.dropout(attn_probs)  # (bsz, n_heads, seq_len, seq_len)
+        attn_probs = F.softmax(
+            attn_weights, dim=-1
+        )  # (bsz, n_heads, seq_len, seq_len)
+        attn_probs = self.dropout(
+            attn_probs
+        )  # (bsz, n_heads, seq_len, seq_len)
         attn_outputs = torch.matmul(
             attn_probs, v_states
         )  # (bsz, n_heads, seq_len, head_dim)

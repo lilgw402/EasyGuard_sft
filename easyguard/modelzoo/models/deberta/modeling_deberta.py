@@ -1,37 +1,34 @@
 """https://arxiv.org/abs/2006.03654
 Standalone, all-in-one code copied from ptx deberta implementation: https://code.byted.org/nlp/ptx/blob/master/ptx/model/deberta/model.py
 """
+from functools import partial
+from typing import Dict, List, Optional
+
 import torch
 import torch.nn as nn
+from transformers import DebertaV2Config, DebertaV2ForMaskedLM, DebertaV2Model
 
-from typing import Dict, List, Optional
-from functools import partial
 from ....utils import logging
 from ...components.bert_components import (
     BertEmbedding,
     BertEmbeddingPinyin,
     BertPooler,
-    init_weights,
     BertPreTrainingHeads,
-)
-from ...components.transformer_encoder_decoder import (
-    BareTransformerEncoderLayer,
-    BareTransformerEncoder,
-    _expand_mask,
-)
-from ...components.transformer_encoder_decoder import (
-    TransformerEncoderLayerOutput,
-    TransformerEncoderOutput,
+    init_weights,
 )
 from ...components.disentangled_attention import (
-    DisentangledMHA,
     DAConfig,
+    DisentangledMHA,
     build_relative_position,
 )
-
+from ...components.transformer_encoder_decoder import (
+    BareTransformerEncoder,
+    BareTransformerEncoderLayer,
+    TransformerEncoderLayerOutput,
+    TransformerEncoderOutput,
+    _expand_mask,
+)
 from ...modeling_utils import ModelBase
-
-from transformers import DebertaV2Model, DebertaV2Config, DebertaV2ForMaskedLM
 
 
 def download_weights():
@@ -54,7 +51,9 @@ __all__ = ["DebertaModel", "deberta_base_6l", "deberta_base_moe_6l"]
 logger = logging.get_logger(__name__)
 
 
-def gather_positions(sequence: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
+def gather_positions(
+    sequence: torch.Tensor, positions: torch.Tensor
+) -> torch.Tensor:
     """
     Args:
         sequence: tensor (batch_size, seq_len, dim)
@@ -142,7 +141,9 @@ class CategoricalAccuracy:
                     else predictions.unsqueeze(-1)
                 )
             else:
-                top_k = predictions.topk(min(self._top_k, predictions.shape[-1]), -1)[1]
+                top_k = predictions.topk(
+                    min(self._top_k, predictions.shape[-1]), -1
+                )[1]
 
             # This is of shape (batch_size, ..., top_k).
             correct = top_k.eq(gold_labels.unsqueeze(-1)).float()
@@ -159,7 +160,9 @@ class CategoricalAccuracy:
             # ith entry in gold_labels points to index (0-num_classes) for ith row in max_predictions
             # For each row check if index pointed by gold_label is was 1 or not (among max scored classes)
             correct = max_predictions_mask[
-                torch.arange(gold_labels.numel(), device=gold_labels.device).long(),
+                torch.arange(
+                    gold_labels.numel(), device=gold_labels.device
+                ).long(),
                 gold_labels,
             ].float()
             tie_counts = max_predictions_mask.sum(-1)
@@ -447,7 +450,9 @@ class DebertaBare(nn.Module):
             nn.Linear(dim, dim_shrink) if dim_shrink and self.pooler else None
         )
 
-        self.apply(partial(init_weights, initializer_range=self.initializer_range))
+        self.apply(
+            partial(init_weights, initializer_range=self.initializer_range)
+        )
 
         self.padding_index = padding_index
 
@@ -478,7 +483,11 @@ class DebertaBare(nn.Module):
 
         encoder_out = self.encoder(embedding_output, attention_mask)
         if not self.da_config.obey_other_attn_output:
-            sequence_output, encoder_all_hidden_states, relative_pos = encoder_out
+            (
+                sequence_output,
+                encoder_all_hidden_states,
+                relative_pos,
+            ) = encoder_out
         else:
             sequence_output = encoder_out.last_hidden_state
             encoder_all_hidden_states = encoder_out.all_hidden_states
@@ -497,11 +506,15 @@ class DebertaBare(nn.Module):
             loss = 0
             for i in range(len(self.encoder.l_aux)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor", 0.01
+                    )
                     * self.encoder.l_aux[i]
                 )
                 loss += (
-                    self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0)
+                    self.extra_da_transformer_config.get(
+                        "moe_z_loss_factor", 0.0
+                    )
                     * self.encoder.z_loss[i]
                 )
             ret["loss"] = loss
@@ -509,7 +522,9 @@ class DebertaBare(nn.Module):
             loss = ret.get("loss", 0)
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor_attn", 0.01
+                    )
                     * self.encoder.l_aux_attn[i]
                 )
             ret["loss"] = loss
@@ -525,7 +540,9 @@ class DebertaBare(nn.Module):
                 ret["pooled_output"] = None
             ret["shrinked_output"] = shrinked_output
             if output_rel_pos:
-                if relative_pos is None:  # In case of FT, which does not return rel pos
+                if (
+                    relative_pos is None
+                ):  # In case of FT, which does not return rel pos
                     # print('Recreating relative_pos')
                     relative_pos = build_relative_position(
                         embedding_output.size(-2),
@@ -566,10 +583,18 @@ class DebertaEMD(nn.Module):
         self.group_repeat = emd_group_repeat
 
     def forward(self, i, h, mask, relative_pos=None, rel_embedding=None):
-        attn_mask_expanded = _expand_mask(mask, h.dtype) if mask.dim() != 4 else mask
+        attn_mask_expanded = (
+            _expand_mask(mask, h.dtype) if mask.dim() != 4 else mask
+        )
         for m, block in enumerate(self.blocks):
             for n in range(self.group_repeat):
-                i = block(h, attn_mask_expanded, relative_pos, rel_embedding, q_state=i)
+                i = block(
+                    h,
+                    attn_mask_expanded,
+                    relative_pos,
+                    rel_embedding,
+                    q_state=i,
+                )
         return i
 
 
@@ -662,7 +687,9 @@ class DebertaBarePinyin(nn.Module):
 
         self.pooler = BertPooler(dict(dim=dim)) if pool else None
 
-        self.apply(partial(init_weights, initializer_range=self.initializer_range))
+        self.apply(
+            partial(init_weights, initializer_range=self.initializer_range)
+        )
 
         self.padding_index = padding_index
 
@@ -695,7 +722,11 @@ class DebertaBarePinyin(nn.Module):
 
         encoder_out = self.encoder(embedding_output, attention_mask)
         if not self.da_config.obey_other_attn_output:
-            sequence_output, encoder_all_hidden_states, relative_pos = encoder_out
+            (
+                sequence_output,
+                encoder_all_hidden_states,
+                relative_pos,
+            ) = encoder_out
         else:
             sequence_output = encoder_out.last_hidden_state
             encoder_all_hidden_states = encoder_out.all_hidden_states
@@ -711,11 +742,15 @@ class DebertaBarePinyin(nn.Module):
             loss = 0
             for i in range(len(self.encoder.l_aux)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor", 0.01
+                    )
                     * self.encoder.l_aux[i]
                 )
                 loss += (
-                    self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0)
+                    self.extra_da_transformer_config.get(
+                        "moe_z_loss_factor", 0.0
+                    )
                     * self.encoder.z_loss[i]
                 )
             ret["loss"] = loss
@@ -723,7 +758,9 @@ class DebertaBarePinyin(nn.Module):
             loss = ret.get("loss", 0)
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor_attn", 0.01
+                    )
                     * self.encoder.l_aux_attn[i]
                 )
             ret["loss"] = loss
@@ -738,7 +775,9 @@ class DebertaBarePinyin(nn.Module):
             else:
                 ret["pooled_output"] = None
             if output_rel_pos:
-                if relative_pos is None:  # In case of FT, which does not return rel pos
+                if (
+                    relative_pos is None
+                ):  # In case of FT, which does not return rel pos
                     # print('Recreating relative_pos')
                     relative_pos = build_relative_position(
                         embedding_output.size(-2),
@@ -807,13 +846,17 @@ class DebertaModel(DebertaBare, ModelBase):
             self._tie_weights()
 
         self._omit_other_output = omit_other_output
-        self._calc_mlm_accuracy = calc_mlm_accuracy and not self._omit_other_output
+        self._calc_mlm_accuracy = (
+            calc_mlm_accuracy and not self._omit_other_output
+        )
         self._use_moe = self.encoder.config.use_moe
         self._use_moe_attn = self.encoder.config.use_moe_attn
         self.mlm_accuracy = self._calc_mlm_accuracy and CategoricalAccuracy()
 
         self.ignore_index = ignore_index
-        self.loss_function = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
+        self.loss_function = torch.nn.CrossEntropyLoss(
+            ignore_index=self.ignore_index
+        )
         self.nsp_loss_function = torch.nn.CrossEntropyLoss()
 
         self.local_metrics = {}
@@ -827,7 +870,9 @@ class DebertaModel(DebertaBare, ModelBase):
                 use_fast=use_fast,
             )
 
-        self.apply(partial(init_weights, initializer_range=self.initializer_range))
+        self.apply(
+            partial(init_weights, initializer_range=self.initializer_range)
+        )
 
     def _tie_weights(self):
         self.cls.predictions.decoder.weight = (
@@ -843,15 +888,21 @@ class DebertaModel(DebertaBare, ModelBase):
 
     def _update_local_metrics(self, mlm_logits, mlm_labels):
         if self._calc_mlm_accuracy:
-            total_count, correct_count = float(self.mlm_accuracy.total_count), float(
-                self.mlm_accuracy.correct_count
-            )
+            total_count, correct_count = float(
+                self.mlm_accuracy.total_count
+            ), float(self.mlm_accuracy.correct_count)
             mlm_positions = torch.nonzero(
                 mlm_labels != self.ignore_index, as_tuple=False
             ).view(-1)
-            self.mlm_accuracy(mlm_logits[mlm_positions], mlm_labels[mlm_positions])
-            local_total_count = float(self.mlm_accuracy.total_count) - total_count
-            local_correct_count = float(self.mlm_accuracy.correct_count) - correct_count
+            self.mlm_accuracy(
+                mlm_logits[mlm_positions], mlm_labels[mlm_positions]
+            )
+            local_total_count = (
+                float(self.mlm_accuracy.total_count) - total_count
+            )
+            local_correct_count = (
+                float(self.mlm_accuracy.correct_count) - correct_count
+            )
             local_accuracy = (
                 0.0
                 if local_total_count == 0
@@ -933,7 +984,9 @@ class DebertaModel(DebertaBare, ModelBase):
             masked_lm_positions_dim = masked_lm_positions.dim()
             if masked_lm_positions_dim == 2:
                 position_ids = masked_lm_positions
-                sequence_output = gather_positions(sequence_output, masked_lm_positions)
+                sequence_output = gather_positions(
+                    sequence_output, masked_lm_positions
+                )
                 # Well, `ignore_index` may vary with this case
                 masked_tokens = masked_lm_ids
             elif masked_lm_positions_dim == 1:
@@ -943,7 +996,9 @@ class DebertaModel(DebertaBare, ModelBase):
                 )[masked_lm_positions]
                 masked_tokens = masked_lm_ids
             else:
-                raise Exception("Invalid dim of masked_lm_positions and masked_lm_ids")
+                raise Exception(
+                    "Invalid dim of masked_lm_positions and masked_lm_ids"
+                )
 
         pred_score, seq_score = self.cls(sequence_output, pooled_output)
 
@@ -965,19 +1020,29 @@ class DebertaModel(DebertaBare, ModelBase):
         if self._use_moe:
             for i in range(len(self.encoder.l_aux)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor", 0.01
+                    )
                     * self.encoder.l_aux[i]
                 )
                 loss += (
-                    self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0)
+                    self.extra_da_transformer_config.get(
+                        "moe_z_loss_factor", 0.0
+                    )
                     * self.encoder.z_loss[i]
                 )
-                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[i].item()
-                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[i].item()
+                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[
+                    i
+                ].item()
+                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[
+                    i
+                ].item()
         if self._use_moe_attn:
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor_attn", 0.01
+                    )
                     * self.encoder.l_aux_attn[i]
                 )
 
@@ -1038,13 +1103,17 @@ class DebertaModelPinyin(DebertaBarePinyin):
             self._tie_weights()
 
         self._omit_other_output = omit_other_output
-        self._calc_mlm_accuracy = calc_mlm_accuracy and not self._omit_other_output
+        self._calc_mlm_accuracy = (
+            calc_mlm_accuracy and not self._omit_other_output
+        )
         self._use_moe = self.encoder.config.use_moe
         self._use_moe_attn = self.encoder.config.use_moe_attn
         self.mlm_accuracy = self._calc_mlm_accuracy and CategoricalAccuracy()
 
         self.ignore_index = ignore_index
-        self.loss_function = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
+        self.loss_function = torch.nn.CrossEntropyLoss(
+            ignore_index=self.ignore_index
+        )
         self.nsp_loss_function = torch.nn.CrossEntropyLoss()
 
         self.local_metrics = {}
@@ -1058,7 +1127,9 @@ class DebertaModelPinyin(DebertaBarePinyin):
                 use_fast=use_fast,
             )
 
-        self.apply(partial(init_weights, initializer_range=self.initializer_range))
+        self.apply(
+            partial(init_weights, initializer_range=self.initializer_range)
+        )
 
     def _tie_weights(self):
         self.cls.predictions.decoder.weight = (
@@ -1074,15 +1145,21 @@ class DebertaModelPinyin(DebertaBarePinyin):
 
     def _update_local_metrics(self, mlm_logits, mlm_labels):
         if self._calc_mlm_accuracy:
-            total_count, correct_count = float(self.mlm_accuracy.total_count), float(
-                self.mlm_accuracy.correct_count
-            )
+            total_count, correct_count = float(
+                self.mlm_accuracy.total_count
+            ), float(self.mlm_accuracy.correct_count)
             mlm_positions = torch.nonzero(
                 mlm_labels != self.ignore_index, as_tuple=False
             ).view(-1)
-            self.mlm_accuracy(mlm_logits[mlm_positions], mlm_labels[mlm_positions])
-            local_total_count = float(self.mlm_accuracy.total_count) - total_count
-            local_correct_count = float(self.mlm_accuracy.correct_count) - correct_count
+            self.mlm_accuracy(
+                mlm_logits[mlm_positions], mlm_labels[mlm_positions]
+            )
+            local_total_count = (
+                float(self.mlm_accuracy.total_count) - total_count
+            )
+            local_correct_count = (
+                float(self.mlm_accuracy.correct_count) - correct_count
+            )
             local_accuracy = (
                 0.0
                 if local_total_count == 0
@@ -1164,7 +1241,9 @@ class DebertaModelPinyin(DebertaBarePinyin):
             masked_lm_positions_dim = masked_lm_positions.dim()
             if masked_lm_positions_dim == 2:
                 position_ids = masked_lm_positions
-                sequence_output = gather_positions(sequence_output, masked_lm_positions)
+                sequence_output = gather_positions(
+                    sequence_output, masked_lm_positions
+                )
                 # Well, `ignore_index` may vary with this case
                 masked_tokens = masked_lm_ids
             elif masked_lm_positions_dim == 1:
@@ -1174,7 +1253,9 @@ class DebertaModelPinyin(DebertaBarePinyin):
                 )[masked_lm_positions]
                 masked_tokens = masked_lm_ids
             else:
-                raise Exception("Invalid dim of masked_lm_positions and masked_lm_ids")
+                raise Exception(
+                    "Invalid dim of masked_lm_positions and masked_lm_ids"
+                )
 
         pred_score, seq_score = self.cls(sequence_output, pooled_output)
 
@@ -1196,19 +1277,29 @@ class DebertaModelPinyin(DebertaBarePinyin):
         if self._use_moe:
             for i in range(len(self.encoder.l_aux)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor", 0.01
+                    )
                     * self.encoder.l_aux[i]
                 )
                 loss += (
-                    self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0)
+                    self.extra_da_transformer_config.get(
+                        "moe_z_loss_factor", 0.0
+                    )
                     * self.encoder.z_loss[i]
                 )
-                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[i].item()
-                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[i].item()
+                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[
+                    i
+                ].item()
+                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[
+                    i
+                ].item()
         if self._use_moe_attn:
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01)
+                    self.extra_da_transformer_config.get(
+                        "moe_l_aux_factor_attn", 0.01
+                    )
                     * self.encoder.l_aux_attn[i]
                 )
 
@@ -1298,7 +1389,9 @@ def deberta_base_6l(pretrained=False, **kwargs):
 
     if pretrained:
         weight_path = download_weights(model_name, **pretrained_config)
-        load_pretrained_model_weights(model, weight_path, rm_deberta_prefix=True)
+        load_pretrained_model_weights(
+            model, weight_path, rm_deberta_prefix=True
+        )
         logger.info("Pre-trained model loading done.")
     return model
 
@@ -1375,7 +1468,9 @@ def deberta_base_12l(pretrained=False, **kwargs):
 
     if pretrained:
         weight_path = download_weights(model_name, **pretrained_config)
-        load_pretrained_model_weights(model, weight_path, rm_deberta_prefix=True)
+        load_pretrained_model_weights(
+            model, weight_path, rm_deberta_prefix=True
+        )
         logger.info("Pre-trained model loading done.")
     return model
 
@@ -1433,7 +1528,9 @@ def deberta_base_12l_erlangshen(pretrained=False, **kwargs):
 
     if pretrained:
         weight_path = download_weights(model_name, **pretrained_config)
-        load_pretrained_model_weights(model, weight_path, rm_deberta_prefix=True)
+        load_pretrained_model_weights(
+            model, weight_path, rm_deberta_prefix=True
+        )
         logger.info("Pre-trained model loading done.")
     return model
 
@@ -1514,7 +1611,9 @@ def deberta_base_6l_pinyin(pretrained=False, **kwargs):
 
     if pretrained:
         weight_path = download_weights(model_name, **pretrained_config)
-        load_pretrained_model_weights(model, weight_path, rm_deberta_prefix=True)
+        load_pretrained_model_weights(
+            model, weight_path, rm_deberta_prefix=True
+        )
         logger.info("Pre-trained model loading done.")
     return model
 
@@ -1683,6 +1782,8 @@ def deberta_base_24l(pretrained=False, **kwargs):
 
     if pretrained:
         weight_path = download_weights(model_name, **pretrained_config)
-        load_pretrained_model_weights(model, weight_path, rm_deberta_prefix=True)
+        load_pretrained_model_weights(
+            model, weight_path, rm_deberta_prefix=True
+        )
         logger.info("Pre-trained model loading done.")
     return model

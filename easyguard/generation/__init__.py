@@ -26,7 +26,6 @@ from ..utils import (
     is_torch_available,
 )
 
-
 _import_structure = {"configuration_utils": ["GenerationConfig"]}
 
 

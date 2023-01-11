@@ -1,10 +1,10 @@
 import logging
 import logging.config
-import sys
 import os
+import sys
 import threading
-
 from typing import Optional
+
 from .config import LOGGER_CONFIG
 
 logging.config.dictConfig(config=LOGGER_CONFIG)
@@ -24,7 +24,6 @@ _default_log_level = logging.INFO
 
 
 def _get_library_name() -> str:
-
     return __name__.split(".")[0]
 
 

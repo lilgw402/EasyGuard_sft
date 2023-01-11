@@ -32,14 +32,14 @@ from ...utils import (
     logging,
 )
 from ..encoder_decoder import EncoderDecoderConfig
+from . import HF_PATH
 from .configuration_auto_hf import (
     HFAutoConfig,
     config_class_to_model_type,
     model_type_to_module_name,
     replace_list_option_in_docstrings,
 )
-from . import HF_PATH
-from .tokenization_auto import TOKENIZER_MAPPING, CONFIG_TO_TYPE
+from .tokenization_auto import CONFIG_TO_TYPE, TOKENIZER_MAPPING
 
 # TODO (junwei.Dong): 简化hf的tokenization的机制，所有针对hf的tokenization的代码都在该模块里进行修改
 logger = logging.get_logger(__name__)
@@ -275,7 +275,9 @@ class HFTokenizer:
         # First, let's see whether the tokenizer_type is passed so that we can leverage it
         if tokenizer_type is not None:
             tokenizer_class = None
-            tokenizer_class_tuple = TOKENIZER_MAPPING_NAMES.get(tokenizer_type, None)
+            tokenizer_class_tuple = TOKENIZER_MAPPING_NAMES.get(
+                tokenizer_type, None
+            )
 
             if tokenizer_class_tuple is None:
                 raise ValueError(
@@ -283,13 +285,20 @@ class HFTokenizer:
                     f"{', '.join(c for c in TOKENIZER_MAPPING_NAMES.keys())}."
                 )
 
-            tokenizer_class_name, tokenizer_fast_class_name = tokenizer_class_tuple
+            (
+                tokenizer_class_name,
+                tokenizer_fast_class_name,
+            ) = tokenizer_class_tuple
 
             if use_fast and tokenizer_fast_class_name is not None:
-                tokenizer_class = tokenizer_class_from_name(tokenizer_fast_class_name)
+                tokenizer_class = tokenizer_class_from_name(
+                    tokenizer_fast_class_name
+                )
 
             if tokenizer_class is None:
-                tokenizer_class = tokenizer_class_from_name(tokenizer_class_name)
+                tokenizer_class = tokenizer_class_from_name(
+                    tokenizer_class_name
+                )
 
             if tokenizer_class is None:
                 raise ValueError(
@@ -301,7 +310,9 @@ class HFTokenizer:
             )
 
         # Next, let's try to use the tokenizer_config file to get the tokenizer class.
-        tokenizer_config = get_tokenizer_config(pretrained_model_name_or_path, **kwargs)
+        tokenizer_config = get_tokenizer_config(
+            pretrained_model_name_or_path, **kwargs
+        )
         if "_commit_hash" in tokenizer_config:
             kwargs["_commit_hash"] = tokenizer_config["_commit_hash"]
         config_tokenizer_class = tokenizer_config.get("tokenizer_class")
@@ -324,7 +335,10 @@ class HFTokenizer:
                     **kwargs,
                 )
             config_tokenizer_class = config.tokenizer_class
-            if hasattr(config, "auto_map") and "AutoTokenizer" in config.auto_map:
+            if (
+                hasattr(config, "auto_map")
+                and "AutoTokenizer" in config.auto_map
+            ):
                 tokenizer_auto_map = config.auto_map["AutoTokenizer"]
 
         # If we have the tokenizer class from the tokenizer config or the model config we're good!
@@ -358,10 +372,14 @@ class HFTokenizer:
 
             elif use_fast and not config_tokenizer_class.endswith("Fast"):
                 tokenizer_class_candidate = f"{config_tokenizer_class}Fast"
-                tokenizer_class = tokenizer_class_from_name(tokenizer_class_candidate)
+                tokenizer_class = tokenizer_class_from_name(
+                    tokenizer_class_candidate
+                )
             if tokenizer_class is None:
                 tokenizer_class_candidate = config_tokenizer_class
-                tokenizer_class = tokenizer_class_from_name(tokenizer_class_candidate)
+                tokenizer_class = tokenizer_class_from_name(
+                    tokenizer_class_candidate
+                )
 
             if tokenizer_class is None:
                 raise ValueError(
@@ -385,8 +403,12 @@ class HFTokenizer:
 
         model_type = config_class_to_model_type(type(config).__name__)
         if model_type is not None:
-            tokenizer_class_py, tokenizer_class_fast = TOKENIZER_MAPPING[type(config)]
-            if tokenizer_class_fast and (use_fast or tokenizer_class_py is None):
+            tokenizer_class_py, tokenizer_class_fast = TOKENIZER_MAPPING[
+                type(config)
+            ]
+            if tokenizer_class_fast and (
+                use_fast or tokenizer_class_py is None
+            ):
                 return tokenizer_class_fast.from_pretrained(
                     pretrained_model_name_or_path, *inputs, **kwargs
                 )
@@ -406,7 +428,9 @@ class HFTokenizer:
             f"Model type should be one of {', '.join(c.__name__ for c in TOKENIZER_MAPPING.keys())}."
         )
 
-    def register(config_class, slow_tokenizer_class=None, fast_tokenizer_class=None):
+    def register(
+        config_class, slow_tokenizer_class=None, fast_tokenizer_class=None
+    ):
         """
         Register a new tokenizer in this mapping.
 
@@ -440,7 +464,8 @@ class HFTokenizer:
             slow_tokenizer_class is not None
             and fast_tokenizer_class is not None
             and issubclass(fast_tokenizer_class, PreTrainedTokenizerFast)
-            and fast_tokenizer_class.slow_tokenizer_class != slow_tokenizer_class
+            and fast_tokenizer_class.slow_tokenizer_class
+            != slow_tokenizer_class
         ):
             raise ValueError(
                 "The fast tokenizer class you are passing has a `slow_tokenizer_class` attribute that is not "
