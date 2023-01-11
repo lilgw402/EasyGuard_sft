@@ -1,14 +1,14 @@
 Pre-trained models
 
-*** run EasyGuard model ***
+* run EasyGuard model
 
 ``` python
     from easyguard.core import AutoModel, AutoTokenizer
     my_model = AutoModel.from_pretrained("fashion-deberta")
+```
 
-'''
+* run titan model
 
-*** run titan model ***
 ``` python
     model = create_model(
         model_name=args.model_name,
@@ -17,5 +17,5 @@ Pre-trained models
         features_only=args.features_only,
         tos_helper=tos_helper,
     )
-'''
+```
 
