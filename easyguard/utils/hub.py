@@ -61,12 +61,12 @@ from .import_utils import (
     is_training_run_on_sagemaker,
 )
 
-
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 _is_offline_mode = (
     True
-    if os.environ.get("TRANSFORMERS_OFFLINE", "0").upper() in ENV_VARS_TRUE_VALUES
+    if os.environ.get("TRANSFORMERS_OFFLINE", "0").upper()
+    in ENV_VARS_TRUE_VALUES
     else False
 )
 
@@ -82,7 +82,8 @@ old_default_cache_path = os.path.join(torch_cache_home, "transformers")
 # New default cache, shared with the Datasets library
 hf_cache_home = os.path.expanduser(
     os.getenv(
-        "HF_HOME", os.path.join(os.getenv("XDG_CACHE_HOME", "~/.cache"), "huggingface")
+        "HF_HOME",
+        os.path.join(os.getenv("XDG_CACHE_HOME", "~/.cache"), "huggingface"),
     )
 )
 default_cache_path = os.path.join(hf_cache_home, "hub")
@@ -110,21 +111,30 @@ PYTORCH_PRETRAINED_BERT_CACHE = os.getenv(
 PYTORCH_TRANSFORMERS_CACHE = os.getenv(
     "PYTORCH_TRANSFORMERS_CACHE", PYTORCH_PRETRAINED_BERT_CACHE
 )
-HUGGINGFACE_HUB_CACHE = os.getenv("HUGGINGFACE_HUB_CACHE", PYTORCH_TRANSFORMERS_CACHE)
+HUGGINGFACE_HUB_CACHE = os.getenv(
+    "HUGGINGFACE_HUB_CACHE", PYTORCH_TRANSFORMERS_CACHE
+)
 TRANSFORMERS_CACHE = os.getenv("TRANSFORMERS_CACHE", HUGGINGFACE_HUB_CACHE)
-HF_MODULES_CACHE = os.getenv("HF_MODULES_CACHE", os.path.join(hf_cache_home, "modules"))
+HF_MODULES_CACHE = os.getenv(
+    "HF_MODULES_CACHE", os.path.join(hf_cache_home, "modules")
+)
 TRANSFORMERS_DYNAMIC_MODULE_NAME = "transformers_modules"
 SESSION_ID = uuid4().hex
-DISABLE_TELEMETRY = os.getenv("DISABLE_TELEMETRY", False) in ENV_VARS_TRUE_VALUES
+DISABLE_TELEMETRY = (
+    os.getenv("DISABLE_TELEMETRY", False) in ENV_VARS_TRUE_VALUES
+)
 
 S3_BUCKET_PREFIX = "https://s3.amazonaws.com/models.huggingface.co/bert"
 CLOUDFRONT_DISTRIB_PREFIX = "https://cdn.huggingface.co"
 
 _staging_mode = (
-    os.environ.get("HUGGINGFACE_CO_STAGING", "NO").upper() in ENV_VARS_TRUE_VALUES
+    os.environ.get("HUGGINGFACE_CO_STAGING", "NO").upper()
+    in ENV_VARS_TRUE_VALUES
 )
 _default_endpoint = (
-    "https://hub-ci.huggingface.co" if _staging_mode else "https://huggingface.co"
+    "https://hub-ci.huggingface.co"
+    if _staging_mode
+    else "https://huggingface.co"
 )
 
 HUGGINGFACE_CO_RESOLVE_ENDPOINT = _default_endpoint
@@ -141,7 +151,8 @@ HUGGINGFACE_CO_RESOLVE_ENDPOINT = os.environ.get(
     "HF_ENDPOINT", HUGGINGFACE_CO_RESOLVE_ENDPOINT
 )
 HUGGINGFACE_CO_PREFIX = (
-    HUGGINGFACE_CO_RESOLVE_ENDPOINT + "/{model_id}/resolve/{revision}/{filename}"
+    HUGGINGFACE_CO_RESOLVE_ENDPOINT
+    + "/{model_id}/resolve/{revision}/{filename}"
 )
 HUGGINGFACE_CO_EXAMPLES_TELEMETRY = (
     HUGGINGFACE_CO_RESOLVE_ENDPOINT + "/api/telemetry/examples"
@@ -193,7 +204,9 @@ def get_cached_models(cache_dir: Union[str, Path] = None) -> List[Tuple]:
 
 def define_sagemaker_information():
     try:
-        instance_data = requests.get(os.environ["ECS_CONTAINER_METADATA_URI"]).json()
+        instance_data = requests.get(
+            os.environ["ECS_CONTAINER_METADATA_URI"]
+        ).json()
         dlc_container_used = instance_data["Image"]
         dlc_tag = instance_data["Image"].split(":")[1]
     except Exception:
@@ -250,7 +263,9 @@ def http_user_agent(user_agent: Union[Dict, str, None] = None) -> str:
     return ua
 
 
-def extract_commit_hash(resolved_file: Optional[str], commit_hash: Optional[str]):
+def extract_commit_hash(
+    resolved_file: Optional[str], commit_hash: Optional[str]
+):
     """
     Extracts the commit hash from a resolved filename toward a cache file.
     """
@@ -314,7 +329,9 @@ def try_to_load_from_cache(
         with open(os.path.join(repo_cache, "refs", revision)) as f:
             revision = f.read()
 
-    if os.path.isfile(os.path.join(repo_cache, ".no_exist", revision, filename)):
+    if os.path.isfile(
+        os.path.join(repo_cache, ".no_exist", revision, filename)
+    ):
         return _CACHED_NO_EXIST
 
     cached_shas = os.listdir(os.path.join(repo_cache, "snapshots"))
@@ -408,7 +425,9 @@ def cached_file(
     path_or_repo_id = str(path_or_repo_id)
     full_filename = os.path.join(subfolder, filename)
     if os.path.isdir(path_or_repo_id):
-        resolved_file = os.path.join(os.path.join(path_or_repo_id, subfolder), filename)
+        resolved_file = os.path.join(
+            os.path.join(path_or_repo_id, subfolder), filename
+        )
         if not os.path.isfile(resolved_file):
             if _raise_exceptions_for_missing_entries:
                 raise EnvironmentError(
@@ -427,7 +446,10 @@ def cached_file(
     if _commit_hash is not None:
         # If the file is cached under that commit hash, we return it directly.
         resolved_file = try_to_load_from_cache(
-            path_or_repo_id, full_filename, cache_dir=cache_dir, revision=_commit_hash
+            path_or_repo_id,
+            full_filename,
+            cache_dir=cache_dir,
+            revision=_commit_hash,
         )
         if resolved_file is not None:
             if resolved_file is not _CACHED_NO_EXIST:
@@ -472,7 +494,10 @@ def cached_file(
     except LocalEntryNotFoundError:
         # We try to see if we have a cached version (not up to date):
         resolved_file = try_to_load_from_cache(
-            path_or_repo_id, full_filename, cache_dir=cache_dir, revision=revision
+            path_or_repo_id,
+            full_filename,
+            cache_dir=cache_dir,
+            revision=revision,
         )
         if resolved_file is not None and resolved_file != _CACHED_NO_EXIST:
             return resolved_file
@@ -499,7 +524,10 @@ def cached_file(
     except HTTPError as err:
         # First we try to see if we have a cached version (not up to date):
         resolved_file = try_to_load_from_cache(
-            path_or_repo_id, full_filename, cache_dir=cache_dir, revision=revision
+            path_or_repo_id,
+            full_filename,
+            cache_dir=cache_dir,
+            revision=revision,
         )
         if resolved_file is not None and resolved_file != _CACHED_NO_EXIST:
             return resolved_file
@@ -697,7 +725,9 @@ class PushToHubMixin:
                 "The `repo_url` argument is deprecated and will be removed in v5 of Transformers. Use `repo_id` "
                 "instead."
             )
-            repo_id = repo_url.replace(f"{HUGGINGFACE_CO_RESOLVE_ENDPOINT}/", "")
+            repo_id = repo_url.replace(
+                f"{HUGGINGFACE_CO_RESOLVE_ENDPOINT}/", ""
+            )
         if organization is not None:
             warnings.warn(
                 "The `organization` argument is deprecated and will be removed in v5 of Transformers. Set your "
@@ -708,11 +738,18 @@ class PushToHubMixin:
                     repo_id = repo_id.split("/")[-1]
                 repo_id = f"{organization}/{repo_id}"
 
-        token = HfFolder.get_token() if use_auth_token is True else use_auth_token
-        url = create_repo(repo_id=repo_id, token=token, private=private, exist_ok=True)
+        token = (
+            HfFolder.get_token() if use_auth_token is True else use_auth_token
+        )
+        url = create_repo(
+            repo_id=repo_id, token=token, private=private, exist_ok=True
+        )
 
         # If the namespace is not there, add it or `upload_file` will complain
-        if "/" not in repo_id and url != f"{HUGGINGFACE_CO_RESOLVE_ENDPOINT}/{repo_id}":
+        if (
+            "/" not in repo_id
+            and url != f"{HUGGINGFACE_CO_RESOLVE_ENDPOINT}/{repo_id}"
+        ):
             repo_id = get_full_repo_name(repo_id, token=token)
         return repo_id, token
 
@@ -754,13 +791,15 @@ class PushToHubMixin:
             f
             for f in os.listdir(working_dir)
             if f not in files_timestamps
-            or os.path.getmtime(os.path.join(working_dir, f)) > files_timestamps[f]
+            or os.path.getmtime(os.path.join(working_dir, f))
+            > files_timestamps[f]
         ]
         operations = []
         for file in modified_files:
             operations.append(
                 CommitOperationAdd(
-                    path_or_fileobj=os.path.join(working_dir, file), path_in_repo=file
+                    path_or_fileobj=os.path.join(working_dir, file),
+                    path_in_repo=file,
                 )
             )
         logger.info(
@@ -871,7 +910,9 @@ class PushToHubMixin:
 
 
 def get_full_repo_name(
-    model_id: str, organization: Optional[str] = None, token: Optional[str] = None
+    model_id: str,
+    organization: Optional[str] = None,
+    token: Optional[str] = None,
 ):
     if token is None:
         token = HfFolder.get_token()
@@ -912,7 +953,9 @@ def send_example_telemetry(example_name, *example_args, framework="pytorch"):
         elif "task_name" in args_as_dict:
             # Extract script name from the example_name
             script_name = (
-                example_name.replace("tf_", "").replace("flax_", "").replace("run_", "")
+                example_name.replace("tf_", "")
+                .replace("flax_", "")
+                .replace("run_", "")
             )
             script_name = script_name.replace("_no_trainer", "")
             data["dataset_name"] = f"{script_name}-{args_as_dict['task_name']}"
@@ -1078,7 +1121,9 @@ def extract_info_from_url(url):
     """
     Extract repo_name, revision and filename from an url.
     """
-    search = re.search(r"^https://huggingface\.co/(.*)/resolve/([^/]*)/(.*)$", url)
+    search = re.search(
+        r"^https://huggingface\.co/(.*)/resolve/([^/]*)/(.*)$", url
+    )
     if search is None:
         return None
     repo, revision, filename = search.groups()
@@ -1117,7 +1162,9 @@ def move_to_new_cache(file, repo, filename, revision, etag, commit_hash):
     os.makedirs(os.path.join(repo, "snapshots"), exist_ok=True)
     os.makedirs(os.path.join(repo, "snapshots", commit_hash), exist_ok=True)
     pointer_path = os.path.join(repo, "snapshots", commit_hash, filename)
-    huggingface_hub.file_download._create_relative_symlink(blob_path, pointer_path)
+    huggingface_hub.file_download._create_relative_symlink(
+        blob_path, pointer_path
+    )
     clean_files_for(file)
 
 
@@ -1141,11 +1188,16 @@ def move_cache(cache_dir=None, new_cache_dir=None, token=None):
         url = file_info.pop("url")
         if url not in hub_metadata:
             try:
-                hub_metadata[url] = get_hf_file_metadata(url, use_auth_token=token)
+                hub_metadata[url] = get_hf_file_metadata(
+                    url, use_auth_token=token
+                )
             except requests.HTTPError:
                 continue
 
-        etag, commit_hash = hub_metadata[url].etag, hub_metadata[url].commit_hash
+        etag, commit_hash = (
+            hub_metadata[url].etag,
+            hub_metadata[url].commit_hash,
+        )
         if etag is None or commit_hash is None:
             continue
 
@@ -1178,7 +1230,8 @@ else:
         cache_version = int(f.read())
 
 cache_is_not_empty = (
-    os.path.isdir(TRANSFORMERS_CACHE) and len(os.listdir(TRANSFORMERS_CACHE)) > 0
+    os.path.isdir(TRANSFORMERS_CACHE)
+    and len(os.listdir(TRANSFORMERS_CACHE)) > 0
 )
 
 if cache_version < 1 and cache_is_not_empty:

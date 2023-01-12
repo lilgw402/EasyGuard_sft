@@ -1,60 +1,73 @@
 # -*- coding: utf-8 -*-
 
-import io
-import urllib
 import collections
+import io
 import unicodedata
+import urllib
 
 import torch
-from PIL import Image
 import torchvision.transforms as transforms
-
 from cruise.utilities.hdfs_io import hopen
+from PIL import Image
 
-from .downloads import get_original_urls, download_url_with_exception, further_real_url
+from .downloads import (
+    download_url_with_exception,
+    further_real_url,
+    get_original_urls,
+)
+
 
 class ImageProcess(object):
     def __init__(self, mode="train"):
         self.transform = self.get_transform(mode)
 
     def get_transform(self, mode: str = "train"):
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
+        normalize = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        )
         if mode == "train":
-            com_transforms = transforms.Compose([
-                transforms.RandomResizedCrop(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.GaussianBlur(kernel_size=3, sigma=(0.01, 0.2)),
-                transforms.ToTensor(),
-                normalize
-            ])
-        elif mode == 'val':
-            com_transforms = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize])
+            com_transforms = transforms.Compose(
+                [
+                    transforms.RandomResizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.GaussianBlur(kernel_size=3, sigma=(0.01, 0.2)),
+                    transforms.ToTensor(),
+                    normalize,
+                ]
+            )
+        elif mode == "val":
+            com_transforms = transforms.Compose(
+                [
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    normalize,
+                ]
+            )
         else:
-            raise ValueError('mode [%s] is not in [train, val]' % mode)
+            raise ValueError("mode [%s] is not in [train, val]" % mode)
         return com_transforms
 
     """
     Choose one url from url list
     """
+
     def __call__(self, urls):
         if isinstance(urls, str):
             urls = [urls]
         urls = get_original_urls(urls)
 
         try:
-            image_str = b''
+            image_str = b""
             for url in urls:
                 image_str = download_url_with_exception(url, timeout=3)
-                if image_str != b'' and image_str != '': break
+                if image_str != b"" and image_str != "":
+                    break
                 else:
                     url = further_real_url(url)
                     image_str = download_url_with_exception(url, timeout=3)
-                    if image_str != b'' and image_str != '': break
+                    if image_str != b"" and image_str != "":
+                        break
             image = Image.open(io.BytesIO(image_str)).convert("RGB")
         except:
             image_str = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00C\x00\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\xff\xdb\x00C\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\xff\xc0\x00\x11\x08\x00\x02\x00\x02\x03\x01"\x00\x02\x11\x01\x03\x11\x01\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\n\xff\xc4\x00\x14\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x14\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01\x00\x02\x11\x03\x11\x00?\x00\xbf\x80\x01\xff\xd9'
@@ -64,16 +77,17 @@ class ImageProcess(object):
 
         return image
 
+
 def load_vocab(vocab_file):
     """Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     index = 0
-    if vocab_file.startswith('hdfs://'):
+    if vocab_file.startswith("hdfs://"):
         with hopen(vocab_file, "r") as reader:
             accessor = io.BytesIO(reader.read())
             while True:
                 token = accessor.readline()
-                token = token.decode('utf-8')  # 要解码使得数据接口类型一致
+                token = token.decode("utf-8")  # 要解码使得数据接口类型一致
                 if not token:
                     break
                 token = token.strip()
@@ -92,6 +106,7 @@ def load_vocab(vocab_file):
                 index += 1
             return vocab
 
+
 def whitespace_tokenize(text):
     """Runs basic whitespace cleaning and splitting on a peice of text."""
     text = text.strip()
@@ -100,6 +115,7 @@ def whitespace_tokenize(text):
     tokens = text.split()
     return tokens
 
+
 def _is_punctuation(char):
     """Checks whether `chars` is a punctuation character."""
     cp = ord(char)
@@ -107,13 +123,18 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if ((cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or
-            (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126)):
+    if (
+        (cp >= 33 and cp <= 47)
+        or (cp >= 58 and cp <= 64)
+        or (cp >= 91 and cp <= 96)
+        or (cp >= 123 and cp <= 126)
+    ):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
         return True
     return False
+
 
 def _is_control(char):
     """Checks whether `chars` is a control character."""
@@ -126,6 +147,7 @@ def _is_control(char):
         return True
     return False
 
+
 def _is_whitespace(char):
     """Checks whether `chars` is a whitespace character."""
     # \t, \n, and \r are technically contorl characters but we treat them
@@ -137,13 +159,16 @@ def _is_whitespace(char):
         return True
     return False
 
+
 class BasicTokenizer(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
-    def __init__(self,
-                 do_lower_case=True,
-                 tokenize_emoji=False,
-                 never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")):
+    def __init__(
+        self,
+        do_lower_case=True,
+        tokenize_emoji=False,
+        never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
+    ):
         """Constructs a BasicTokenizer.
 
         Args:
@@ -228,8 +253,8 @@ class BasicTokenizer(object):
         """
         if not char_code:
             return False
-        range_min = ord(u'\U0001F300')  # 127744
-        range_max = ord(u'\U0001FAD6')  # 129750
+        range_min = ord("\U0001F300")  # 127744
+        range_max = ord("\U0001FAD6")  # 129750
         range_min_2 = 126980  # 0x1f004
         range_max_2 = 127569  # 0x1f251
         range_min_3 = 169  # 0xa9
@@ -271,14 +296,16 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
-                (cp >= 0x3400 and cp <= 0x4DBF) or  #
-                (cp >= 0x20000 and cp <= 0x2A6DF) or  #
-                (cp >= 0x2A700 and cp <= 0x2B73F) or  #
-                (cp >= 0x2B740 and cp <= 0x2B81F) or  #
-                (cp >= 0x2B820 and cp <= 0x2CEAF) or
-                (cp >= 0xF900 and cp <= 0xFAFF) or  #
-                (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+        if (
+            (cp >= 0x4E00 and cp <= 0x9FFF)
+            or (cp >= 0x3400 and cp <= 0x4DBF)  #
+            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
+            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
+            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
+            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
+            or (cp >= 0xF900 and cp <= 0xFAFF)
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
+        ):  #
             return True
 
         return False
@@ -288,7 +315,7 @@ class BasicTokenizer(object):
         output = []
         for char in text:
             cp = ord(char)
-            if cp == 0 or cp == 0xfffd or _is_control(char):
+            if cp == 0 or cp == 0xFFFD or _is_control(char):
                 continue
             if _is_whitespace(char):
                 output.append(" ")
@@ -296,10 +323,17 @@ class BasicTokenizer(object):
                 output.append(char)
         return "".join(output)
 
+
 class WordpieceTokenizer(object):
     """Runs WordPiece tokenization."""
 
-    def __init__(self, vocab, greedy_sharp=True, unk_token="[UNK]", max_input_chars_per_word=100):
+    def __init__(
+        self,
+        vocab,
+        greedy_sharp=True,
+        unk_token="[UNK]",
+        max_input_chars_per_word=100,
+    ):
         self.vocab = vocab
         self.greedy_sharp = greedy_sharp
         self.unk_token = unk_token
@@ -365,11 +399,19 @@ class WordpieceTokenizer(object):
                 output_tokens.extend(sub_tokens)
         return output_tokens
 
+
 class BertTokenizer(object):
     """Runs end-to-end tokenization: punctuation splitting + wordpiece"""
 
-    def __init__(self, vocab_file, do_lower_case=True, tokenize_emoji=False, greedy_sharp=True, max_len=None,
-                 never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")):
+    def __init__(
+        self,
+        vocab_file,
+        do_lower_case=True,
+        tokenize_emoji=False,
+        greedy_sharp=True,
+        max_len=None,
+        never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
+    ):
         """
         vocab_file: 词表文件
         do_lower_case: 是否小写
@@ -381,11 +423,16 @@ class BertTokenizer(object):
         """
         self.vocab = load_vocab(vocab_file)
         self.ids_to_tokens = collections.OrderedDict(
-            [(ids, tok) for tok, ids in self.vocab.items()])
-        self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
-                                              tokenize_emoji=tokenize_emoji,
-                                              never_split=never_split)
-        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, greedy_sharp=greedy_sharp)
+            [(ids, tok) for tok, ids in self.vocab.items()]
+        )
+        self.basic_tokenizer = BasicTokenizer(
+            do_lower_case=do_lower_case,
+            tokenize_emoji=tokenize_emoji,
+            never_split=never_split,
+        )
+        self.wordpiece_tokenizer = WordpieceTokenizer(
+            vocab=self.vocab, greedy_sharp=greedy_sharp
+        )
         self.max_len = max_len if max_len is not None else int(1e12)
 
     def tokenize(self, text):
@@ -396,7 +443,7 @@ class BertTokenizer(object):
         return split_tokens
 
     def tokenize_with_ww(self, text):
-        """ 保留 word info 的 tokenize"""
+        """保留 word info 的 tokenize"""
         split_tokens = []
         word_infos = []
         for i, token in enumerate(self.basic_tokenizer.tokenize(text)):
@@ -409,7 +456,7 @@ class BertTokenizer(object):
         """
         将 token 恢复成原本的term。注意只能做到term级别，因为空格信息不知道
         """
-        return ''.join([t.replace("##", "") for t in tokens])
+        return "".join([t.replace("##", "") for t in tokens])
 
     def convert_tokens_to_ids(self, tokens):
         """Converts a sequence of tokens into ids using the vocab."""
@@ -420,7 +467,9 @@ class BertTokenizer(object):
             raise ValueError(
                 "Token indices sequence length is longer than the specified maximum "
                 " sequence length for this BERT model ({} > {}). Running this"
-                " sequence through BERT will result in indexing errors".format(len(ids), self.max_len)
+                " sequence through BERT will result in indexing errors".format(
+                    len(ids), self.max_len
+                )
             )
         return ids
 
@@ -431,39 +480,62 @@ class BertTokenizer(object):
             tokens.append(self.ids_to_tokens[i])
         return tokens
 
+
 class TextProcess(object):
-    def __init__(self,
-                 vocab_file="zh_old_cut_145607.vocab",
-                 do_lower_case=True,
-                 tokenize_emoji=False,
-                 greedy_sharp=False,
-                 max_len=256):
-        self.tokenizer = BertTokenizer(vocab_file,
-                                       do_lower_case,
-                                       tokenize_emoji,
-                                       greedy_sharp,
-                                       max_len=max_len)
-        self.CLS = self.tokenizer.vocab['[CLS]']
-        self.PAD = self.tokenizer.vocab['[PAD]']
-        self.SEP = self.tokenizer.vocab['[SEP]']
-        self.MASK = self.tokenizer.vocab['[MASK]']
+    def __init__(
+        self,
+        vocab_file="zh_old_cut_145607.vocab",
+        do_lower_case=True,
+        tokenize_emoji=False,
+        greedy_sharp=False,
+        max_len=256,
+    ):
+        self.tokenizer = BertTokenizer(
+            vocab_file,
+            do_lower_case,
+            tokenize_emoji,
+            greedy_sharp,
+            max_len=max_len,
+        )
+        self.CLS = self.tokenizer.vocab["[CLS]"]
+        self.PAD = self.tokenizer.vocab["[PAD]"]
+        self.SEP = self.tokenizer.vocab["[SEP]"]
+        self.MASK = self.tokenizer.vocab["[MASK]"]
         self.max_len = max_len
 
     def __call__(self, product_name: str, image_ocr: str = ""):
-        product_name_tokens = self.tokenizer.tokenize(product_name)[:self.max_len // 2]
+        product_name_tokens = self.tokenizer.tokenize(product_name)[
+            : self.max_len // 2
+        ]
         image_ocr_tokens = self.tokenizer.tokenize(image_ocr)
-        image_ocr_tokens = image_ocr_tokens[:self.max_len - 3 - len(product_name_tokens)]
+        image_ocr_tokens = image_ocr_tokens[
+            : self.max_len - 3 - len(product_name_tokens)
+        ]
 
         text_masks = []
         text_segment_ids = []
-        tokens = ['[CLS]'] + product_name_tokens + ['[SEP]'] + image_ocr_tokens + ['[SEP]']
+        tokens = (
+            ["[CLS]"]
+            + product_name_tokens
+            + ["[SEP]"]
+            + image_ocr_tokens
+            + ["[SEP]"]
+        )
         text_masks.extend([1] * len(tokens))
-        text_segment_ids.extend([0] + [0] * len(product_name_tokens) + [0] + [1] * len(image_ocr_tokens) + [1])
+        text_segment_ids.extend(
+            [0]
+            + [0] * len(product_name_tokens)
+            + [0]
+            + [1] * len(image_ocr_tokens)
+            + [1]
+        )
 
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         text_masks.extend([0] * (self.max_len - len(token_ids)))  # Pad
         text_segment_ids.extend([0] * (self.max_len - len(token_ids)))  # Pad
 
-        token_ids = token_ids + [self.PAD] * (self.max_len - len(token_ids))  # 填充至最大长度
+        token_ids = token_ids + [self.PAD] * (
+            self.max_len - len(token_ids)
+        )  # 填充至最大长度
 
         return token_ids, text_masks, text_segment_ids

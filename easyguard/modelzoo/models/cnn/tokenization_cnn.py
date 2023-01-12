@@ -19,10 +19,14 @@ import os
 import unicodedata
 from typing import List, Optional, Tuple
 
-from ...tokenization_utils import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
+from ...tokenization_utils import (
+    PreTrainedTokenizer,
+    _is_control,
+    _is_punctuation,
+    _is_whitespace,
+)
 from ...utils import logging
 from ..bert import BertTokenizer
-
 
 logger = logging.get_logger(__name__)
 
@@ -43,7 +47,7 @@ PRETRAINED_INIT_CONFIGURATION = {
 }
 
 TOKENIZER_MAPPING = {
-    "alibaba-pai/textcnn-en": 'bert-base-uncased',
+    "alibaba-pai/textcnn-en": "bert-base-uncased",
 }
 
 
@@ -115,13 +119,20 @@ class TextCNNTokenizer(BertTokenizer):
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs, **kwargs):
+    def from_pretrained(
+        cls, pretrained_model_name_or_path, *init_inputs, **kwargs
+    ):
         try:
-            tokenizer = BertTokenizer.from_pretrained(pretrained_model_name_or_path, *init_inputs, **kwargs)
+            tokenizer = BertTokenizer.from_pretrained(
+                pretrained_model_name_or_path, *init_inputs, **kwargs
+            )
         except:
-            tokenizer = BertTokenizer.from_pretrained(TOKENIZER_MAPPING[pretrained_model_name_or_path], *init_inputs, **kwargs)
+            tokenizer = BertTokenizer.from_pretrained(
+                TOKENIZER_MAPPING[pretrained_model_name_or_path],
+                *init_inputs,
+                **kwargs,
+            )
         return tokenizer
-
 
 
 class BasicTokenizer(object):
@@ -144,7 +155,13 @@ class BasicTokenizer(object):
             value for :obj:`lowercase` (as in the original BERT).
     """
 
-    def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True, strip_accents=None):
+    def __init__(
+        self,
+        do_lower_case=True,
+        never_split=None,
+        tokenize_chinese_chars=True,
+        strip_accents=None,
+    ):
         if never_split is None:
             never_split = []
         self.do_lower_case = do_lower_case
@@ -163,7 +180,11 @@ class BasicTokenizer(object):
                 :func:`PreTrainedTokenizer.tokenize`) List of token not to split.
         """
         # union() returns a new set by concatenating the two sets.
-        never_split = self.never_split.union(set(never_split)) if never_split else self.never_split
+        never_split = (
+            self.never_split.union(set(never_split))
+            if never_split
+            else self.never_split
+        )
         text = self._clean_text(text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese

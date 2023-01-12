@@ -21,7 +21,6 @@ from torch import Tensor, nn
 
 from ..utils import logging
 
-
 logger = logging.get_logger(__name__)
 
 
@@ -78,7 +77,9 @@ class FastGELUActivation(nn.Module):
             * input
             * (
                 1.0
-                + torch.tanh(input * 0.7978845608 * (1.0 + 0.044715 * input * input))
+                + torch.tanh(
+                    input * 0.7978845608 * (1.0 + 0.044715 * input * input)
+                )
             )
         )
 
@@ -107,7 +108,9 @@ class ClippedGELUActivation(nn.Module):
 
     def __init__(self, min: float, max: float):
         if min > max:
-            raise ValueError(f"min should be < max (got min: {min}, max: {max})")
+            raise ValueError(
+                f"min should be < max (got min: {min}, max: {max})"
+            )
 
         super().__init__()
         self.min = min

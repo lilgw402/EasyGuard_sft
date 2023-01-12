@@ -1,10 +1,11 @@
-import yaml
-import re
 import json
-
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field
+import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+import yaml
+
 from .re_exp import E_STR
 
 """Operators for yaml"""
@@ -142,12 +143,17 @@ class YamlConfig(ABC):
 
         dfs_leafs = []
         cls.dfs_decouple(config_data, dfs_leafs)
-        yamlconfig_ = cls(path, config_data, dfs_leafs, name=name, docstring=docstring)
+        yamlconfig_ = cls(
+            path, config_data, dfs_leafs, name=name, docstring=docstring
+        )
         return yamlconfig_
 
     @classmethod
     def dfs_decouple(
-        cls, data: Dict[str, Any], save_data: List[tuple], prefix: Optional[str] = None
+        cls,
+        data: Dict[str, Any],
+        save_data: List[tuple],
+        prefix: Optional[str] = None,
     ):
         """find all the leafs about a json data
 

@@ -49,7 +49,6 @@ from ....modeling_utils import (
 from ....utils import logging
 from .configuration_roberta import RobertaConfig
 
-
 logger = logging.get_logger(__name__)
 
 _CHECKPOINT_FOR_DOC = "roberta-base"
@@ -70,7 +69,9 @@ class RobertaEmbeddings(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.word_embeddings = nn.Embedding(
-            config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id
+            config.vocab_size,
+            config.hidden_size,
+            padding_idx=config.pad_token_id,
         )
         self.position_embeddings = nn.Embedding(
             config.max_position_embeddings, config.hidden_size
@@ -81,14 +82,17 @@ class RobertaEmbeddings(nn.Module):
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.LayerNorm = nn.LayerNorm(
+            config.hidden_size, eps=config.layer_norm_eps
+        )
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         # position_ids (1, len position emb) is contiguous in memory and exported when serialized
         self.position_embedding_type = getattr(
             config, "position_embedding_type", "absolute"
         )
         self.register_buffer(
-            "position_ids", torch.arange(config.max_position_embeddings).expand((1, -1))
+            "position_ids",
+            torch.arange(config.max_position_embeddings).expand((1, -1)),
         )
         if version.parse(torch.__version__) > version.parse("1.6.0"):
             self.register_buffer(
@@ -141,13 +145,15 @@ class RobertaEmbeddings(nn.Module):
         if token_type_ids is None:
             if hasattr(self, "token_type_ids"):
                 buffered_token_type_ids = self.token_type_ids[:, :seq_length]
-                buffered_token_type_ids_expanded = buffered_token_type_ids.expand(
-                    input_shape[0], seq_length
+                buffered_token_type_ids_expanded = (
+                    buffered_token_type_ids.expand(input_shape[0], seq_length)
                 )
                 token_type_ids = buffered_token_type_ids_expanded
             else:
                 token_type_ids = torch.zeros(
-                    input_shape, dtype=torch.long, device=self.position_ids.device
+                    input_shape,
+                    dtype=torch.long,
+                    device=self.position_ids.device,
                 )
 
         if inputs_embeds is None:
@@ -186,8 +192,9 @@ class RobertaEmbeddings(nn.Module):
 class RobertaSelfAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        if config.hidden_size % config.num_attention_heads != 0 and not hasattr(
-            config, "embedding_size"
+        if (
+            config.hidden_size % config.num_attention_heads != 0
+            and not hasattr(config, "embedding_size")
         ):
             raise ValueError(
                 f"The hidden size ({config.hidden_size}) is not a multiple of the number of attention "
@@ -195,7 +202,9 @@ class RobertaSelfAttention(nn.Module):
             )
 
         self.num_attention_heads = config.num_attention_heads
-        self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
+        self.attention_head_size = int(
+            config.hidden_size / config.num_attention_heads
+        )
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
         self.query = nn.Linear(config.hidden_size, self.all_head_size)
@@ -248,8 +257,12 @@ class RobertaSelfAttention(nn.Module):
             value_layer = past_key_value[1]
             attention_mask = encoder_attention_mask
         elif is_cross_attention:
-            key_layer = self.transpose_for_scores(self.key(encoder_hidden_states))
-            value_layer = self.transpose_for_scores(self.value(encoder_hidden_states))
+            key_layer = self.transpose_for_scores(
+                self.key(encoder_hidden_states)
+            )
+            value_layer = self.transpose_for_scores(
+                self.value(encoder_hidden_states)
+            )
             attention_mask = encoder_attention_mask
         elif past_key_value is not None:
             key_layer = self.transpose_for_scores(self.key(hidden_states))
@@ -273,7 +286,9 @@ class RobertaSelfAttention(nn.Module):
             past_key_value = (key_layer, value_layer)
 
         # Take the dot product between "query" and "key" to get the raw attention scores.
-        attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
+        attention_scores = torch.matmul(
+            query_layer, key_layer.transpose(-1, -2)
+        )
 
         if (
             self.position_embedding_type == "relative_key"
@@ -312,7 +327,9 @@ class RobertaSelfAttention(nn.Module):
                     + relative_position_scores_key
                 )
 
-        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        attention_scores = attention_scores / math.sqrt(
+            self.attention_head_size
+        )
         if attention_mask is not None:
             # Apply the attention mask is (precomputed for all layers in RobertaModel forward() function)
             attention_scores = attention_scores + attention_mask
@@ -331,11 +348,15 @@ class RobertaSelfAttention(nn.Module):
         context_layer = torch.matmul(attention_probs, value_layer)
 
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
-        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
+        new_context_layer_shape = context_layer.size()[:-2] + (
+            self.all_head_size,
+        )
         context_layer = context_layer.view(*new_context_layer_shape)
 
         outputs = (
-            (context_layer, attention_probs) if output_attentions else (context_layer,)
+            (context_layer, attention_probs)
+            if output_attentions
+            else (context_layer,)
         )
 
         if self.is_decoder:
@@ -347,7 +368,9 @@ class RobertaSelfOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.LayerNorm = nn.LayerNorm(
+            config.hidden_size, eps=config.layer_norm_eps
+        )
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, hidden_states, input_tensor):
@@ -381,7 +404,9 @@ class RobertaAttention(nn.Module):
         self.output.dense = prune_linear_layer(self.output.dense, index, dim=1)
 
         # Update hyper params and store pruned heads
-        self.self.num_attention_heads = self.self.num_attention_heads - len(heads)
+        self.self.num_attention_heads = self.self.num_attention_heads - len(
+            heads
+        )
         self.self.all_head_size = (
             self.self.attention_head_size * self.self.num_attention_heads
         )
@@ -432,7 +457,9 @@ class RobertaOutput(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.LayerNorm = nn.LayerNorm(
+            config.hidden_size, eps=config.layer_norm_eps
+        )
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, hidden_states, input_tensor):
@@ -562,7 +589,9 @@ class RobertaEncoder(nn.Module):
         all_hidden_states = () if output_hidden_states else None
         all_self_attentions = () if output_attentions else None
         all_cross_attentions = (
-            () if output_attentions and self.config.add_cross_attention else None
+            ()
+            if output_attentions and self.config.add_cross_attention
+            else None
         )
 
         next_decoder_cache = () if use_cache else None
@@ -571,10 +600,14 @@ class RobertaEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             layer_head_mask = head_mask[i] if head_mask is not None else None
-            past_key_value = past_key_values[i] if past_key_values is not None else None
+            past_key_value = (
+                past_key_values[i] if past_key_values is not None else None
+            )
 
-            if getattr(self.config, "gradient_checkpointing", False) and self.training:
-
+            if (
+                getattr(self.config, "gradient_checkpointing", False)
+                and self.training
+            ):
                 if use_cache:
                     logger.warning(
                         "`use_cache=True` is incompatible with `config.gradient_checkpointing=True`. Setting "
@@ -584,7 +617,9 @@ class RobertaEncoder(nn.Module):
 
                 def create_custom_forward(module):
                     def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions)
+                        return module(
+                            *inputs, past_key_value, output_attentions
+                        )
 
                     return custom_forward
 
@@ -613,7 +648,9 @@ class RobertaEncoder(nn.Module):
             if output_attentions:
                 all_self_attentions = all_self_attentions + (layer_outputs[1],)
                 if self.config.add_cross_attention:
-                    all_cross_attentions = all_cross_attentions + (layer_outputs[2],)
+                    all_cross_attentions = all_cross_attentions + (
+                        layer_outputs[2],
+                    )
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
@@ -668,11 +705,15 @@ class RobertaPreTrainedModel(PreTrainedModel):
         if isinstance(module, nn.Linear):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(
+                mean=0.0, std=self.config.initializer_range
+            )
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(
+                mean=0.0, std=self.config.initializer_range
+            )
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.LayerNorm):
@@ -852,11 +893,15 @@ class RobertaModel(RobertaPreTrainedModel):
             else self.config.output_hidden_states
         )
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
 
         if self.config.is_decoder:
-            use_cache = use_cache if use_cache is not None else self.config.use_cache
+            use_cache = (
+                use_cache if use_cache is not None else self.config.use_cache
+            )
         else:
             use_cache = False
 
@@ -871,9 +916,13 @@ class RobertaModel(RobertaPreTrainedModel):
             input_shape = inputs_embeds.size()[:-1]
             batch_size, seq_length = input_shape
         else:
-            raise ValueError("You have to specify either input_ids or inputs_embeds")
+            raise ValueError(
+                "You have to specify either input_ids or inputs_embeds"
+            )
 
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        device = (
+            input_ids.device if input_ids is not None else inputs_embeds.device
+        )
 
         # past_key_values_length
         past_key_values_length = (
@@ -882,14 +931,17 @@ class RobertaModel(RobertaPreTrainedModel):
 
         if attention_mask is None:
             attention_mask = torch.ones(
-                ((batch_size, seq_length + past_key_values_length)), device=device
+                ((batch_size, seq_length + past_key_values_length)),
+                device=device,
             )
 
         if token_type_ids is None:
             if hasattr(self.embeddings, "token_type_ids"):
-                buffered_token_type_ids = self.embeddings.token_type_ids[:, :seq_length]
-                buffered_token_type_ids_expanded = buffered_token_type_ids.expand(
-                    batch_size, seq_length
+                buffered_token_type_ids = self.embeddings.token_type_ids[
+                    :, :seq_length
+                ]
+                buffered_token_type_ids_expanded = (
+                    buffered_token_type_ids.expand(batch_size, seq_length)
                 )
                 token_type_ids = buffered_token_type_ids_expanded
             else:
@@ -899,8 +951,10 @@ class RobertaModel(RobertaPreTrainedModel):
 
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
-        extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(
-            attention_mask, input_shape, device
+        extended_attention_mask: torch.Tensor = (
+            self.get_extended_attention_mask(
+                attention_mask, input_shape, device
+            )
         )
 
         # If a 2D or 3D attention mask is provided for the cross-attention
@@ -913,7 +967,9 @@ class RobertaModel(RobertaPreTrainedModel):
             ) = encoder_hidden_states.size()
             encoder_hidden_shape = (encoder_batch_size, encoder_sequence_length)
             if encoder_attention_mask is None:
-                encoder_attention_mask = torch.ones(encoder_hidden_shape, device=device)
+                encoder_attention_mask = torch.ones(
+                    encoder_hidden_shape, device=device
+                )
             encoder_extended_attention_mask = self.invert_attention_mask(
                 encoder_attention_mask
             )
@@ -995,7 +1051,8 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
         ROBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length")
     )
     @replace_return_docstrings(
-        output_type=CausalLMOutputWithCrossAttentions, config_class=_CONFIG_FOR_DOC
+        output_type=CausalLMOutputWithCrossAttentions,
+        config_class=_CONFIG_FOR_DOC,
     )
     def forward(
         self,
@@ -1043,7 +1100,9 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
 
         """
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
         if labels is not None:
             use_cache = False
@@ -1070,7 +1129,9 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
         lm_loss = None
         if labels is not None:
             # we are doing next-token prediction; shift prediction scores and input ids by one
-            shifted_prediction_scores = prediction_scores[:, :-1, :].contiguous()
+            shifted_prediction_scores = prediction_scores[
+                :, :-1, :
+            ].contiguous()
             labels = labels[:, 1:].contiguous()
             loss_fct = CrossEntropyLoss()
             lm_loss = loss_fct(
@@ -1114,7 +1175,8 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
         for layer_past in past:
             reordered_past += (
                 tuple(
-                    past_state.index_select(0, beam_idx) for past_state in layer_past
+                    past_state.index_select(0, beam_idx)
+                    for past_state in layer_past
                 ),
             )
         return reordered_past
@@ -1182,7 +1244,9 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
             Used to hide legacy arguments that have been deprecated.
         """
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
 
         outputs = self.roberta(
@@ -1205,13 +1269,16 @@ class RobertaForMaskedLM(RobertaPreTrainedModel):
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             masked_lm_loss = loss_fct(
-                prediction_scores.view(-1, self.config.vocab_size), labels.view(-1)
+                prediction_scores.view(-1, self.config.vocab_size),
+                labels.view(-1),
             )
 
         if not return_dict:
             output = (prediction_scores,) + outputs[2:]
             return (
-                ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+                ((masked_lm_loss,) + output)
+                if masked_lm_loss is not None
+                else output
             )
 
         return MaskedLMOutput(
@@ -1228,9 +1295,13 @@ class RobertaLMHead(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.layer_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.layer_norm = nn.LayerNorm(
+            config.hidden_size, eps=config.layer_norm_eps
+        )
 
-        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.decoder = nn.Linear(
+            config.hidden_size, config.vocab_size, bias=False
+        )
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))
 
         # Need a link between the two variables so that the bias is correctly resized with `resize_token_embeddings`
@@ -1296,7 +1367,9 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
             If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
 
         outputs = self.roberta(
@@ -1333,7 +1406,9 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
                 loss_fct = CrossEntropyLoss()
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+                loss = loss_fct(
+                    logits.view(-1, self.num_labels), labels.view(-1)
+                )
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
@@ -1370,7 +1445,9 @@ class RobertaForMultipleChoice(RobertaPreTrainedModel):
         self.init_weights()
 
     @add_start_docstrings_to_model_forward(
-        ROBERTA_INPUTS_DOCSTRING.format("batch_size, num_choices, sequence_length")
+        ROBERTA_INPUTS_DOCSTRING.format(
+            "batch_size, num_choices, sequence_length"
+        )
     )
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
@@ -1398,14 +1475,20 @@ class RobertaForMultipleChoice(RobertaPreTrainedModel):
             :obj:`input_ids` above)
         """
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
         num_choices = (
-            input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
+            input_ids.shape[1]
+            if input_ids is not None
+            else inputs_embeds.shape[1]
         )
 
         flat_input_ids = (
-            input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
+            input_ids.view(-1, input_ids.size(-1))
+            if input_ids is not None
+            else None
         )
         flat_position_ids = (
             position_ids.view(-1, position_ids.size(-1))
@@ -1423,7 +1506,9 @@ class RobertaForMultipleChoice(RobertaPreTrainedModel):
             else None
         )
         flat_inputs_embeds = (
-            inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
+            inputs_embeds.view(
+                -1, inputs_embeds.size(-2), inputs_embeds.size(-1)
+            )
             if inputs_embeds is not None
             else None
         )
@@ -1511,7 +1596,9 @@ class RobertaForTokenClassification(RobertaPreTrainedModel):
             1]``.
         """
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
 
         outputs = self.roberta(
@@ -1545,7 +1632,9 @@ class RobertaForTokenClassification(RobertaPreTrainedModel):
                 )
                 loss = loss_fct(active_logits, active_labels)
             else:
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+                loss = loss_fct(
+                    logits.view(-1, self.num_labels), labels.view(-1)
+                )
 
         if not return_dict:
             output = (logits,) + outputs[2:]
@@ -1632,7 +1721,9 @@ class RobertaForQuestionAnswering(RobertaPreTrainedModel):
             sequence are not taken into account for computing the loss.
         """
         return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
         )
 
         outputs = self.roberta(
@@ -1673,7 +1764,9 @@ class RobertaForQuestionAnswering(RobertaPreTrainedModel):
 
         if not return_dict:
             output = (start_logits, end_logits) + outputs[2:]
-            return ((total_loss,) + output) if total_loss is not None else output
+            return (
+                ((total_loss,) + output) if total_loss is not None else output
+            )
 
         return QuestionAnsweringModelOutput(
             loss=total_loss,

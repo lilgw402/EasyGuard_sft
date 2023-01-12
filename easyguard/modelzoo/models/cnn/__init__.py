@@ -13,6 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .modeling_cnn import TextCNNEncoder
 from .configuration_cnn import TextCNNConfig
+from .modeling_cnn import TextCNNEncoder
 from .tokenization_cnn import TextCNNTokenizer

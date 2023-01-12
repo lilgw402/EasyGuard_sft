@@ -18,11 +18,10 @@ from typing import List, Optional, Tuple
 
 from tokenizers import pre_tokenizers, processors
 
+from ....utils import logging
 from ...tokenization_utils_base import AddedToken, BatchEncoding
 from ...tokenization_utils_fast import PreTrainedTokenizerFast
-from ....utils import logging
 from .tokenization_bart import BartTokenizer
-
 
 logger = logging.get_logger(__name__)
 
@@ -189,11 +188,18 @@ class BartTokenizerFast(PreTrainedTokenizerFast):
             **kwargs,
         )
 
-        pre_tok_state = json.loads(self.backend_tokenizer.pre_tokenizer.__getstate__())
-        if pre_tok_state.get("add_prefix_space", add_prefix_space) != add_prefix_space:
+        pre_tok_state = json.loads(
+            self.backend_tokenizer.pre_tokenizer.__getstate__()
+        )
+        if (
+            pre_tok_state.get("add_prefix_space", add_prefix_space)
+            != add_prefix_space
+        ):
             pre_tok_class = getattr(pre_tokenizers, pre_tok_state.pop("type"))
             pre_tok_state["add_prefix_space"] = add_prefix_space
-            self.backend_tokenizer.pre_tokenizer = pre_tok_class(**pre_tok_state)
+            self.backend_tokenizer.pre_tokenizer = pre_tok_class(
+                **pre_tok_state
+            )
 
         self.add_prefix_space = add_prefix_space
 
@@ -213,7 +219,10 @@ class BartTokenizerFast(PreTrainedTokenizerFast):
 
             changes_to_apply = False
 
-            if state.get("add_prefix_space", add_prefix_space) != add_prefix_space:
+            if (
+                state.get("add_prefix_space", add_prefix_space)
+                != add_prefix_space
+            ):
                 state["add_prefix_space"] = add_prefix_space
                 changes_to_apply = True
 

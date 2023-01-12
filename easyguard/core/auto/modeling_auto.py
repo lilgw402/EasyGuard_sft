@@ -17,10 +17,14 @@
 import warnings
 from collections import OrderedDict
 
-from ...utils import logging
-from .auto_factory import _BaseAutoModelClass, _LazyAutoMapping, auto_class_update
-from .configuration_auto import CONFIG_MAPPING_NAMES
 from ...modelzoo import MODELZOO_CONFIG
+from ...utils import logging
+from .auto_factory import (
+    _BaseAutoModelClass,
+    _LazyAutoMapping,
+    auto_class_update,
+)
+from .configuration_auto import CONFIG_MAPPING_NAMES
 
 # TODO (junwei.Dong): 需要进一步优化modeling_auto的机制
 

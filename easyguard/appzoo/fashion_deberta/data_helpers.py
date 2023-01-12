@@ -1,6 +1,7 @@
-import torch
 import logging
 import os
+
+import torch
 
 
 class Vocab:
@@ -13,14 +14,15 @@ class Vocab:
     print(vocab.stoi['我'])  # 通过单词返回得到词表中对应的索引
     print(len(vocab))  # 返回词表长度
     """
-    UNK = '[UNK]'
+
+    UNK = "[UNK]"
 
     def __init__(self, vocab_path):
         self.stoi = {}
         self.itos = []
-        with open(vocab_path, 'r', encoding='utf-8') as f:
+        with open(vocab_path, "r", encoding="utf-8") as f:
             for i, word in enumerate(f):
-                w = word.strip('\n')
+                w = word.strip("\n")
                 self.stoi[w] = i
                 self.itos.append(w)
 
@@ -64,7 +66,13 @@ def pad_sequence(sequences, batch_first=False, max_len=512, padding_value=0):
     out_tensors = []
     for tensor in sequences:
         if tensor.size(0) < max_len:
-            tensor = torch.cat([tensor, torch.tensor([padding_value] * (max_len - tensor.size(0)))], dim=0)
+            tensor = torch.cat(
+                [
+                    tensor,
+                    torch.tensor([padding_value] * (max_len - tensor.size(0))),
+                ],
+                dim=0,
+            )
         else:
             tensor = tensor[:max_len]
         out_tensors.append(tensor)
@@ -82,17 +90,17 @@ def cache(func):
     """
 
     def wrapper(*args, **kwargs):
-        filepath = kwargs['filepath']
-        postfix = kwargs['postfix']
-        data_path = filepath.split('.')[0] + '_' + postfix + '.pt'
+        filepath = kwargs["filepath"]
+        postfix = kwargs["postfix"]
+        data_path = filepath.split(".")[0] + "_" + postfix + ".pt"
         if not os.path.exists(data_path):
             logging.info(f"缓存文件 {data_path} 不存在，重新处理并缓存！")
             data = func(*args, **kwargs)
-            with open(data_path, 'wb') as f:
+            with open(data_path, "wb") as f:
                 torch.save(data, f)
         else:
             logging.info(f"缓存文件 {data_path} 存在，直接载入缓存文件！")
-            with open(data_path, 'rb') as f:
+            with open(data_path, "rb") as f:
                 data = torch.load(f)
         return data
 

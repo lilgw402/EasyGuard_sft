@@ -28,11 +28,9 @@ from types import ModuleType
 from typing import Any
 
 from packaging import version
-
 from transformers.utils.versions import importlib_metadata
 
 from . import logging
-
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -46,7 +44,10 @@ USE_JAX = os.environ.get("USE_FLAX", "AUTO").upper()
 FORCE_TF_AVAILABLE = os.environ.get("FORCE_TF_AVAILABLE", "AUTO").upper()
 
 _torch_version = "N/A"
-if USE_TORCH in ENV_VARS_TRUE_AND_AUTO_VALUES and USE_TF not in ENV_VARS_TRUE_VALUES:
+if (
+    USE_TORCH in ENV_VARS_TRUE_AND_AUTO_VALUES
+    and USE_TF not in ENV_VARS_TRUE_VALUES
+):
     _torch_available = importlib.util.find_spec("torch") is not None
     if _torch_available:
         try:
@@ -137,7 +138,9 @@ except importlib_metadata.PackageNotFoundError:
 _detectron2_available = importlib.util.find_spec("detectron2") is not None
 try:
     _detectron2_version = importlib_metadata.version("detectron2")
-    logger.debug(f"Successfully imported detectron2 version {_detectron2_version}")
+    logger.debug(
+        f"Successfully imported detectron2 version {_detectron2_version}"
+    )
 except importlib_metadata.PackageNotFoundError:
     _detectron2_available = False
 
@@ -165,7 +168,9 @@ except importlib_metadata.PackageNotFoundError:
 coloredlogs = importlib.util.find_spec("coloredlogs") is not None
 try:
     _coloredlogs_available = importlib_metadata.version("coloredlogs")
-    logger.debug(f"Successfully imported sympy version {_coloredlogs_available}")
+    logger.debug(
+        f"Successfully imported sympy version {_coloredlogs_available}"
+    )
 except importlib_metadata.PackageNotFoundError:
     _coloredlogs_available = False
 
@@ -198,7 +203,9 @@ _pytorch_quantization_available = (
     importlib.util.find_spec("pytorch_quantization") is not None
 )
 try:
-    _pytorch_quantization_version = importlib_metadata.version("pytorch_quantization")
+    _pytorch_quantization_version = importlib_metadata.version(
+        "pytorch_quantization"
+    )
     logger.debug(
         f"Successfully imported pytorch-quantization version {_pytorch_quantization_version}"
     )
@@ -209,7 +216,9 @@ except importlib_metadata.PackageNotFoundError:
 _soundfile_available = importlib.util.find_spec("soundfile") is not None
 try:
     _soundfile_version = importlib_metadata.version("soundfile")
-    logger.debug(f"Successfully imported soundfile version {_soundfile_version}")
+    logger.debug(
+        f"Successfully imported soundfile version {_soundfile_version}"
+    )
 except importlib_metadata.PackageNotFoundError:
     _soundfile_available = False
 
@@ -247,7 +256,9 @@ except importlib_metadata.PackageNotFoundError:
 _torchaudio_available = importlib.util.find_spec("torchaudio") is not None
 try:
     _torchaudio_version = importlib_metadata.version("torchaudio")
-    logger.debug(f"Successfully imported torchaudio version {_torchaudio_version}")
+    logger.debug(
+        f"Successfully imported torchaudio version {_torchaudio_version}"
+    )
 except importlib_metadata.PackageNotFoundError:
     _torchaudio_available = False
 
@@ -255,7 +266,9 @@ except importlib_metadata.PackageNotFoundError:
 _phonemizer_available = importlib.util.find_spec("phonemizer") is not None
 try:
     _phonemizer_version = importlib_metadata.version("phonemizer")
-    logger.debug(f"Successfully imported phonemizer version {_phonemizer_version}")
+    logger.debug(
+        f"Successfully imported phonemizer version {_phonemizer_version}"
+    )
 except importlib_metadata.PackageNotFoundError:
     _phonemizer_available = False
 
@@ -263,7 +276,9 @@ except importlib_metadata.PackageNotFoundError:
 _pyctcdecode_available = importlib.util.find_spec("pyctcdecode") is not None
 try:
     _pyctcdecode_version = importlib_metadata.version("pyctcdecode")
-    logger.debug(f"Successfully imported pyctcdecode version {_pyctcdecode_version}")
+    logger.debug(
+        f"Successfully imported pyctcdecode version {_pyctcdecode_version}"
+    )
 except importlib_metadata.PackageNotFoundError:
     _pyctcdecode_available = False
 
@@ -339,13 +354,16 @@ def is_torch_bf16_gpu_available():
     # 4. torch.autocast exists
     # XXX: one problem here is that it may give invalid results on mixed gpus setup, so it's
     # really only correct for the 0th gpu (or currently set default device if different from 0)
-    if version.parse(version.parse(torch.__version__).base_version) < version.parse(
-        "1.10"
-    ):
+    if version.parse(
+        version.parse(torch.__version__).base_version
+    ) < version.parse("1.10"):
         return False
 
     if torch.cuda.is_available() and torch.version.cuda is not None:
-        if torch.cuda.get_device_properties(torch.cuda.current_device()).major < 8:
+        if (
+            torch.cuda.get_device_properties(torch.cuda.current_device()).major
+            < 8
+        ):
             return False
         if int(torch.version.cuda.split(".")[0]) < 11:
             return False
@@ -363,9 +381,9 @@ def is_torch_bf16_cpu_available():
 
     import torch
 
-    if version.parse(version.parse(torch.__version__).base_version) < version.parse(
-        "1.10"
-    ):
+    if version.parse(
+        version.parse(torch.__version__).base_version
+    ) < version.parse("1.10"):
         return False
 
     try:
@@ -400,9 +418,9 @@ def is_torch_tf32_available():
         return False
     if int(torch.version.cuda.split(".")[0]) < 11:
         return False
-    if version.parse(version.parse(torch.__version__).base_version) < version.parse(
-        "1.7"
-    ):
+    if version.parse(
+        version.parse(torch.__version__).base_version
+    ) < version.parse("1.7"):
         return False
 
     return True
@@ -554,7 +572,9 @@ def is_ipex_available():
         return False
     _ipex_version = "N/A"
     try:
-        _ipex_version = importlib_metadata.version("intel_extension_for_pytorch")
+        _ipex_version = importlib_metadata.version(
+            "intel_extension_for_pytorch"
+        )
     except importlib_metadata.PackageNotFoundError:
         return False
     torch_major_and_minor = get_major_and_minor_from_version(_torch_version)
@@ -1025,14 +1045,23 @@ BACKENDS_MAPPING = OrderedDict(
         ("sacremoses", (is_sacremoses_available, SACREMOSES_IMPORT_ERROR)),
         (
             "pytorch_quantization",
-            (is_pytorch_quantization_available, PYTORCH_QUANTIZATION_IMPORT_ERROR),
+            (
+                is_pytorch_quantization_available,
+                PYTORCH_QUANTIZATION_IMPORT_ERROR,
+            ),
         ),
-        ("sentencepiece", (is_sentencepiece_available, SENTENCEPIECE_IMPORT_ERROR)),
+        (
+            "sentencepiece",
+            (is_sentencepiece_available, SENTENCEPIECE_IMPORT_ERROR),
+        ),
         ("sklearn", (is_sklearn_available, SKLEARN_IMPORT_ERROR)),
         ("speech", (is_speech_available, SPEECH_IMPORT_ERROR)),
         (
             "tensorflow_probability",
-            (is_tensorflow_probability_available, TENSORFLOW_PROBABILITY_IMPORT_ERROR),
+            (
+                is_tensorflow_probability_available,
+                TENSORFLOW_PROBABILITY_IMPORT_ERROR,
+            ),
         ),
         ("tf", (is_tf_available, TENSORFLOW_IMPORT_ERROR)),
         (
@@ -1134,7 +1163,12 @@ class _LazyModule(ModuleType):
     # Very heavily inspired by optuna.integration._IntegrationModule
     # https://github.com/optuna/optuna/blob/master/optuna/integration/__init__.py
     def __init__(
-        self, name, module_file, import_structure, module_spec=None, extra_objects=None
+        self,
+        name,
+        module_file,
+        import_structure,
+        module_spec=None,
+        extra_objects=None,
     ):
         super().__init__(name)
         self._modules = set(import_structure.keys())
@@ -1172,7 +1206,9 @@ class _LazyModule(ModuleType):
             module = self._get_module(self._class_to_module[name])
             value = getattr(module, name)
         else:
-            raise AttributeError(f"module {self.__name__} has no attribute {name}")
+            raise AttributeError(
+                f"module {self.__name__} has no attribute {name}"
+            )
 
         setattr(self, name, value)
         return value
@@ -1187,7 +1223,10 @@ class _LazyModule(ModuleType):
             ) from e
 
     def __reduce__(self):
-        return (self.__class__, (self._name, self.__file__, self._import_structure))
+        return (
+            self.__class__,
+            (self._name, self.__file__, self._import_structure),
+        )
 
 
 class OptionalDependencyNotAvailable(BaseException):
@@ -1210,7 +1249,12 @@ class _LazyPackage(ModuleType):
     # Very heavily inspired by optuna.integration._IntegrationModule
     # https://github.com/optuna/optuna/blob/master/optuna/integration/__init__.py
     def __init__(
-        self, name, module_file, import_structure, module_spec=None, extra_objects=None
+        self,
+        name,
+        module_file,
+        import_structure,
+        module_spec=None,
+        extra_objects=None,
     ):
         super().__init__(name)
         self._modules = set(import_structure.keys())
@@ -1253,14 +1297,15 @@ class _LazyPackage(ModuleType):
         if name in self._modules:
             value = self._get_module(name)
         elif name in self._class_to_module.keys():
-
             module = self._get_module(self._class_to_module[name])
             if hasattr(module, name):
                 value = getattr(module, name)
             else:
                 value = module
         else:
-            raise AttributeError(f"module {self.__name__} has no attribute {name}")
+            raise AttributeError(
+                f"module {self.__name__} has no attribute {name}"
+            )
 
         setattr(self, name, value)
         return value
@@ -1278,7 +1323,10 @@ class _LazyPackage(ModuleType):
             ) from e
 
     def __reduce__(self):
-        return (self.__class__, (self._name, self.__file__, self._import_structure))
+        return (
+            self.__class__,
+            (self._name, self.__file__, self._import_structure),
+        )
 
 
 def lazy_model_import(package: str, module: str):
