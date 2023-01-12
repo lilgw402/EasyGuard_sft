@@ -16,7 +16,6 @@ config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多�
 模型注册: 直接将自主开发的模型一次注入到models.yaml文件里即可调用, 无需在auto各个模块进行配置
 模型开发: 在模型的__init__函数里只需要利用typing.TYPE_CHECKING来辅助代码提示即可,无需手动lazyimport, 可参照deberta模型进行开发
 模型懒加载: 不再需要各种mapping的存在, 因为models.yaml已经把各自模型的配置归类在一起了, 所以直接借助models.yaml即可轻松完成模块按需懒加载使用
-
 """
 
 

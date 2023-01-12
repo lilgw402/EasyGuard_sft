@@ -1877,8 +1877,8 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
 
         if config_tokenizer_class is None:
             from ..core.auto.configuration_auto import (
-                AutoConfig,  # tests_ignore
-            )
+                AutoConfig,
+            )  # tests_ignore
 
             # Second attempt. If we have not yet found tokenizer_class, let's try to use the config.
             try:
@@ -4071,10 +4071,41 @@ class TokenizerBase(ABC):
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return super().__call__(*args, **kwds)
+
     @classmethod
     def from_pretrained(
         cls, pretrained_model_name_or_path: str, *args, **kwargs
     ):
+        ...
+
+    @classmethod
+    def get_vocab(cls, vocab_file: str) -> str:
+        # TODO (junwei.Dong): hget the vocab file and return the local path
+        """if the vocab file in the remote server, get the file from server and return the local path
+
+        Parameters
+        ----------
+        vocab_file : str
+            path, such as: hdfs://xxx/vocab.txt
+
+        Returns
+        -------
+        str
+            the local path of the vocab file
+
+        Raises
+        ------
+        ValueError
+            _description_
+        NotImplementedError
+            _description_
+        NotImplementedError
+            _description_
+        NotImplementedError
+            _description_
+        """
         ...
 
     @classmethod
