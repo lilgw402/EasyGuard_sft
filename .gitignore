@@ -135,6 +135,7 @@ Makefile
 dict
 sample
 
+*.wandb
 wandb/*
 cruise_logs/*
 
@@ -147,3 +148,5 @@ node_modules/
 # train weight
 *.ckpt
 events.out*
+
+*.attach_pid*
