@@ -325,7 +325,7 @@ class WordpieceTokenizer(object):
     """Runs WordPiece tokenization."""
 
     def __init__(
-        self, vocab, greedy_sharp=True, unk_token="[UNK]", max_input_chars_per_word=100
+        self, vocab, greedy_sharp=True, unk_token="[UNK]", max_input_chars_per_word=1000
     ):
         self.vocab = vocab
         self.greedy_sharp = greedy_sharp
