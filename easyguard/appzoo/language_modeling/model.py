@@ -88,10 +88,10 @@ class LanguageModel(CruiseModule):
         if self.moe:
             self.moe_hard_heads = nn.ModuleDict(
                     {k: MLP(hidden_size, hidden_size, hidden_size) for k in
-                     ['GB', 'ID', 'TH', 'MY', 'VN', 'PH', 'PT', 'ES']})
+                     ['GB', 'ID', 'TH', 'MY', 'VN', 'PH']})
             self.moe_share_head = MLP(hidden_size, hidden_size, hidden_size)
             self.kl_loss = nn.KLDivLoss(reduction="batchmean")
-            self.adv_head = nn.Linear(hidden_size, 8)
+            self.adv_head = nn.Linear(hidden_size, 6)
 
         # setup nce allgather group if has limit
         nce_limit = self.hparams.all_gather_limit
