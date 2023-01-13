@@ -17,7 +17,6 @@
 from ....configuration_utils import PretrainedConfig
 from ...utils import logging
 
-
 logger = logging.get_logger(__name__)
 
 
@@ -87,7 +86,7 @@ class MT5Config(PretrainedConfig):
         pad_token_id=0,
         eos_token_id=1,
         decoder_start_token_id=0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             is_encoder_decoder=is_encoder_decoder,
@@ -104,7 +103,9 @@ class MT5Config(PretrainedConfig):
         self.d_ff = d_ff
         self.num_layers = num_layers
         self.num_decoder_layers = (
-            num_decoder_layers if num_decoder_layers is not None else self.num_layers
+            num_decoder_layers
+            if num_decoder_layers is not None
+            else self.num_layers
         )  # default = symmetry
         self.num_heads = num_heads
         self.relative_attention_num_buckets = relative_attention_num_buckets

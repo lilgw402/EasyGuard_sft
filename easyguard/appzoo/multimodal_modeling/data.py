@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-from typing import Union, List
+from typing import List, Union
 
 import numpy as np
 import torch
@@ -9,19 +9,25 @@ import torch
 try:
     import cruise
 except ImportError:
-    print("[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag")
+    print(
+        "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
+    )
 
 from cruise.data_module import CruiseDataModule
-from cruise.utilities.hdfs_io import hlist_files, hexists, hopen
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
+from cruise.utilities.hdfs_io import hexists, hlist_files, hopen
 
 from .utils import ImageProcess, TextProcess
 
+
 class ImageTextProcessor:
-    def __init__(self, mode,
-                 vocab_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/zh_old_cut_145607.vocab",
-                 max_len=256,
-                 category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json"):
+    def __init__(
+        self,
+        mode,
+        vocab_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/zh_old_cut_145607.vocab",
+        max_len=256,
+        category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
+    ):
         self.image_process = ImageProcess(mode)
         self.text_process = TextProcess(vocab_file=vocab_path, max_len=max_len)
 
@@ -29,9 +35,9 @@ class ImageTextProcessor:
         Load category dict for category prediction
         """
         if not hexists(category_path):
-            raise ValueError("Category dict {} does not exist!".format(
-                category_path
-            ))
+            raise ValueError(
+                "Category dict {} does not exist!".format(category_path)
+            )
         with hopen(category_path, "r") as fp:
             self.category_dict = json.load(fp)
 
@@ -43,7 +49,9 @@ class ImageTextProcessor:
         if isinstance(image_ocr, list):
             image_ocr = " ".join(image_ocr)
 
-        token_ids, text_masks, text_segment_ids = self.text_process(product_name, image_ocr)
+        token_ids, text_masks, text_segment_ids = self.text_process(
+            product_name, image_ocr
+        )
         image = self.image_process(image_urls)
 
         level1_cid = str(data_dict["first_cid_new"])
@@ -59,7 +67,7 @@ class ImageTextProcessor:
             "token_ids": token_ids,
             "image": image,
             "label": label,
-            "label_l1": label_l1
+            "label_l1": label_l1,
         }
 
     def batch_transform(self, data):
@@ -80,15 +88,20 @@ class ImageTextProcessor:
 
         return batch
 
+
 class MMDataModule(CruiseDataModule):
-    def __init__(self,
-                 train_batch_size: int = 64,
-                 val_batch_size: int = 64,
-                 paths: Union[str, List[str]] = 'hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/pretrain_20220802_20220808_train_url',
-                 data_size: int = 140000000,
-                 val_step: int = 20,
-                 num_workers: int = 24,
-                 max_len: int = 256):
+    def __init__(
+        self,
+        train_batch_size: int = 64,
+        val_batch_size: int = 64,
+        paths: Union[
+            str, List[str]
+        ] = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/pretrain_20220802_20220808_train_url",
+        data_size: int = 140000000,
+        val_step: int = 20,
+        num_workers: int = 24,
+        max_len: int = 256,
+    ):
         super().__init__()
         self.save_hparams()
 
@@ -100,15 +113,16 @@ class MMDataModule(CruiseDataModule):
         if isinstance(paths, str):
             paths = [paths]
         files = hlist_files(paths)
-        files = [f for f in files if f.find('_SUCCESS') < 0]
+        files = [f for f in files if f.find("_SUCCESS") < 0]
         if not files:
-            raise RuntimeError(f"No valid files can be found matching `paths`: {paths}")
+            raise RuntimeError(
+                f"No valid files can be found matching `paths`: {paths}"
+            )
         files = sorted(files)
         self.train_files = files
         self.val_files = files
 
     def train_dataloader(self):
-
         return DistributedCruiseDataLoader(
             data_sources=[self.train_files],
             keys_or_columns=[None],
@@ -117,13 +131,14 @@ class MMDataModule(CruiseDataModule):
             num_readers=[1],
             decode_fn_list=[[]],
             processor=ImageTextProcessor("train"),
-            predefined_steps=self.hparams.data_size // self.hparams.train_batch_size // self.trainer.world_size,
-            source_types=['jsonl'],
+            predefined_steps=self.hparams.data_size
+            // self.hparams.train_batch_size
+            // self.trainer.world_size,
+            source_types=["jsonl"],
             shuffle=True,
         )
 
     def val_dataloader(self):
-
         return DistributedCruiseDataLoader(
             data_sources=[self.val_files],
             keys_or_columns=[None],
@@ -133,6 +148,6 @@ class MMDataModule(CruiseDataModule):
             decode_fn_list=[[]],
             processor=ImageTextProcessor("val"),
             predefined_steps=self.hparams.val_step,
-            source_types=['jsonl'],
+            source_types=["jsonl"],
             shuffle=False,
         )

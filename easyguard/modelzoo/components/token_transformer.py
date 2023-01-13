@@ -11,24 +11,25 @@ from timm.models.layers import DropPath
 
 from .transformer_block import Mlp
 
-__all__ = ['TokenTransformer']
+__all__ = ["TokenTransformer"]
 
 
 class Attention(nn.Module):
     def __init__(
-            self,
-            dim,
-            num_heads=8,
-            in_dim=None,
-            qkv_bias=False,
-            qk_scale=None,
-            attn_drop=0.,
-            proj_drop=0.):
+        self,
+        dim,
+        num_heads=8,
+        in_dim=None,
+        qkv_bias=False,
+        qk_scale=None,
+        attn_drop=0.0,
+        proj_drop=0.0,
+    ):
         super().__init__()
         self.num_heads = num_heads
         self.in_dim = in_dim
         head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
+        self.scale = qk_scale or head_dim**-0.5
 
         self.qkv = nn.Linear(dim, in_dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
@@ -38,8 +39,11 @@ class Attention(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
 
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads,
-                                  self.in_dim).permute(2, 0, 3, 1, 4)
+        qkv = (
+            self.qkv(x)
+            .reshape(B, N, 3, self.num_heads, self.in_dim)
+            .permute(2, 0, 3, 1, 4)
+        )
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         attn = (q * self.scale) @ k.transpose(-2, -1)
@@ -59,20 +63,20 @@ class Attention(nn.Module):
 
 
 class TokenTransformer(nn.Module):
-
     def __init__(
-            self,
-            dim,
-            in_dim,
-            num_heads,
-            mlp_ratio=1.,
-            qkv_bias=False,
-            qk_scale=None,
-            drop=0.,
-            attn_drop=0.,
-            drop_path=0.,
-            act_layer=nn.GELU,
-            norm_layer=nn.LayerNorm):
+        self,
+        dim,
+        in_dim,
+        num_heads,
+        mlp_ratio=1.0,
+        qkv_bias=False,
+        qk_scale=None,
+        drop=0.0,
+        attn_drop=0.0,
+        drop_path=0.0,
+        act_layer=nn.GELU,
+        norm_layer=nn.LayerNorm,
+    ):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.attn = Attention(
@@ -82,17 +86,19 @@ class TokenTransformer(nn.Module):
             qkv_bias=qkv_bias,
             qk_scale=qk_scale,
             attn_drop=attn_drop,
-            proj_drop=drop)
-        self.drop_path = DropPath(
-            drop_path) if drop_path > 0. else nn.Identity()
+            proj_drop=drop,
+        )
+        self.drop_path = (
+            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        )
         self.norm2 = norm_layer(in_dim)
         self.mlp = Mlp(
             in_features=in_dim,
-            hidden_features=int(
-                in_dim * mlp_ratio),
+            hidden_features=int(in_dim * mlp_ratio),
             out_features=in_dim,
             act_layer=act_layer,
-            drop=drop)
+            drop=drop,
+        )
 
     def forward(self, x):
         x = self.attn(self.norm1(x))

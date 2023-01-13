@@ -21,14 +21,13 @@ import json
 import os
 import re
 import warnings
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from packaging import version
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
 from .. import __version__
-from .dynamic_module_utils import custom_object_save
 from ..utils import (
     CONFIG_NAME,
     PushToHubMixin,
@@ -40,7 +39,7 @@ from ..utils import (
     is_torch_available,
     logging,
 )
-
+from .dynamic_module_utils import custom_object_save
 
 logger = logging.get_logger(__name__)
 
@@ -251,7 +250,9 @@ class PretrainedConfig(PushToHubMixin):
         super().__setattr__(key, value)
 
     def __getattribute__(self, key):
-        if key != "attribute_map" and key in super().__getattribute__("attribute_map"):
+        if key != "attribute_map" and key in super().__getattribute__(
+            "attribute_map"
+        ):
             key = super().__getattribute__("attribute_map")[key]
         return super().__getattribute__(key)
 
@@ -306,7 +307,9 @@ class PretrainedConfig(PushToHubMixin):
         self.num_return_sequences = kwargs.pop("num_return_sequences", 1)
         self.chunk_size_feed_forward = kwargs.pop("chunk_size_feed_forward", 0)
         self.output_scores = kwargs.pop("output_scores", False)
-        self.return_dict_in_generate = kwargs.pop("return_dict_in_generate", False)
+        self.return_dict_in_generate = kwargs.pop(
+            "return_dict_in_generate", False
+        )
         self.forced_bos_token_id = kwargs.pop("forced_bos_token_id", None)
         self.forced_eos_token_id = kwargs.pop("forced_eos_token_id", None)
         self.remove_invalid_values = kwargs.pop("remove_invalid_values", False)
@@ -436,7 +439,9 @@ class PretrainedConfig(PushToHubMixin):
             or len(self.id2label) != num_labels
         ):
             self.id2label = {i: f"LABEL_{i}" for i in range(num_labels)}
-            self.label2id = dict(zip(self.id2label.values(), self.id2label.keys()))
+            self.label2id = dict(
+                zip(self.id2label.values(), self.id2label.keys())
+            )
 
     def save_pretrained(
         self,
@@ -467,7 +472,9 @@ class PretrainedConfig(PushToHubMixin):
 
         if push_to_hub:
             commit_message = kwargs.pop("commit_message", None)
-            repo_id = kwargs.pop("repo_id", save_directory.split(os.path.sep)[-1])
+            repo_id = kwargs.pop(
+                "repo_id", save_directory.split(os.path.sep)[-1]
+            )
             repo_id, token = self._create_repo(repo_id, **kwargs)
             files_timestamps = self._get_files_timestamps(save_directory)
 
@@ -653,7 +660,9 @@ class PretrainedConfig(PushToHubMixin):
         pretrained_model_name_or_path = str(pretrained_model_name_or_path)
 
         is_local = os.path.isdir(pretrained_model_name_or_path)
-        if os.path.isfile(os.path.join(subfolder, pretrained_model_name_or_path)):
+        if os.path.isfile(
+            os.path.join(subfolder, pretrained_model_name_or_path)
+        ):
             # Special case when pretrained_model_name_or_path is a local file
             resolved_config_file = pretrained_model_name_or_path
             is_local = True
@@ -679,7 +688,9 @@ class PretrainedConfig(PushToHubMixin):
                     subfolder=subfolder,
                     _commit_hash=commit_hash,
                 )
-                commit_hash = extract_commit_hash(resolved_config_file, commit_hash)
+                commit_hash = extract_commit_hash(
+                    resolved_config_file, commit_hash
+                )
             except EnvironmentError:
                 # Raise any environment error raise by `cached_file`. It will have a helpful error message adapted to
                 # the original exception.
@@ -712,7 +723,9 @@ class PretrainedConfig(PushToHubMixin):
         return config_dict, kwargs
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any], **kwargs) -> "PretrainedConfig":
+    def from_dict(
+        cls, config_dict: Dict[str, Any], **kwargs
+    ) -> "PretrainedConfig":
         """
         Instantiates a [`PretrainedConfig`] from a Python dictionary of parameters.
 
@@ -745,7 +758,9 @@ class PretrainedConfig(PushToHubMixin):
         # Update config with kwargs if needed
         if "num_labels" in kwargs and "id2label" in kwargs:
             num_labels = kwargs["num_labels"]
-            id2label = kwargs["id2label"] if kwargs["id2label"] is not None else []
+            id2label = (
+                kwargs["id2label"] if kwargs["id2label"] is not None else []
+            )
             if len(id2label) != num_labels:
                 raise ValueError(
                     f"You passed along `num_labels={num_labels }` with an incompatible id to label map: "
@@ -768,7 +783,9 @@ class PretrainedConfig(PushToHubMixin):
             return config
 
     @classmethod
-    def from_json_file(cls, json_file: Union[str, os.PathLike]) -> "PretrainedConfig":
+    def from_json_file(
+        cls, json_file: Union[str, os.PathLike]
+    ) -> "PretrainedConfig":
         """
         Instantiates a [`PretrainedConfig`] from the path to a JSON file of parameters.
 
@@ -821,7 +838,9 @@ class PretrainedConfig(PushToHubMixin):
                 key not in default_config_dict
                 or key == "transformers_version"
                 or value != default_config_dict[key]
-                or (key in class_config_dict and value != class_config_dict[key])
+                or (
+                    key in class_config_dict and value != class_config_dict[key]
+                )
             ):
                 serializable_config_dict[key] = value
 
@@ -921,7 +940,9 @@ class PretrainedConfig(PushToHubMixin):
                 elif v.lower() in ["false", "0", "n", "no"]:
                     v = False
                 else:
-                    raise ValueError(f"can't derive true or false from {v} (key {k})")
+                    raise ValueError(
+                        f"can't derive true or false from {v} (key {k})"
+                    )
             elif isinstance(old_v, int):
                 v = int(v)
             elif isinstance(old_v, float):

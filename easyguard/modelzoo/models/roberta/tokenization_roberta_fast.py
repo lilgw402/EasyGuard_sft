@@ -21,10 +21,13 @@ from ....utils import logging
 from ..gpt2.tokenization_gpt2_fast import GPT2TokenizerFast
 from .tokenization_roberta import RobertaTokenizer
 
-
 logger = logging.get_logger(__name__)
 
-VOCAB_FILES_NAMES = {"vocab_file": "vocab.json", "merges_file": "merges.txt", "tokenizer_file": "tokenizer.json"}
+VOCAB_FILES_NAMES = {
+    "vocab_file": "vocab.json",
+    "merges_file": "merges.txt",
+    "tokenizer_file": "tokenizer.json",
+}
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "roberta-base": 512,
@@ -33,7 +36,7 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 
 
 class RobertaTokenizerFast(GPT2TokenizerFast):
-    """ Roberta Tokenizer
+    """Roberta Tokenizer
 
     Args:
         vocab_file (:obj:`str`):
@@ -98,7 +101,7 @@ class RobertaTokenizerFast(GPT2TokenizerFast):
         pad_token="<pad>",
         mask_token="<mask>",
         add_prefix_space=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             vocab_file,
@@ -139,7 +142,11 @@ class RobertaTokenizerFast(GPT2TokenizerFast):
         """
         # Mask token behave like a normal word, i.e. include the space before it
         # So we set lstrip to True
-        value = AddedToken(value, lstrip=True, rstrip=False) if isinstance(value, str) else value
+        value = (
+            AddedToken(value, lstrip=True, rstrip=False)
+            if isinstance(value, str)
+            else value
+        )
         self._mask_token = value
 
     def build_inputs_with_special_tokens(self, token_ids_0, token_ids_1=None):

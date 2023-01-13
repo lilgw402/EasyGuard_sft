@@ -4,8 +4,9 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-from torch.nn.functional import embedding
 import torch.nn.functional as F
+from torch.nn.functional import embedding
+
 from .activation import Activation
 from .layernorm import LayerNorm, LayerNormTypes
 
@@ -39,7 +40,9 @@ def get_world_size() -> int:
 
 
 @torch.jit.script
-def slice_pos_ids(position_ids: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
+def slice_pos_ids(
+    position_ids: torch.Tensor, input_ids: torch.Tensor
+) -> torch.Tensor:
     return position_ids[:, : input_ids.size(1)]
 
 
@@ -97,7 +100,9 @@ class Embedding(torch.nn.Module):
     ) -> None:
         super().__init__()
         self.num_embeddings = num_embeddings
-        self.padding_index = padding_index if padding_index is not None else padding_idx
+        self.padding_index = (
+            padding_index if padding_index is not None else padding_idx
+        )
         self.padding_idx = self.padding_index  # Compat with nn.Embedding
         self.max_norm = max_norm
         self.norm_type = norm_type
@@ -164,7 +169,9 @@ class BertEmbedding(torch.nn.Module):
 
         dist_token_update_option = dist_token_update_option or {}
         dist_token_method = dist_token_update_option.get("method", "v0")
-        use_sparse_embedding = dist_token_update_option.get("use_sparse_embedding")
+        use_sparse_embedding = dist_token_update_option.get(
+            "use_sparse_embedding"
+        )
         if use_sparse_embedding is None:
             if not use_dist_token_update:
                 use_sparse_embedding = False
@@ -190,7 +197,10 @@ class BertEmbedding(torch.nn.Module):
                 )
             else:
                 self.token_embedder_tokens = AdaptiveEmbedding(
-                    vocab_size, dim, padding_idx=padding_index, **adaptive_option
+                    vocab_size,
+                    dim,
+                    padding_idx=padding_index,
+                    **adaptive_option,
                 )
 
         self.position_offset = position_offset or 0
@@ -226,11 +236,15 @@ class BertEmbedding(torch.nn.Module):
         dist_token_absent_grad_zero = dist_token_update_option.get(
             "set_absent_grad_zero", True
         )
-        dist_token_clip_only = dist_token_update_option.get("use_clip_only", False)
+        dist_token_clip_only = dist_token_update_option.get(
+            "use_clip_only", False
+        )
         dist_token_grad_by_count = dist_token_update_option.get(
             "avg_grad_by_count", True
         )
-        dist_token_grad_fp32 = dist_token_update_option.get("use_grad_fp32", True)
+        dist_token_grad_fp32 = dist_token_update_option.get(
+            "use_grad_fp32", True
+        )
         self._use_dist_token_update = use_dist_token_update
         self._max_seq_len = max_seq_len
         self._cached_input_ids = None
@@ -257,13 +271,20 @@ class BertEmbedding(torch.nn.Module):
                         return grad
                 cur_ids = F.pad(
                     self._cached_input_ids,
-                    (0, self._max_seq_len - self._cached_input_ids.size(1), 0, 0),
+                    (
+                        0,
+                        self._max_seq_len - self._cached_input_ids.size(1),
+                        0,
+                        0,
+                    ),
                     "constant",
                     -1,
                 )
                 # print(f'local input_ids: {self._cached_input_ids.shape}')
                 self._cached_input_ids = None
-                all_ids = [torch.full_like(cur_ids, -1) for _ in range(world_size)]
+                all_ids = [
+                    torch.full_like(cur_ids, -1) for _ in range(world_size)
+                ]
                 torch.distributed.all_gather(
                     all_ids, cur_ids
                 )  # use `all_gather_object` instead?
@@ -321,7 +342,9 @@ class BertEmbedding(torch.nn.Module):
                     if not dist_token_grad_fp32:
                         i_grad = i_grad.to(device=grad.device)
                     else:
-                        i_grad = i_grad.to(device=grad.device, dtype=torch.float32)
+                        i_grad = i_grad.to(
+                            device=grad.device, dtype=torch.float32
+                        )
                     # print(f'grad after, {i_grad.is_coalesced()}')
                     # i_grad = i_grad.coalesce()
                     # i_indices = i_grad.indices()
@@ -347,7 +370,8 @@ class BertEmbedding(torch.nn.Module):
 
                 cur_seqlen = cur_indices.size(0)
                 all_seqlen = [
-                    torch.tensor([0], device=grad.device) for _ in range(world_size)
+                    torch.tensor([0], device=grad.device)
+                    for _ in range(world_size)
                 ]
                 torch.distributed.all_gather(
                     all_seqlen, torch.tensor([cur_seqlen], device=grad.device)
@@ -380,10 +404,14 @@ class BertEmbedding(torch.nn.Module):
                     cur_idx = cur_indices
                     cur_val = cur_values
 
-                all_ids = [torch.full_like(cur_idx, -1) for _ in range(world_size)]
+                all_ids = [
+                    torch.full_like(cur_idx, -1) for _ in range(world_size)
+                ]
                 torch.distributed.all_gather(all_ids, cur_idx)
 
-                all_grads = [torch.zeros_like(cur_val) for _ in range(world_size)]
+                all_grads = [
+                    torch.zeros_like(cur_val) for _ in range(world_size)
+                ]
                 torch.distributed.all_gather(all_grads, cur_val)
 
                 for i, (idx, val) in enumerate(zip(all_ids, all_grads)):
@@ -445,7 +473,9 @@ class BertEmbedding(torch.nn.Module):
         else:
             embeddings = inputs_embeds
 
-        if (self.token_embedder_positions is not None) and self.add_pos_embedding:
+        if (
+            self.token_embedder_positions is not None
+        ) and self.add_pos_embedding:
             if position_ids is None:
                 # position_ids = self.position_ids[:, :input_ids.size(1)]
                 position_ids = slice_pos_ids(self.position_ids, input_ids)
@@ -454,7 +484,9 @@ class BertEmbedding(torch.nn.Module):
             position_embeddings = self.token_embedder_positions(position_ids)
             embeddings += position_embeddings
 
-        if (self.token_embedder_segments is not None) and self.add_seg_embedding:
+        if (
+            self.token_embedder_segments is not None
+        ) and self.add_seg_embedding:
             if token_type_ids is None:
                 token_type_ids = torch.zeros(
                     input_shape, dtype=torch.long, device=embeddings.device
@@ -564,7 +596,9 @@ class PinyinEmbeddingV2(nn.Module):
             stride=1,
             padding=0,
         )
-        self.fc = nn.Linear(in_features=pinyin_out_dim * 2, out_features=pinyin_out_dim)
+        self.fc = nn.Linear(
+            in_features=pinyin_out_dim * 2, out_features=pinyin_out_dim
+        )
 
     def forward(self, pinyin_ids):
         """
@@ -641,7 +675,9 @@ class BertEmbeddingPinyin(torch.nn.Module):
 
         dist_token_update_option = dist_token_update_option or {}
         dist_token_method = dist_token_update_option.get("method", "v0")
-        use_sparse_embedding = dist_token_update_option.get("use_sparse_embedding")
+        use_sparse_embedding = dist_token_update_option.get(
+            "use_sparse_embedding"
+        )
         if use_sparse_embedding is None:
             if not use_dist_token_update:
                 use_sparse_embedding = False
@@ -667,7 +703,10 @@ class BertEmbeddingPinyin(torch.nn.Module):
                 )
             else:
                 self.token_embedder_tokens = AdaptiveEmbedding(
-                    vocab_size, dim, padding_idx=padding_index, **adaptive_option
+                    vocab_size,
+                    dim,
+                    padding_idx=padding_index,
+                    **adaptive_option,
                 )
 
         self.position_offset = position_offset or 0
@@ -703,11 +742,15 @@ class BertEmbeddingPinyin(torch.nn.Module):
         dist_token_absent_grad_zero = dist_token_update_option.get(
             "set_absent_grad_zero", True
         )
-        dist_token_clip_only = dist_token_update_option.get("use_clip_only", False)
+        dist_token_clip_only = dist_token_update_option.get(
+            "use_clip_only", False
+        )
         dist_token_grad_by_count = dist_token_update_option.get(
             "avg_grad_by_count", True
         )
-        dist_token_grad_fp32 = dist_token_update_option.get("use_grad_fp32", True)
+        dist_token_grad_fp32 = dist_token_update_option.get(
+            "use_grad_fp32", True
+        )
         self._use_dist_token_update = use_dist_token_update
         self._max_seq_len = max_seq_len
         self._cached_input_ids = None
@@ -744,13 +787,20 @@ class BertEmbeddingPinyin(torch.nn.Module):
                         return grad
                 cur_ids = F.pad(
                     self._cached_input_ids,
-                    (0, self._max_seq_len - self._cached_input_ids.size(1), 0, 0),
+                    (
+                        0,
+                        self._max_seq_len - self._cached_input_ids.size(1),
+                        0,
+                        0,
+                    ),
                     "constant",
                     -1,
                 )
                 # print(f'local input_ids: {self._cached_input_ids.shape}')
                 self._cached_input_ids = None
-                all_ids = [torch.full_like(cur_ids, -1) for _ in range(world_size)]
+                all_ids = [
+                    torch.full_like(cur_ids, -1) for _ in range(world_size)
+                ]
                 torch.distributed.all_gather(
                     all_ids, cur_ids
                 )  # use `all_gather_object` instead?
@@ -808,7 +858,9 @@ class BertEmbeddingPinyin(torch.nn.Module):
                     if not dist_token_grad_fp32:
                         i_grad = i_grad.to(device=grad.device)
                     else:
-                        i_grad = i_grad.to(device=grad.device, dtype=torch.float32)
+                        i_grad = i_grad.to(
+                            device=grad.device, dtype=torch.float32
+                        )
                     # print(f'grad after, {i_grad.is_coalesced()}')
                     # i_grad = i_grad.coalesce()
                     # i_indices = i_grad.indices()
@@ -834,7 +886,8 @@ class BertEmbeddingPinyin(torch.nn.Module):
 
                 cur_seqlen = cur_indices.size(0)
                 all_seqlen = [
-                    torch.tensor([0], device=grad.device) for _ in range(world_size)
+                    torch.tensor([0], device=grad.device)
+                    for _ in range(world_size)
                 ]
                 torch.distributed.all_gather(
                     all_seqlen, torch.tensor([cur_seqlen], device=grad.device)
@@ -867,10 +920,14 @@ class BertEmbeddingPinyin(torch.nn.Module):
                     cur_idx = cur_indices
                     cur_val = cur_values
 
-                all_ids = [torch.full_like(cur_idx, -1) for _ in range(world_size)]
+                all_ids = [
+                    torch.full_like(cur_idx, -1) for _ in range(world_size)
+                ]
                 torch.distributed.all_gather(all_ids, cur_idx)
 
-                all_grads = [torch.zeros_like(cur_val) for _ in range(world_size)]
+                all_grads = [
+                    torch.zeros_like(cur_val) for _ in range(world_size)
+                ]
                 torch.distributed.all_gather(all_grads, cur_val)
 
                 for i, (idx, val) in enumerate(zip(all_ids, all_grads)):
@@ -936,7 +993,9 @@ class BertEmbeddingPinyin(torch.nn.Module):
         concat_token_embeddings = torch.cat((embeddings, pinyin_embeddings), 2)
         embeddings = self.map_fc(concat_token_embeddings)
 
-        if (self.token_embedder_positions is not None) and self.add_pos_embedding:
+        if (
+            self.token_embedder_positions is not None
+        ) and self.add_pos_embedding:
             if position_ids is None:
                 # position_ids = self.position_ids[:, :input_ids.size(1)]
                 position_ids = slice_pos_ids(self.position_ids, input_ids)
@@ -945,7 +1004,9 @@ class BertEmbeddingPinyin(torch.nn.Module):
             position_embeddings = self.token_embedder_positions(position_ids)
             embeddings += position_embeddings
 
-        if (self.token_embedder_segments is not None) and self.add_seg_embedding:
+        if (
+            self.token_embedder_segments is not None
+        ) and self.add_seg_embedding:
             if token_type_ids is None:
                 token_type_ids = torch.zeros(
                     input_shape, dtype=torch.long, device=embeddings.device
@@ -1044,7 +1105,6 @@ class AdaptiveEmbedding(nn.Module):
 
         cutoff_values = [0] + self.cutoffs
         for i in range(len(cutoff_values) - 1):
-
             low_idx = cutoff_values[i]
             high_idx = cutoff_values[i + 1]
 
@@ -1121,7 +1181,6 @@ class LMPredictionHead(torch.nn.Module):
 
 
 class BertPreTrainingHeads(torch.nn.Module):
-
     lm_prediction_head = LMPredictionHead
 
     def __init__(self, option):

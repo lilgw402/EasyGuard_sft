@@ -17,10 +17,16 @@
 from collections import OrderedDict
 from typing import List, Union
 
-from . import MODELZOO_CONFIG, MODEL_CONFIG_NAMES
-from ...utils import CONFIG_NAME, logging, lazy_model_import, cache_file, file_read
 from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
+from ...utils import (
+    CONFIG_NAME,
+    cache_file,
+    file_read,
+    lazy_model_import,
+    logging,
+)
+from . import MODEL_CONFIG_NAMES, MODELZOO_CONFIG
 
 # TODO (junwei.Dong): 需要简化一下configuration_auto的逻辑
 
@@ -66,7 +72,9 @@ class AutoConfig:
         else:
             from .configuration_auto_hf import HFAutoConfig
 
-            return HFAutoConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
+            return HFAutoConfig.from_pretrained(
+                pretrained_model_name_or_path, **kwargs
+            )
 
         if backend_default_flag:
             model_config_name_tuple = MODELZOO_CONFIG[model_type]["config"]

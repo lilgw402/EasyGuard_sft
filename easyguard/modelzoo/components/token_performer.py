@@ -2,15 +2,17 @@
 Take Performer as T2T Transformer
 """
 import math
+
 import torch
 import torch.nn as nn
 
-__all__ = ['TokenPerformer']
+__all__ = ["TokenPerformer"]
 
 
 class TokenPerformer(nn.Module):
-    def __init__(self, dim, in_dim, head_cnt=1,
-                 kernel_ratio=0.5, dp1=0.1, dp2=0.1):
+    def __init__(
+        self, dim, in_dim, head_cnt=1, kernel_ratio=0.5, dp1=0.1, dp2=0.1
+    ):
         super().__init__()
         self.emb = in_dim * head_cnt  # we use 1, so it is no need here
         self.kqv = nn.Linear(dim, 3 * self.emb)
@@ -30,8 +32,9 @@ class TokenPerformer(nn.Module):
 
         self.m = int(self.emb * kernel_ratio)
         self.w = torch.randn(self.m, self.emb)
-        self.w = nn.Parameter(nn.init.orthogonal_(
-            self.w) * math.sqrt(self.m), requires_grad=False)
+        self.w = nn.Parameter(
+            nn.init.orthogonal_(self.w) * math.sqrt(self.m), requires_grad=False
+        )
 
     def prm_exp(self, x):
         # part of the function is borrow from
@@ -44,7 +47,7 @@ class TokenPerformer(nn.Module):
         # SM(x, y) = E_w[exp(w^T x - |x|/2) exp(w^T y - |y|/2)]
         # therefore return exp(w^Tx - |x|/2)/sqrt(m)
         xd = ((x * x).sum(dim=-1, keepdim=True)).repeat(1, 1, self.m) / 2
-        wtx = torch.einsum('bti,mi->btm', x.float(), self.w)
+        wtx = torch.einsum("bti,mi->btm", x.float(), self.w)
 
         return torch.exp(wtx - xd) / math.sqrt(self.m)
 
@@ -52,10 +55,11 @@ class TokenPerformer(nn.Module):
         k, q, v = torch.split(self.kqv(x), self.emb, dim=-1)
         kp, qp = self.prm_exp(k), self.prm_exp(q)  # (B, T, m), (B, T, m)
         # (B, T, m) * (B, m) -> (B, T, 1)
-        D = torch.einsum('bti,bi->bt', qp, kp.sum(dim=1)).unsqueeze(dim=2)
-        kptv = torch.einsum('bin,bim->bnm', v.float(), kp)  # (B, emb, m)
-        y = torch.einsum('bti,bni->btn', qp, kptv) / \
-            (D.repeat(1, 1, self.emb) + self.epsilon)  # (B, T, emb)/Diag
+        D = torch.einsum("bti,bi->bt", qp, kp.sum(dim=1)).unsqueeze(dim=2)
+        kptv = torch.einsum("bin,bim->bnm", v.float(), kp)  # (B, emb, m)
+        y = torch.einsum("bti,bni->btn", qp, kptv) / (
+            D.repeat(1, 1, self.emb) + self.epsilon
+        )  # (B, T, emb)/Diag
         # skip connection
         # same as token_transformer in T2T layer, use v as skip connection
         y = v + self.dp(self.proj(y))

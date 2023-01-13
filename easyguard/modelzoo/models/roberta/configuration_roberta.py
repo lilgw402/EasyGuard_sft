@@ -18,8 +18,8 @@
 from ....utils import logging
 from ..bert.configuration_bert import BertConfig
 
-
 logger = logging.get_logger(__name__)
+
 
 class RobertaConfig(BertConfig):
     r"""
@@ -37,6 +37,13 @@ class RobertaConfig(BertConfig):
     """
     model_type = "roberta"
 
-    def __init__(self, pad_token_id=1, bos_token_id=0, eos_token_id=2, **kwargs):
+    def __init__(
+        self, pad_token_id=1, bos_token_id=0, eos_token_id=2, **kwargs
+    ):
         """Constructs RobertaConfig."""
-        super().__init__(pad_token_id=pad_token_id, bos_token_id=bos_token_id, eos_token_id=eos_token_id, **kwargs)
+        super().__init__(
+            pad_token_id=pad_token_id,
+            bos_token_id=bos_token_id,
+            eos_token_id=eos_token_id,
+            **kwargs,
+        )

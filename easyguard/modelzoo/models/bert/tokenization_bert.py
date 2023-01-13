@@ -20,14 +20,13 @@ import os
 import unicodedata
 from typing import List, Optional, Tuple
 
+from ....utils import logging
 from ...tokenization_utils import (
     PreTrainedTokenizer,
     _is_control,
     _is_punctuation,
     _is_whitespace,
 )
-from ....utils import logging
-
 
 logger = logging.get_logger(__name__)
 
@@ -183,7 +182,6 @@ class BertTokenizer(PreTrainedTokenizer):
             for token in self.basic_tokenizer.tokenize(
                 text, never_split=self.all_special_tokens
             ):
-
                 # If the token is part of the never_split set
                 if token in self.basic_tokenizer.never_split:
                     split_tokens.append(token)
@@ -261,7 +259,13 @@ class BertTokenizer(PreTrainedTokenizer):
             )
 
         if token_ids_1 is not None:
-            return [1] + ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
+            return (
+                [1]
+                + ([0] * len(token_ids_0))
+                + [1]
+                + ([0] * len(token_ids_1))
+                + [1]
+            )
         return [1] + ([0] * len(token_ids_0)) + [1]
 
     def create_token_type_ids_from_sequences(
@@ -309,7 +313,9 @@ class BertTokenizer(PreTrainedTokenizer):
                 filename_prefix + "-" if filename_prefix else ""
             ) + save_directory
         with open(vocab_file, "w", encoding="utf-8") as writer:
-            for token, token_index in sorted(self.vocab.items(), key=lambda kv: kv[1]):
+            for token, token_index in sorted(
+                self.vocab.items(), key=lambda kv: kv[1]
+            ):
                 if index != token_index:
                     logger.warning(
                         f"Saving vocabulary to {vocab_file}: vocabulary indices are not consecutive."

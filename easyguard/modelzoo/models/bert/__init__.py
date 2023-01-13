@@ -15,15 +15,15 @@
 
 from typing import TYPE_CHECKING
 
-from ....utils import (
-    _LazyModule,
-    is_tokenizers_available,
-    is_torch_available,
-)
+from ....utils import _LazyModule, is_tokenizers_available, is_torch_available
 
 _import_structure = {
     "configuration_bert": ["BertConfig"],
-    "tokenization_bert": ["BasicTokenizer", "BertTokenizer", "WordpieceTokenizer"],
+    "tokenization_bert": [
+        "BasicTokenizer",
+        "BertTokenizer",
+        "WordpieceTokenizer",
+    ],
 }
 
 if is_tokenizers_available():
@@ -48,14 +48,17 @@ if is_torch_available():
 if TYPE_CHECKING:
     # from .configuration_bert import BERT_PRETRAINED_CONFIG_ARCHIVE_MAP, BertConfig
     from .configuration_bert import BertConfig
-    from .tokenization_bert import BasicTokenizer, BertTokenizer, WordpieceTokenizer
+    from .tokenization_bert import (
+        BasicTokenizer,
+        BertTokenizer,
+        WordpieceTokenizer,
+    )
 
     if is_tokenizers_available():
         from .tokenization_bert_fast import BertTokenizerFast
 
     if is_torch_available():
-        from .modeling_bert import (
-            # BERT_PRETRAINED_MODEL_ARCHIVE_LIST,
+        from .modeling_bert import (  # BERT_PRETRAINED_MODEL_ARCHIVE_LIST,; load_tf_weights_in_bert,
             BertForMaskedLM,
             BertForMultipleChoice,
             BertForNextSentencePrediction,
@@ -67,7 +70,6 @@ if TYPE_CHECKING:
             BertLMHeadModel,
             BertModel,
             BertPreTrainedModel,
-            # load_tf_weights_in_bert,
         )
 
 else:

@@ -32,7 +32,6 @@ from ..utils import (
     logging,
 )
 
-
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
@@ -129,7 +128,9 @@ def check_imports(filename):
     # Imports of the form `import xxx`
     imports = re.findall(r"^\s*import\s+(\S+)\s*$", content, flags=re.MULTILINE)
     # Imports of the form `from xxx import yyy`
-    imports += re.findall(r"^\s*from\s+(\S+)\s+import", content, flags=re.MULTILINE)
+    imports += re.findall(
+        r"^\s*from\s+(\S+)\s+import", content, flags=re.MULTILINE
+    )
     # Only keep the top-level module
     imports = [imp.split(".")[0] for imp in imports if not imp.startswith(".")]
 

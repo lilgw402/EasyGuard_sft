@@ -12,11 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
 import collections
 import unicodedata
-
 
 from ...tokenization_utils_base import TokenizerBase
 
@@ -325,7 +329,11 @@ class WordpieceTokenizer(object):
     """Runs WordPiece tokenization."""
 
     def __init__(
-        self, vocab, greedy_sharp=True, unk_token="[UNK]", max_input_chars_per_word=1000
+        self,
+        vocab,
+        greedy_sharp=True,
+        unk_token="[UNK]",
+        max_input_chars_per_word=100,
     ):
         self.vocab = vocab
         self.greedy_sharp = greedy_sharp

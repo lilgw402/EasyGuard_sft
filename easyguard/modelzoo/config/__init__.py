@@ -1,7 +1,6 @@
 import os
-
-from typing import Dict, Any, List, Optional
 from collections import OrderedDict
+from typing import Any, Dict, List, Optional
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
 MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
@@ -17,7 +16,6 @@ config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多�
 模型注册: 直接将自主开发的模型一次注入到models.yaml文件里即可调用, 无需在auto各个模块进行配置
 模型开发: 在模型的__init__函数里只需要利用typing.TYPE_CHECKING来辅助代码提示即可,无需手动lazyimport, 可参照deberta模型进行开发
 模型懒加载: 不再需要各种mapping的存在, 因为models.yaml已经把各自模型的配置归类在一起了, 所以直接借助models.yaml即可轻松完成模块按需懒加载使用
-
 """
 
 
@@ -62,8 +60,9 @@ class ModelZooYaml(YamlConfig):
         leafs = {}
         prefix = MODELZOO_NAME
 
-        def dfs_leafs(data: Dict[str, Any], deep: int, leafs: List[str], prefix: str):
-
+        def dfs_leafs(
+            data: Dict[str, Any], deep: int, leafs: List[str], prefix: str
+        ):
             global YAML_DEEP
             deep_ = deep + 1
             for key_item, value in data.items():
@@ -138,7 +137,9 @@ class ModelZooYaml(YamlConfig):
                 if model_value_ is not None:
                     mapping[model_] = model_value_
 
-        mapping_list = [(key_item, value) for key_item, value in mapping.items()]
+        mapping_list = [
+            (key_item, value) for key_item, value in mapping.items()
+        ]
 
         return OrderedDict(mapping_list)
 
