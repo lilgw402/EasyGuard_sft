@@ -20,15 +20,18 @@ from torch import _softmax_backward_data, nn
 
 from ..utils import logging
 
-
 ALL_LAYERNORM_LAYERS = [nn.LayerNorm]
 
 logger = logging.get_logger(__name__)
 
-parsed_torch_version_base = version.parse(version.parse(torch.__version__).base_version)
+parsed_torch_version_base = version.parse(
+    version.parse(torch.__version__).base_version
+)
 
 is_torch_less_than_1_8 = parsed_torch_version_base < version.parse("1.8.0")
-is_torch_greater_or_equal_than_1_10 = parsed_torch_version_base >= version.parse("1.10")
+is_torch_greater_or_equal_than_1_10 = (
+    parsed_torch_version_base >= version.parse("1.10")
+)
 is_torch_less_than_1_11 = parsed_torch_version_base < version.parse("1.11")
 
 
@@ -51,7 +54,9 @@ def softmax_backward_data(parent, grad_output, output, dim, self):
     if is_torch_less_than_1_11:
         return _softmax_backward_data(grad_output, output, parent.dim, self)
     else:
-        return _softmax_backward_data(grad_output, output, parent.dim, self.dtype)
+        return _softmax_backward_data(
+            grad_output, output, parent.dim, self.dtype
+        )
 
 
 def prune_linear_layer(
@@ -79,9 +84,9 @@ def prune_linear_layer(
             b = layer.bias[index].clone().detach()
     new_size = list(layer.weight.size())
     new_size[dim] = len(index)
-    new_layer = nn.Linear(new_size[1], new_size[0], bias=layer.bias is not None).to(
-        layer.weight.device
-    )
+    new_layer = nn.Linear(
+        new_size[1], new_size[0], bias=layer.bias is not None
+    ).to(layer.weight.device)
     new_layer.weight.requires_grad = False
     new_layer.weight.copy_(W.contiguous())
     new_layer.weight.requires_grad = True
@@ -118,7 +123,9 @@ class Conv1D(nn.Module):
         return x
 
 
-def prune_conv1d_layer(layer: Conv1D, index: torch.LongTensor, dim: int = 1) -> Conv1D:
+def prune_conv1d_layer(
+    layer: Conv1D, index: torch.LongTensor, dim: int = 1
+) -> Conv1D:
     """
     Prune a Conv1D layer to keep only entries in index. A Conv1D work as a Linear layer (see e.g. BERT) but the weights
     are transposed.
@@ -152,7 +159,9 @@ def prune_conv1d_layer(layer: Conv1D, index: torch.LongTensor, dim: int = 1) -> 
 
 
 def prune_layer(
-    layer: Union[nn.Linear, Conv1D], index: torch.LongTensor, dim: Optional[int] = None
+    layer: Union[nn.Linear, Conv1D],
+    index: torch.LongTensor,
+    dim: Optional[int] = None,
 ) -> Union[nn.Linear, Conv1D]:
     """
     Prune a Conv1D or linear layer to keep only entries in index.
@@ -216,7 +225,9 @@ def apply_chunking_to_forward(
         return apply_chunking_to_forward(self.forward_chunk, self.chunk_size_lm_head, self.seq_len_dim, hidden_states)
     ```"""
 
-    assert len(input_tensors) > 0, f"{input_tensors} has to be a tuple/list of tensors"
+    assert (
+        len(input_tensors) > 0
+    ), f"{input_tensors} has to be a tuple/list of tensors"
 
     # inspect.signature exist since python 3.5 and is a python method -> no problem with backward compatibility
     num_args_in_forward_chunk_fn = len(inspect.signature(forward_fn).parameters)
@@ -260,7 +271,10 @@ def apply_chunking_to_forward(
 
 
 def find_pruneable_heads_and_indices(
-    heads: List[int], n_heads: int, head_size: int, already_pruned_heads: Set[int]
+    heads: List[int],
+    n_heads: int,
+    head_size: int,
+    already_pruned_heads: Set[int],
 ) -> Tuple[Set[int], torch.LongTensor]:
     """
     Finds the heads and their indices taking `already_pruned_heads` into account.
@@ -288,7 +302,8 @@ def find_pruneable_heads_and_indices(
 
 
 def meshgrid(
-    *tensors: Union[torch.Tensor, List[torch.Tensor]], indexing: Optional[str] = None
+    *tensors: Union[torch.Tensor, List[torch.Tensor]],
+    indexing: Optional[str] = None,
 ) -> Tuple[torch.Tensor, ...]:
     """
     Wrapper around torch.meshgrid to avoid warning messages about the introduced `indexing` argument.

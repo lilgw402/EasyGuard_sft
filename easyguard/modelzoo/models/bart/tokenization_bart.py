@@ -20,9 +20,8 @@ from typing import List, Optional, Tuple
 
 import regex as re
 
-from ...tokenization_utils import AddedToken, PreTrainedTokenizer
 from ....utils import logging
-
+from ...tokenization_utils import AddedToken, PreTrainedTokenizer
 
 logger = logging.get_logger(__name__)
 
@@ -282,7 +281,9 @@ class BartTokenizer(PreTrainedTokenizer):
             return token
 
         while True:
-            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf")))
+            bigram = min(
+                pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf"))
+            )
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -298,7 +299,11 @@ class BartTokenizer(PreTrainedTokenizer):
                     new_word.extend(word[i:j])
                     i = j
 
-                if word[i] == first and i < len(word) - 1 and word[i + 1] == second:
+                if (
+                    word[i] == first
+                    and i < len(word) - 1
+                    and word[i + 1] == second
+                ):
                     new_word.append(first + second)
                     i += 2
                 else:
@@ -321,7 +326,9 @@ class BartTokenizer(PreTrainedTokenizer):
             token = "".join(
                 self.byte_encoder[b] for b in token.encode("utf-8")
             )  # Maps all our bytes to unicode strings, avoiding control tokens of the BPE (spaces in our case)
-            bpe_tokens.extend(bpe_token for bpe_token in self.bpe(token).split(" "))
+            bpe_tokens.extend(
+                bpe_token for bpe_token in self.bpe(token).split(" ")
+            )
         return bpe_tokens
 
     def _convert_token_to_id(self, token):
@@ -344,7 +351,9 @@ class BartTokenizer(PreTrainedTokenizer):
         self, save_directory: str, filename_prefix: Optional[str] = None
     ) -> Tuple[str]:
         if not os.path.isdir(save_directory):
-            logger.error(f"Vocabulary path ({save_directory}) should be a directory")
+            logger.error(
+                f"Vocabulary path ({save_directory}) should be a directory"
+            )
             return
         vocab_file = os.path.join(
             save_directory,
@@ -359,7 +368,9 @@ class BartTokenizer(PreTrainedTokenizer):
 
         with open(vocab_file, "w", encoding="utf-8") as f:
             f.write(
-                json.dumps(self.encoder, indent=2, sort_keys=True, ensure_ascii=False)
+                json.dumps(
+                    self.encoder, indent=2, sort_keys=True, ensure_ascii=False
+                )
                 + "\n"
             )
 
@@ -435,7 +446,13 @@ class BartTokenizer(PreTrainedTokenizer):
 
         if token_ids_1 is None:
             return [1] + ([0] * len(token_ids_0)) + [1]
-        return [1] + ([0] * len(token_ids_0)) + [1, 1] + ([0] * len(token_ids_1)) + [1]
+        return (
+            [1]
+            + ([0] * len(token_ids_0))
+            + [1, 1]
+            + ([0] * len(token_ids_1))
+            + [1]
+        )
 
     def create_token_type_ids_from_sequences(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
@@ -460,7 +477,9 @@ class BartTokenizer(PreTrainedTokenizer):
             return len(cls + token_ids_0 + sep) * [0]
         return len(cls + token_ids_0 + sep + sep + token_ids_1 + sep) * [0]
 
-    def prepare_for_tokenization(self, text, is_split_into_words=False, **kwargs):
+    def prepare_for_tokenization(
+        self, text, is_split_into_words=False, **kwargs
+    ):
         add_prefix_space = kwargs.pop("add_prefix_space", self.add_prefix_space)
         if (is_split_into_words or add_prefix_space) and (
             len(text) > 0 and not text[0].isspace()

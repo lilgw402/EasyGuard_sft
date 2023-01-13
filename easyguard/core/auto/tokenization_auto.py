@@ -18,19 +18,16 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
 from ...modelzoo.tokenization_utils_base import TOKENIZER_CONFIG_FILE
-from ...utils import logging, sha256, lazy_model_import, cache_file, file_read
-from .auto_factory import _LazyAutoMapping
-from .configuration_auto import (
-    CONFIG_MAPPING_NAMES,
-    AutoConfig,
-)
+from ...utils import cache_file, file_read, lazy_model_import, logging, sha256
 from . import (
     BACKENDS,
-    MODELZOO_CONFIG,
     MODEL_ARCHIVE_CONFIG,
-    VOCAB_NAME,
+    MODELZOO_CONFIG,
     TOKENIZER_NAMES,
+    VOCAB_NAME,
 )
+from .auto_factory import _LazyAutoMapping
+from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
 
 logger = logging.get_logger(__name__)
 
@@ -41,9 +38,13 @@ if TYPE_CHECKING:
         str, Tuple[Optional[str], Optional[str]]
     ] = OrderedDict()
 else:
-    TOKENIZER_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("tokenizer", "tokenizer_fast")
+    TOKENIZER_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping(
+        "tokenizer", "tokenizer_fast"
+    )
 
-TOKENIZER_MAPPING = _LazyAutoMapping(CONFIG_MAPPING_NAMES, TOKENIZER_MAPPING_NAMES)
+TOKENIZER_MAPPING = _LazyAutoMapping(
+    CONFIG_MAPPING_NAMES, TOKENIZER_MAPPING_NAMES
+)
 
 CONFIG_TO_TYPE = {v: k for k, v in CONFIG_MAPPING_NAMES.items()}
 
@@ -61,7 +62,9 @@ class AutoTokenizer:
         ...
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: str, *inputs, **kwargs):
+    def from_pretrained(
+        cls, pretrained_model_name_or_path: str, *inputs, **kwargs
+    ):
         """
 
         Parameters

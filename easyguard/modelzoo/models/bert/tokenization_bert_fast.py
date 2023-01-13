@@ -19,14 +19,16 @@ from typing import List, Optional, Tuple
 
 from tokenizers import normalizers
 
-from ...tokenization_utils_fast import PreTrainedTokenizerFast
 from ....utils import logging
+from ...tokenization_utils_fast import PreTrainedTokenizerFast
 from .tokenization_bert import BertTokenizer
-
 
 logger = logging.get_logger(__name__)
 
-VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt", "tokenizer_file": "tokenizer.json"}
+VOCAB_FILES_NAMES = {
+    "vocab_file": "vocab.txt",
+    "tokenizer_file": "tokenizer.json",
+}
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "hfl/chinese-roberta-wwm-ext": 512,
@@ -101,7 +103,7 @@ class BertTokenizerFast(PreTrainedTokenizerFast):
         mask_token="[MASK]",
         tokenize_chinese_chars=True,
         strip_accents=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             vocab_file,
@@ -117,10 +119,13 @@ class BertTokenizerFast(PreTrainedTokenizerFast):
             **kwargs,
         )
 
-        pre_tok_state = json.loads(self.backend_tokenizer.normalizer.__getstate__())
+        pre_tok_state = json.loads(
+            self.backend_tokenizer.normalizer.__getstate__()
+        )
         if (
             pre_tok_state.get("lowercase", do_lower_case) != do_lower_case
-            or pre_tok_state.get("strip_accents", strip_accents) != strip_accents
+            or pre_tok_state.get("strip_accents", strip_accents)
+            != strip_accents
         ):
             pre_tok_class = getattr(normalizers, pre_tok_state.pop("type"))
             pre_tok_state["lowercase"] = do_lower_case

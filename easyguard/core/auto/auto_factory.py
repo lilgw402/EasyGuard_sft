@@ -16,20 +16,20 @@
 import importlib
 from collections import OrderedDict
 
-from ...modelzoo.configuration_utils import PretrainedConfig, ConfigBase
-from ...modelzoo.modeling_utils import ModelBase
+from ...modelzoo.configuration_utils import ConfigBase, PretrainedConfig
 from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
-from ...utils import copy_func, logging, lazy_model_import, cache_file
-from .configuration_auto_hf import model_type_to_module_name
-from .configuration_auto import AutoConfig
+from ...modelzoo.modeling_utils import ModelBase
+from ...utils import cache_file, copy_func, lazy_model_import, logging
 from . import (
-    HF_PATH,
     BACKENDS,
-    MODELZOO_CONFIG,
+    HF_PATH,
     MODEL_ARCHIVE_CONFIG,
-    MODEL_SAVE_NAMES,
     MODEL_CONFIG_NAMES,
+    MODEL_SAVE_NAMES,
+    MODELZOO_CONFIG,
 )
+from .configuration_auto import AutoConfig
+from .configuration_auto_hf import model_type_to_module_name
 
 # TODO (junwei.Dong): 需要简化一下工厂函数的逻辑
 
@@ -98,7 +98,9 @@ class HFBaseAutoModelClass:
         )
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+    def from_pretrained(
+        cls, pretrained_model_name_or_path, *model_args, **kwargs
+    ):
         config = kwargs.pop("config", None)
         trust_remote_code = kwargs.pop("trust_remote_code", False)
         kwargs["_from_auto"] = True
@@ -113,7 +115,9 @@ class HFBaseAutoModelClass:
             "use_auth_token",
         ]
         hub_kwargs = {
-            name: kwargs.pop(name) for name in hub_kwargs_names if name in kwargs
+            name: kwargs.pop(name)
+            for name in hub_kwargs_names
+            if name in kwargs
         }
         if not isinstance(config, PretrainedConfig):
             config, kwargs = AutoConfig.from_pretrained(
@@ -205,7 +209,9 @@ class _BaseAutoModelClass:
         ...
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: str, *model_args, **kwargs):
+    def from_pretrained(
+        cls, pretrained_model_name_or_path: str, *model_args, **kwargs
+    ):
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
             raise KeyError(pretrained_model_name_or_path)
@@ -237,11 +243,14 @@ class _BaseAutoModelClass:
 
             if backend_default_flag == True:
                 model_name_tuple = MODELZOO_CONFIG[model_type][cls._model_key]
-                model_module_package, model_module_name = MODELZOO_CONFIG.to_module(
-                    model_name_tuple
-                )
+                (
+                    model_module_package,
+                    model_module_name,
+                ) = MODELZOO_CONFIG.to_module(model_name_tuple)
                 # obtain model class
-                model_class = lazy_model_import(model_module_package, model_module_name)
+                model_class = lazy_model_import(
+                    model_module_package, model_module_name
+                )
 
                 extra_dict = {
                     "model_type": model_type,
@@ -255,7 +264,9 @@ class _BaseAutoModelClass:
                 model_config_class_.config_update_for_pretrained(**kwargs)
                 # obtain model weight file path
                 model_weight_file_path = cache_file(
-                    pretrained_model_name_or_path, MODEL_SAVE_NAMES, **extra_dict
+                    pretrained_model_name_or_path,
+                    MODEL_SAVE_NAMES,
+                    **extra_dict,
                 )
                 # instantiate model
                 model_: ModelBase = model_class(**model_config_class_.asdict())
@@ -337,7 +348,9 @@ class _LazyAutoMapping(OrderedDict):
             return self._load_attr_from_module(model_type, model_name)
 
         # Maybe there was several model types associated with this config.
-        model_types = [k for k, v in self._config_mapping.items() if v == key.__name__]
+        model_types = [
+            k for k, v in self._config_mapping.items() if v == key.__name__
+        ]
         for mtype in model_types:
             if mtype in self._model_mapping:
                 model_name = self._model_mapping[mtype]
@@ -410,9 +423,14 @@ class _LazyAutoMapping(OrderedDict):
         """
         Register a new model in this mapping.
         """
-        if hasattr(key, "__name__") and key.__name__ in self._reverse_config_mapping:
+        if (
+            hasattr(key, "__name__")
+            and key.__name__ in self._reverse_config_mapping
+        ):
             model_type = self._reverse_config_mapping[key.__name__]
             if model_type in self._model_mapping.keys():
-                raise ValueError(f"'{key}' is already used by a Transformers model.")
+                raise ValueError(
+                    f"'{key}' is already used by a Transformers model."
+                )
 
         self._extra_content[key] = value

@@ -1,24 +1,27 @@
-import json
 import copy
-import six
+import json
 import logging
+
+import six
 
 
 class DebertaConfig(object):
-    def __init__(self,
-                 vocab_size=145608,
-                 hidden_size=768,
-                 num_hidden_layers=6,
-                 num_attention_heads=16,
-                 intermediate_size=3072,
-                 pad_token_id=2,
-                 hidden_act="gelu",
-                 hidden_dropout_prob=0.1,
-                 attention_probs_dropout_prob=0.1,
-                 max_position_embeddings=512,
-                 type_vocab_size=2,
-                 json_object=1e-6,
-                 initializer_range=0.02):
+    def __init__(
+        self,
+        vocab_size=145608,
+        hidden_size=768,
+        num_hidden_layers=6,
+        num_attention_heads=16,
+        intermediate_size=3072,
+        pad_token_id=2,
+        hidden_act="gelu",
+        hidden_dropout_prob=0.1,
+        attention_probs_dropout_prob=0.1,
+        max_position_embeddings=512,
+        type_vocab_size=2,
+        json_object=1e-6,
+        initializer_range=0.02,
+    ):
         """Constructs BertConfig.
         Args:
           vocab_size: Vocabulary size of `inputs_ids` in `BertModel`.
@@ -59,8 +62,8 @@ class DebertaConfig(object):
     def from_dict(cls, json_object):
         """Constructs a `BertConfig` from a Python dictionary of parameters."""
         config = DebertaConfig(vocab_size=None)
-        json_object = json_object['model']
-        for (key, value) in six.iteritems(json_object):
+        json_object = json_object["model"]
+        for key, value in six.iteritems(json_object):
             config.__dict__[key] = value
         return config
 
@@ -68,7 +71,7 @@ class DebertaConfig(object):
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
         """从json配置文件读取配置信息"""
-        with open(json_file, 'r') as reader:
+        with open(json_file, "r") as reader:
             text = reader.read()
         logging.info(f"成功导入BERT配置文件 {json_file}")
         return cls.from_dict(json.loads(text))

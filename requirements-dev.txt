@@ -6,3 +6,4 @@ byted-dataloader==0.3.1
 bytedtitan==0.0.4
 byted-wandb -i https://bytedpypi.byted.org/simple
 sentencepiece==0.1.97
+pre-commit==2.21.0

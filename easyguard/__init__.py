@@ -8,5 +8,7 @@ from .utils import EASYGUARD_CACHE
 # set the easyguard cache directory
 os.environ["EASYGUARD_CACHE"] = EASYGUARD_CACHE
 
+from .modelzoo.config import MODELZOO_CONFIG
+
 # This line will be programatically read/write by setup.py.
 # Leave them at the bottom of this file and don't touch them.

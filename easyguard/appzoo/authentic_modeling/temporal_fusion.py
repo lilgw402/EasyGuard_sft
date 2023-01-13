@@ -4,16 +4,22 @@ import torch.nn.functional as F
 
 
 class TemporalFusion(nn.Module):
-    def __init__(self, pooling_type='avg', in_channels=2048, num_segments=3):
+    def __init__(self, pooling_type="avg", in_channels=2048, num_segments=3):
         super(TemporalFusion, self).__init__()
 
         self.pooling_type = pooling_type
         self.num_segments = num_segments
         self.out_channels = in_channels
-        if self.pooling_type == 'avg-max':
+        if self.pooling_type == "avg-max":
             self.out_channels *= 2
-        elif self.pooling_type == 'netvlad':
-            self.netvlad = NeXtVLAD(dim=in_channels, num_clusters=8, lamb=2, groups=16, max_frames=num_segments) # num_clusters * (lamb*dim/groups)
+        elif self.pooling_type == "netvlad":
+            self.netvlad = NeXtVLAD(
+                dim=in_channels,
+                num_clusters=8,
+                lamb=2,
+                groups=16,
+                max_frames=num_segments,
+            )  # num_clusters * (lamb*dim/groups)
 
     def forward(self, x):
         # if isinstance(x, (tuple, list)):
@@ -21,22 +27,30 @@ class TemporalFusion(nn.Module):
         # print(x.size())
         if x.dim() == 2:  # batch_size*num_segments, dim_feature
             input_shape = x.size()
-            x = x.view(torch.div(input_shape[0], self.num_segments, rounding_mode='trunc'), self.num_segments, -1)
-        assert x.dim() == 3, f'Illegal input for temporal fusion with dim {x.dim()}'
+            x = x.view(
+                torch.div(
+                    input_shape[0], self.num_segments, rounding_mode="trunc"
+                ),
+                self.num_segments,
+                -1,
+            )
+        assert (
+            x.dim() == 3
+        ), f"Illegal input for temporal fusion with dim {x.dim()}"
 
-        if self.pooling_type == 'avg':
+        if self.pooling_type == "avg":
             output = x.mean(dim=1, keepdim=False)
-        elif self.pooling_type == 'max':
+        elif self.pooling_type == "max":
             output, _ = x.max(dim=1, keepdim=False)
-        elif self.pooling_type == 'avg-max':
+        elif self.pooling_type == "avg-max":
             output_mean = x.mean(dim=1, keepdim=False)
             output_max, _ = x.max(dim=1, keepdim=False)
             output = torch.cat([output_mean, output_max], axis=1)
-        elif self.pooling_type == 'avg+max':
+        elif self.pooling_type == "avg+max":
             output_mean = x.mean(dim=1, keepdim=False)
             output_max, _ = x.max(dim=1, keepdim=False)
             output = output_mean + output_max
-        elif self.pooling_type == 'netvlad':
+        elif self.pooling_type == "netvlad":
             output = self.netvlad(x)
         else:
             raise ValueError
@@ -58,7 +72,9 @@ class FramewiseTemporalFusion(nn.Module):
 class NeXtVLAD(nn.Module):
     """NeXtVLAD layer implementation"""
 
-    def __init__(self, dim=1024, num_clusters=64, lamb=2, groups=8, max_frames=300):
+    def __init__(
+        self, dim=1024, num_clusters=64, lamb=2, groups=8, max_frames=300
+    ):
         super(NeXtVLAD, self).__init__()
         self.num_clusters = num_clusters
         self.dim = dim
@@ -72,7 +88,9 @@ class NeXtVLAD(nn.Module):
         self.fc_gk = nn.Linear(lamb * dim, self.G * self.K)
         # attention over groups FC
         self.fc_g = nn.Linear(lamb * dim, self.G)
-        self.cluster_weights2 = nn.Parameter(torch.rand(1, self.group_size, self.K))
+        self.cluster_weights2 = nn.Parameter(
+            torch.rand(1, self.group_size, self.K)
+        )
 
         self.bn0 = nn.BatchNorm1d(max_frames)
         self.bn1 = nn.BatchNorm1d(1)
@@ -138,16 +156,21 @@ class NeXtVLAD(nn.Module):
 
         return vlad
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     visual_fusion_config = {
-        'pooling_type': 'netvlad',
-        'output_dim': 1024,
-        'num_frames': 4
+        "pooling_type": "netvlad",
+        "output_dim": 1024,
+        "num_frames": 4,
     }
-    model = TemporalFusion(visual_fusion_config['pooling_type'], visual_fusion_config['output_dim'], visual_fusion_config['num_frames'])
-    input = torch.rand(16,4,1024)
+    model = TemporalFusion(
+        visual_fusion_config["pooling_type"],
+        visual_fusion_config["output_dim"],
+        visual_fusion_config["num_frames"],
+    )
+    input = torch.rand(16, 4, 1024)
     print(model)
     out = model(input)
-    out = out.view(16,1,-1)
+    out = out.view(16, 1, -1)
     print(out)
     print(out.shape)

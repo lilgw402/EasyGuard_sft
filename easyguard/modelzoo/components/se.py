@@ -7,7 +7,7 @@
 
 from torch import nn
 
-__all__ = ['SEBlock', 'SEBNBlock', 'GEPFBlock', 'GEPBlock', 'GEPPBlock']
+__all__ = ["SEBlock", "SEBNBlock", "GEPFBlock", "GEPBlock", "GEPPBlock"]
 
 
 class SEBlock(nn.Module):
@@ -15,12 +15,10 @@ class SEBlock(nn.Module):
         super(SEBlock, self).__init__()
         self.squeeze = nn.AdaptiveAvgPool2d(1)
         self.excite = nn.Sequential(
-            nn.Conv2d(channel, channel // reduction,
-                      kernel_size=1, bias=False),
+            nn.Conv2d(channel, channel // reduction, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
-            nn.Conv2d(channel // reduction, channel,
-                      kernel_size=1, bias=False),
-            nn.Sigmoid()
+            nn.Conv2d(channel // reduction, channel, kernel_size=1, bias=False),
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -34,14 +32,12 @@ class SEBNBlock(nn.Module):
         super(SEBNBlock, self).__init__()
         self.squeeze = nn.AdaptiveAvgPool2d(1)
         self.excite = nn.Sequential(
-            nn.Conv2d(channel, channel // reduction,
-                      kernel_size=1, bias=False),
+            nn.Conv2d(channel, channel // reduction, kernel_size=1, bias=False),
             nn.BatchNorm2d(channel // reduction),
             nn.ReLU(inplace=True),
-            nn.Conv2d(channel // reduction, channel,
-                      kernel_size=1, bias=False),
+            nn.Conv2d(channel // reduction, channel, kernel_size=1, bias=False),
             nn.BatchNorm2d(channel),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -83,12 +79,10 @@ class GEPPBlock(nn.Module):
         self.gather = nn.Linear(feat_side * feat_side, 1, bias=False)
         self.bn = nn.BatchNorm2d(channel)
         self.excite = nn.Sequential(
-            nn.Conv2d(channel, channel // reduction,
-                      kernel_size=1, bias=False),
+            nn.Conv2d(channel, channel // reduction, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
-            nn.Conv2d(channel // reduction, channel,
-                      kernel_size=1, bias=False),
-            nn.Sigmoid()
+            nn.Conv2d(channel // reduction, channel, kernel_size=1, bias=False),
+            nn.Sigmoid(),
         )
 
     def forward(self, x):

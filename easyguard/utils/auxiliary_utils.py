@@ -1,16 +1,16 @@
 import hashlib
 import os
-import torch
-
 from typing import Optional, Union
+
+import torch
 
 EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
 EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
 REMOTE_PATH_SEP = "/"
 
-from . import hmget, hexists, file_read
-from .logging import get_logger
 from ..modelzoo.config import MODEL_ARCHIVE_PATH
+from . import file_read, hexists, hmget
+from .logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -47,7 +47,10 @@ def sha256(data: str) -> str:
 
 
 def cache_file(
-    model_name_path: str, file_name: Optional[Union[str, set]] = None, *args, **kwargs
+    model_name_path: str,
+    file_name: Optional[Union[str, set]] = None,
+    *args,
+    **kwargs,
 ) -> str:
     # TODO (junwei.Dong): 未来支持更多方式的读取
     """支持三种方式读取:
@@ -79,7 +82,9 @@ def cache_file(
         return model_name_path
     elif model_type is not None:
         hash_ = sha256(model_name_path)
-        model_path_local = os.path.join(EASYGUARD_MODEL_CACHE, model_type, hash_)
+        model_path_local = os.path.join(
+            EASYGUARD_MODEL_CACHE, model_type, hash_
+        )
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
             logger.info(f"obtain the local file `{model_file_local}`")
@@ -164,7 +169,9 @@ def list_pretrained_models():
 def get_configs(**kwargs):
     pretrained_config = {}
     pretrained_config["tos_helper"] = kwargs.pop("tos_helper", None)
-    pretrained_config["pretrained_version"] = kwargs.pop("pretrained_version", None)
+    pretrained_config["pretrained_version"] = kwargs.pop(
+        "pretrained_version", None
+    )
     pretrained_config["pretrained_uri"] = kwargs.pop("pretrained_uri", None)
     pretrained_config["local_rank"] = kwargs.pop("local_rank", None)
     pretrained_config["rank"] = kwargs.pop("rank", None)
@@ -223,9 +230,12 @@ def load_pretrained_model_weights(
         keys = model.load_state_dict(state_dict, strict=strict)
 
     if len(keys.missing_keys) > 0:
-        logger.warning(f"=> Pretrained: missing_keys [{', '.join(keys.missing_keys)}]")
+        logger.warning(
+            f"=> Pretrained: missing_keys [{', '.join(keys.missing_keys)}]"
+        )
     if len(keys.unexpected_keys) > 0:
         logger.warning(
-            f"=> Pretrained: unexpected_keys [" f"{', '.join(keys.unexpected_keys)}]"
+            f"=> Pretrained: unexpected_keys ["
+            f"{', '.join(keys.unexpected_keys)}]"
         )
     logger.info(f"=> Pretrained: load pretrained model with strict={strict}")

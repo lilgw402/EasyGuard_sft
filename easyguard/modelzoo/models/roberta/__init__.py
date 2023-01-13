@@ -20,9 +20,11 @@ from ....file_utils import (
     is_torch_available,
 )
 
-
 _import_structure = {
-    "configuration_roberta": ["ROBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP", "RobertaConfig"],
+    "configuration_roberta": [
+        "ROBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP",
+        "RobertaConfig",
+    ],
     "tokenization_roberta": ["RobertaTokenizer"],
 }
 

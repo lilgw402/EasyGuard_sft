@@ -1,24 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shutil
-import subprocess
-
-import os
 import glob
-import threading
+import os
 import random
+import shutil
 import string
-
+import subprocess
+import threading
 from contextlib import contextmanager
 from typing import IO, Any, List
+
 from .logging import get_logger
 
 """ 封装的一些支持hdfs路径的文件io api """
 
 logger = get_logger(__name__)
 
-HADOOP_BIN = "HADOOP_ROOT_LOGGER=ERROR,console /opt/tiger/yarn_deploy/hadoop/bin/hdfs"
+HADOOP_BIN = (
+    "HADOOP_ROOT_LOGGER=ERROR,console /opt/tiger/yarn_deploy/hadoop/bin/hdfs"
+)
 
 __all__ = [
     "hlist_files",
@@ -113,7 +114,9 @@ def hlist_files(folders: List[str]) -> List[str]:
             pipe.wait()
         else:
             if os.path.isdir(folder):
-                files.extend([os.path.join(folder, d) for d in os.listdir(folder)])
+                files.extend(
+                    [os.path.join(folder, d) for d in os.listdir(folder)]
+                )
             elif os.path.isfile(folder):
                 files.append(folder)
             else:
@@ -125,14 +128,18 @@ def hlist_files(folders: List[str]) -> List[str]:
 def hexists(file_path: str) -> bool:
     """hdfs capable to check whether a file_path is exists"""
     if file_path.startswith("hdfs"):
-        return os.system("{} dfs -test -e {}".format(HADOOP_BIN, file_path)) == 0
+        return (
+            os.system("{} dfs -test -e {}".format(HADOOP_BIN, file_path)) == 0
+        )
     return os.path.exists(file_path)
 
 
 def hisdir(file_path: str) -> bool:
     """hdfs capable to check whether a file_path is a dir"""
     if file_path.startswith("hdfs"):
-        flag1 = os.system("{} dfs -test -e {}".format(HADOOP_BIN, file_path))  # 0:路径存在
+        flag1 = os.system(
+            "{} dfs -test -e {}".format(HADOOP_BIN, file_path)
+        )  # 0:路径存在
         flag2 = os.system(
             "{} dfs -test -f {}".format(HADOOP_BIN, file_path)
         )  # 0:是文件 1:不是文件
@@ -154,14 +161,20 @@ def hcopy(from_path: str, to_path: str) -> bool:
     """hdfs copy"""
     if to_path.startswith("hdfs"):
         if from_path.startswith("hdfs"):
-            os.system("{} dfs -cp -f {} {}".format(HADOOP_BIN, from_path, to_path))
+            os.system(
+                "{} dfs -cp -f {} {}".format(HADOOP_BIN, from_path, to_path)
+            )
         else:
             os.system(
-                "{} dfs -copyFromLocal -f {} {}".format(HADOOP_BIN, from_path, to_path)
+                "{} dfs -copyFromLocal -f {} {}".format(
+                    HADOOP_BIN, from_path, to_path
+                )
             )
     else:
         if from_path.startswith("hdfs"):
-            os.system("{} dfs -text {} > {}".format(HADOOP_BIN, from_path, to_path))
+            os.system(
+                "{} dfs -text {} > {}".format(HADOOP_BIN, from_path, to_path)
+            )
         else:
             shutil.copy(from_path, to_path)
     return True
@@ -192,7 +205,11 @@ def hglob(search_path, sort_by_time=False):
 def htext_list(files, target_folder):
     for fn in files:
         name = fn.split("/")[-1]
-        hdfs_command = HADOOP_BIN + " dfs -text %s > %s/%s" % (fn, target_folder, name)
+        hdfs_command = HADOOP_BIN + " dfs -text %s > %s/%s" % (
+            fn,
+            target_folder,
+            name,
+        )
         os.system(hdfs_command)
 
 
@@ -249,7 +266,9 @@ def fetch_file_from_hdfs(file_path, dir_path="/tmp"):
     """
 
     def random_string(length):
-        salt = "".join(random.sample(string.ascii_letters + string.digits, length))
+        salt = "".join(
+            random.sample(string.ascii_letters + string.digits, length)
+        )
         return salt
 
     if file_path.startswith("hdfs"):
@@ -264,3 +283,24 @@ def fetch_file_from_hdfs(file_path, dir_path="/tmp"):
         file_path = local_file_path
 
     return file_path
+
+
+if __name__ == '__main__':
+    hdfs_file = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt"
+    vocab_set = set()
+    with hopen(hdfs_file) as fr:
+        for item in fr:
+            # bytes
+            #item = item.decode("utf-8")
+            #item = item.strip()
+
+            # str
+            item = str(item, encoding="utf-8")
+            item = item.strip()
+            vocab_set.add(item)
+    for item in vocab_set:
+        print(item)
+        break
+
+    is_bool = "中亚" in vocab_set
+    print(is_bool)

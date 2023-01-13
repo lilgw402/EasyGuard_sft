@@ -56,7 +56,7 @@ class TFLayerNorm(nn.Module):
 
 
 class T5LayerNorm(nn.Module):
-    """ LayerNorm in T5 style, also named `rms_norm` officially. No bias and no subtraction of mean. """
+    """LayerNorm in T5 style, also named `rms_norm` officially. No bias and no subtraction of mean."""
 
     def __init__(self, dimension: int, eps: float = 1e-6, **kwargs):
         super().__init__()
@@ -73,11 +73,12 @@ class T5LayerNorm(nn.Module):
             x = x.to(torch.float16)
         return self.weight * x
 
+
 LayerNormTypes = {
-    'default': nn.LayerNorm,
-    'v0': LayerNorm,
-    'tf': TFLayerNorm,
-    't5': T5LayerNorm,
-    'fused': None,
-    'ft': None,
+    "default": nn.LayerNorm,
+    "v0": LayerNorm,
+    "tf": TFLayerNorm,
+    "t5": T5LayerNorm,
+    "fused": None,
+    "ft": None,
 }
