@@ -8,8 +8,8 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from cruise import CruiseTrainer, CruiseCLI
 
-from easyguard.appzoo.fashion_deberta_finetune.model import FashionDebertaFtModel
-from easyguard.appzoo.fashion_deberta_finetune.data import FashionDataFtModule
+from easyguard.appzoo.fashion_deberta.model_finetune import FashionDebertaFtModel
+from easyguard.appzoo.fashion_deberta.data_finetune import FashionDataFtModule
 from easyguard.utils.arguments import print_cfg
 
 

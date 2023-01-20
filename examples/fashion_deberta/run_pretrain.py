@@ -8,8 +8,8 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from cruise import CruiseTrainer, CruiseCLI
 
-from easyguard.appzoo.fashion_deberta.model import FashionDebertaModel
-from easyguard.appzoo.fashion_deberta.data import FashionDataModule
+from easyguard.appzoo.fashion_deberta.model_pretrain import FashionDebertaModel
+from easyguard.appzoo.fashion_deberta.data_pretrain import FashionDataModule
 from easyguard.utils.arguments import print_cfg
 
 """
@@ -29,7 +29,7 @@ cli = CruiseCLI(FashionDebertaModel,
                     'checkpoint_monitor': 'val_loss',
                     'checkpoint_mode': 'min',
                     'precision': 'fp16',
-                    'enable_versions': False,
+                    'enable_versions': True,
                     'resume_ckpt_path': 'auto',
                     'default_root_dir': '/mnt/bd/yangzheming/cruise/cruise_logs',
                     'default_hdfs_dir': 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_1_live_0.3b_mlm_cl/model_outputs'

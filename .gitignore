@@ -137,6 +137,7 @@ sample
 
 *.wandb
 wandb/*
+*wandb
 cruise_logs/*
 
 .idea
