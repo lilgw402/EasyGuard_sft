@@ -1,4 +1,7 @@
 from easyguard.core import AutoModel, AutoTokenizer
+from easyguard.utils import list_pretrained_models
+
+import torch
 
 archive = "fashion-deberta"
 # archive = "fashion-deberta-asr"
@@ -6,8 +9,11 @@ archive = "fashion-deberta"
 
 
 def main():
-    import torch
+    # list models
+    print('EasyGuard modelzoo:')
+    print(list_pretrained_models())
 
+    # tokenizer
     my_tokenizer = AutoTokenizer.from_pretrained(archive)
     my_model = AutoModel.from_pretrained(
         archive, dim_shrink=128, rm_deberta_prefix=True
@@ -21,9 +27,7 @@ def main():
     input_ids = token_ids[:max_length] + my_tokenizer.convert_tokens_to_ids(
         ["[PAD]"]
     ) * (max_length - len(token_ids))
-    input_mask = [1] * len(token_ids[:max_length]) + [0] * (
-        max_length - len(token_ids)
-    )
+    input_mask = [1] * len(token_ids[:max_length]) + [0] * (max_length - len(token_ids))
     input_segment_ids = [0] * max_length
     print(f"input_ids: {input_ids}")
     print(f"input_mask: {input_mask}")

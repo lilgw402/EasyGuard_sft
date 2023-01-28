@@ -12,9 +12,10 @@ EasyGuard是基于AML的Cruise框架扩展的业务算法的代码库，旨在�
 [Warning:代码处于快速迭代期，核心代码需要UT保护，不然可能会被破坏!]()
 
 ## Job
-* MLX-Lab: https://reckon.bytedance.net/mlxlab/project/repo/207/detail?bid=38 （推荐）
-* GCP：https://arnold-i18n.byted.org/job/3807
-* 中国区：https://arnold.byted.org/job/27576
+* Merlin中国区（MLX-Lab）: https://ml.bytedance.net/development/repos/207/detail?sid=3c70c89545eb65c3
+* Merlin海外：https://ml.byteintl.net/development/repos/22/detail?sid=fbed5f4d85cdce20
+* 海外jobs：https://arnold-i18n.byted.org/job/3807
+* 中国jobs：https://arnold.byted.org/job/27576
 
 ## 依赖
 
@@ -27,7 +28,7 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 # 电商场景预训练算法服务
 * 文档详见：[预训练算法服务](https://bytedance.feishu.cn/wiki/wikcnrmcpmz5RAB89yJhWd0jFZg)
 
-* FashionModel
+* FashionModel，详见[电商治理模型FashionModels使用文档](https://bytedance.feishu.cn/wiki/wikcnBlgTsEuyDo1ZtYXW38k4Gf)
 
 | Model | Parameters | Note |
 | --- | --- | --- |
@@ -47,20 +48,25 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 | videoclip | L=12,H=768,A=12 |  |
 | framealbert | L=12,H=x,A=x |  |
 
-* FashionApps
-待更新
-
 * 调用方式
 
+调用模型：
+
 ```python
-app = SequenceClassification(pretrained_model_name_or_path='bert-small-uncased')
-```
-or:
-```python
-model = AutoModel.from_pretrained('bert-small-uncased')
+archive = "deberta_base_6l"
+# 读取tokenizer
+my_tokenizer = AutoTokenizer.from_pretrained(archive)
+# 读取model
+my_model = AutoModel.from_pretrained(archive)
 ```
 
+查看模型：
 
+```python
+from easyguard.utils import list_pretrained_models
+
+list_pretrained_models()
+```
 
 ## CopyRight
 2021 ByteDance Inc. All Rights Reserved.
