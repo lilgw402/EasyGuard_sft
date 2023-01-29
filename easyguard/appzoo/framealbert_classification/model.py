@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Video CLIP Model
+FrameAlbert Classification
 """
 import math
 import os.path
@@ -128,28 +128,6 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             )
             print("missing_keys: ", missing_keys)
             print("unexpected_keys: ", unexpected_keys)
-        # else:
-        #     state_dict_ori = self.falbert.state_dict()
-        #     backbone = load(
-        #         "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/videoclip_swin_dy_20211206/model.th",
-        #         map_location="cpu",
-        #     )
-        #     state_dict_new = OrderedDict()
-        #     for key, value in backbone.items():
-        #         if key.startswith("falbert"):
-        #             trimmed_key = key[len("falbert.") :]
-        #         else:
-        #             trimmed_key = key
-        #         if (
-        #             trimmed_key in state_dict_ori
-        #             and state_dict_ori[trimmed_key].shape == backbone[key].shape
-        #         ):
-        #             state_dict_new[trimmed_key] = value
-        #     missing_keys, unexpected_keys = self.falbert.load_state_dict(
-        #         state_dict_new, strict=False
-        #     )
-        #     print("missing_keys: ", missing_keys)
-        #     print("unexpected_keys: ", unexpected_keys)
 
     def freeze_params(self, freeze_prefix):
         for name, param in self.named_parameters():
@@ -187,51 +165,6 @@ class HighQualityLiveVideoCLIP(CruiseModule):
 
         return {"feat": concat_feat, "out_lvl1": logits}
 
-    # def encode_image(
-    #     self,
-    #     images: torch.Tensor,
-    #     images_mask: torch.Tensor = None,
-    #     visual_embeds: torch.tensor = None,
-    # ):
-    #     if len(images.shape) == 4:
-    #         images = images.unsqueeze(1)
-    #     if images_mask is None:
-    #         if visual_embeds is None:
-    #             images_mask = torch.ones(
-    #                 images.shape[0:2], device=images.device, dtype=torch.long
-    #             )
-    #         else:
-    #             images_mask = torch.ones(
-    #                 visual_embeds.shape[0:2],
-    #                 device=visual_embeds.device,
-    #                 dtype=torch.long,
-    #             )
-    #     v_out = self.falbert(
-    #         frames=images,
-    #         frames_mask=images_mask,
-    #         visual_embeds=visual_embeds,
-    #         mode="v",
-    #     )
-    #     return v_out
-    #
-    # def encode_text(
-    #     self,
-    #     input_ids: torch.Tensor,
-    #     input_mask: torch.Tensor,
-    #     input_segment_ids: torch.Tensor = None,
-    # ):
-    #     if input_segment_ids is None:
-    #         input_segment_ids = torch.zeros_like(
-    #             input_ids, device=input_ids.device
-    #         )
-    #     t_out = self.falbert(
-    #         input_ids=input_ids,
-    #         input_segment_ids=input_segment_ids,
-    #         input_mask=input_mask,
-    #         mode="t",
-    #     )
-    #     return t_out
-
     def encode_multimodal(
             self,
             input_ids,
@@ -264,18 +197,6 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             mode="tv",
         )
         return mmout
-
-    # def init_projector(
-    #     self,
-    #     input_size=768,
-    #     output_size=128,
-    # ):
-    #     # projector = torch.nn.Linear(input_size, output_size)
-    #     # v_projector = projector
-    #     # t_projector = projector
-    #     v_projector = torch.nn.Linear(input_size, output_size)
-    #     t_projector = torch.nn.Linear(input_size, output_size)
-    #     return t_projector, v_projector
 
     def cal_cls_loss(self, **kwargs):
         for key in ["out_lvl1", "label"]:
@@ -376,13 +297,28 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             "weight_decay": self.config_optim.weight_decay,
         }
 
+        low_lr_keys = []
         for n, p in self.named_parameters():
+            low_lr = False
+            for low_lr_prefix in self.config.TRAIN.low_lr_prefix:
+                if n.startswith(low_lr_prefix):
+                    low_lr = True
+                    low_lr_params_dict['params'].append(p)
+                    low_lr_keys.append(n)
+                    break
+            if low_lr:
+                continue
+
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
-            elif n.startswith("albert"):
-                low_lr_params_dict["params"].append(p)
+            # elif n.startswith("albert"):
+            #     low_lr_params_dict["params"].append(p)
             else:
                 normal_params_dict["params"].append(p)
+
+        if low_lr_keys:
+            print(f'low_lr_keys: {low_lr_keys}')
+
         optimizer_grouped_parameters = [
             no_dacay_params_dict,
             low_lr_params_dict,
@@ -416,8 +352,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
         elif self.config_optim.lr_schedule == "cosine":
             lr_scheduler = get_cosine_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.config_optim.warmup_steps_factor
-                                 * self.trainer.steps_per_epoch,
+                num_warmup_steps=self.config_optim.warmup_steps_factor * self.trainer.steps_per_epoch,
                 num_training_steps=self.trainer.total_steps,
             )
         elif self.config_optim.lr_schedule == "onecycle":
