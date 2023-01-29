@@ -140,6 +140,8 @@ cruise_logs/*
 
 .idea
 
+.DS_Store
+
 # npm modules
 node_modules/
 .pre-commit-config.yaml
