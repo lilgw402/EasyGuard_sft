@@ -10,7 +10,7 @@ trainer:
   deterministic: false
   accelerator: cpu
   accelerator_kwargs: {}
-  precision: fp16
+  precision: fp32
   max_epochs: 1
   max_steps: -1
   limit_train_batches: null

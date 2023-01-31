@@ -27,6 +27,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from prettytable import PrettyTable
 
 import torch
 from packaging import version
@@ -104,13 +105,39 @@ def load_pretrained(load_pretrain, model):
             )
     except:
         rank_zero_warn("Error in loading classifier weights...")
-    msg = model.load_state_dict(state_dict, strict=False)
+
+    parsed_state_dict = {}
+    non_match_keys = []
+    pretrained_keys = []
+    for k, v in state_dict.items():
+        if k in model.state_dict():
+            parsed_state_dict[k] = v
+            pretrained_keys.append(k)
+        else:
+            non_match_keys.append(k + ':' + str(v.shape))
+            # raise ValueError('failed to match key of state dict smartly!')
+
+    table = PrettyTable(
+        ['Layer Name', 'Weight Shape', 'Data Type', 'Pretrain'])
+    for k, v in model.named_parameters():
+        table.add_row([k, v.shape, v.dtype, str(
+            k in pretrained_keys)])
+    table.align = 'l'
+    rank_zero_info(
+        '\n###### Parameters ######\n{}'.format(table.get_string()))
+    rank_zero_info("\n###### Not matched keys ######\n{}".format(
+        '\n'.join(non_match_keys) + '\n'))
+
+    new_state_dict = model.state_dict()
+    new_state_dict.update(parsed_state_dict)
+    msg = model.load_state_dict(new_state_dict, strict=False)
     rank_zero_warn(str(msg))
 
     rank_zero_info(f"=> loaded successfully '{load_pretrain}'")
 
     del checkpoint
     torch.cuda.empty_cache()
+
 
 
 XLA_USE_BF16 = os.environ.get("XLA_USE_BF16", "0").upper()
