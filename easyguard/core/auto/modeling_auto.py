@@ -30,7 +30,6 @@ from .configuration_auto import CONFIG_MAPPING_NAMES
 
 logger = logging.get_logger(__name__)
 
-
 MODEL_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("model")
 
 MODEL_FOR_CAUSAL_LM_MAPPING_NAMES = OrderedDict(
