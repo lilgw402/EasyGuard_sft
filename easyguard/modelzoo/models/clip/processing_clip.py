@@ -15,8 +15,8 @@
 """
 Image/Text processor class for CLIP
 """
-from ...processing_utils import ProcessorMixin
-from ...tokenization_utils_base import BatchEncoding
+from transformers.processing_utils import ProcessorMixin
+from transformers.tokenization_utils_base import BatchEncoding
 
 
 class CLIPProcessor(ProcessorMixin):

@@ -19,10 +19,10 @@ from typing import List, Optional, Tuple
 
 from tokenizers import pre_tokenizers
 
-from ...tokenization_utils_fast import PreTrainedTokenizerFast
-from ...utils import logging
-from .tokenization_clip import CLIPTokenizer
+from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
+from ....utils import logging
+from .tokenization_clip import CLIPTokenizer
 
 logger = logging.get_logger(__name__)
 

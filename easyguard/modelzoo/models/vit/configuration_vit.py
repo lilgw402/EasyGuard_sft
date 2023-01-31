@@ -19,8 +19,9 @@ from typing import Mapping
 
 from packaging import version
 
+from transformers.configuration_utils import PretrainedConfig
+
 from ....utils import logging
-from ...configuration_utils import PretrainedConfig
 
 logger = logging.get_logger(__name__)
 

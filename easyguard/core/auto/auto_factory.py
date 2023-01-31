@@ -16,8 +16,10 @@
 import importlib
 from collections import OrderedDict
 
-from ...modelzoo.configuration_utils import ConfigBase, PretrainedConfig
-from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
+from transformers.configuration_utils import PretrainedConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
+
+from ...modelzoo.configuration_utils import ConfigBase
 from ...modelzoo.modeling_utils import ModelBase
 from ...utils import (
     cache_file,

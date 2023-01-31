@@ -19,9 +19,10 @@ import warnings
 from collections import OrderedDict
 from typing import List, Union
 
+from transformers.configuration_utils import PretrainedConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
+
 from ...modelzoo import MODELZOO_CONFIG
-from ...modelzoo.configuration_utils import PretrainedConfig
-from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
 from ...utils import CONFIG_NAME, logging
 from . import HF_PATH
 from .configuration_auto import CONFIG_MAPPING_NAMES, MODEL_NAMES_MAPPING

@@ -20,9 +20,10 @@ from collections import OrderedDict
 from typing import Dict, Optional, Union
 
 # Build the list of all image processors
-from ...modelzoo.configuration_utils import PretrainedConfig
-from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
-from ...modelzoo.image_processing_utils import ImageProcessingMixin
+from transformers.configuration_utils import PretrainedConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
+from transformers.image_processing_utils import ImageProcessingMixin
+
 from ...utils import (
     CONFIG_NAME,
     IMAGE_PROCESSOR_NAME,

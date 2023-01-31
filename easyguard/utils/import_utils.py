@@ -93,14 +93,14 @@ else:
                 except importlib_metadata.PackageNotFoundError:
                     pass
             _tf_available = _tf_version is not None
-        if _tf_available:
-            if version.parse(_tf_version) < version.parse("2"):
-                logger.info(
-                    f"TensorFlow found but with version {_tf_version}. Transformers requires version 2 minimum."
-                )
-                _tf_available = False
-            else:
-                logger.info(f"TensorFlow version {_tf_version} available.")
+        # if _tf_available:
+        #     if version.parse(_tf_version) < version.parse("2"):
+        #         logger.info(
+        #             f"TensorFlow found but with version {_tf_version}. Transformers requires version 2 minimum."
+        #         )
+        #         _tf_available = False
+        #     else:
+        #         logger.info(f"TensorFlow version {_tf_version} available.")
     else:
         logger.info("Disabling Tensorflow because USE_TORCH is set")
         _tf_available = False

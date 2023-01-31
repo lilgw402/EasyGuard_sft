@@ -18,9 +18,10 @@ from typing import List, Optional, Tuple
 
 from tokenizers import pre_tokenizers, processors
 
+from transformers.tokenization_utils_base import AddedToken, BatchEncoding
+from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+
 from ....utils import logging
-from ...tokenization_utils_base import AddedToken, BatchEncoding
-from ...tokenization_utils_fast import PreTrainedTokenizerFast
 from .tokenization_bart import BartTokenizer
 
 logger = logging.get_logger(__name__)

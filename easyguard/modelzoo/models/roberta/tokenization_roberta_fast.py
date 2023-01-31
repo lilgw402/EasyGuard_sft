@@ -16,7 +16,8 @@
 
 from typing import List, Optional
 
-from ....tokenization_utils_base import AddedToken
+from transformers.tokenization_utils_base import AddedToken
+
 from ....utils import logging
 from ..gpt2.tokenization_gpt2_fast import GPT2TokenizerFast
 from .tokenization_roberta import RobertaTokenizer

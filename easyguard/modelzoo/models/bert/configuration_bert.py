@@ -15,8 +15,9 @@
 # limitations under the License.
 """ BERT model configuration """
 
+from transformers.configuration_utils import PretrainedConfig
+
 from ....utils import logging
-from ...configuration_utils import PretrainedConfig
 
 logger = logging.get_logger(__name__)
 

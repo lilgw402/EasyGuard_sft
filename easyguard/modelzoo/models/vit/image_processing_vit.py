@@ -18,20 +18,18 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 
-from transformers.utils.generic import TensorType
-
-from ...image_processing_utils import (
+from transformers.image_processing_utils import (
     BaseImageProcessor,
     BatchFeature,
     get_size_dict,
 )
-from ...image_transforms import (
+from transformers.image_transforms import (
     normalize,
     rescale,
     resize,
     to_channel_dimension_format,
 )
-from ...image_utils import (
+from transformers.image_utils import (
     IMAGENET_STANDARD_MEAN,
     IMAGENET_STANDARD_STD,
     ChannelDimension,
@@ -41,8 +39,9 @@ from ...image_utils import (
     to_numpy_array,
     valid_images,
 )
-from ....utils import logging
+from transformers.utils.generic import TensorType
 
+from ....utils import logging
 
 logger = logging.get_logger(__name__)
 

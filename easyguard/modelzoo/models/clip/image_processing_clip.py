@@ -18,16 +18,12 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from transformers.utils.generic import TensorType
-
-from ....utils import logging
-from ....utils.import_utils import is_vision_available
-from ...image_processing_utils import (
+from transformers.image_processing_utils import (
     BaseImageProcessor,
     BatchFeature,
     get_size_dict,
 )
-from ...image_transforms import (
+from transformers.image_transforms import (
     center_crop,
     get_resize_output_image_size,
     normalize,
@@ -35,7 +31,7 @@ from ...image_transforms import (
     resize,
     to_channel_dimension_format,
 )
-from ...image_utils import (
+from transformers.image_utils import (
     ChannelDimension,
     ImageInput,
     PILImageResampling,
@@ -43,6 +39,10 @@ from ...image_utils import (
     to_numpy_array,
     valid_images,
 )
+from transformers.utils.generic import TensorType
+
+from ....utils import logging
+from ....utils.import_utils import is_vision_available
 
 logger = logging.get_logger(__name__)
 

@@ -19,11 +19,12 @@ import json
 from collections import OrderedDict
 
 # Build the list of all feature extractors
-from ...modelzoo.configuration_utils import PretrainedConfig
-from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
-from ...modelzoo.feature_extraction_utils import FeatureExtractionMixin
-from ...modelzoo.image_processing_utils import ImageProcessingMixin
-from ...modelzoo.tokenization_utils import TOKENIZER_CONFIG_FILE
+from transformers.configuration_utils import PretrainedConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
+from transformers.feature_extraction_utils import FeatureExtractionMixin
+from transformers.image_processing_utils import ImageProcessingMixin
+from transformers.tokenization_utils import TOKENIZER_CONFIG_FILE
+
 from ...utils import FEATURE_EXTRACTOR_NAME, get_file_from_repo, logging
 from .auto_factory import _LazyAutoMapping
 from .configuration_auto import (

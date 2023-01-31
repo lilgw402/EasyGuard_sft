@@ -23,8 +23,8 @@ from __future__ import (
 import torch
 from torch import nn
 
-from ....modeling_outputs import BaseModelOutputWithPooling
-from ....modeling_utils import PreTrainedModel
+from transformers.modeling_outputs import BaseModelOutputWithPooling
+from transformers.modeling_utils import PreTrainedModel
 
 
 class TextCNNEncoder(PreTrainedModel):

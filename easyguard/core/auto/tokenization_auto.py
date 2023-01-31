@@ -17,7 +17,8 @@
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
-from ...modelzoo.tokenization_utils_base import TOKENIZER_CONFIG_FILE
+from transformers.tokenization_utils_base import TOKENIZER_CONFIG_FILE
+
 from ...utils import (
     cache_file,
     file_read,
