@@ -24,11 +24,7 @@ from ...modelzoo.configuration_utils import PretrainedConfig
 from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
 from ...utils import CONFIG_NAME, logging
 from . import HF_PATH
-from .configuration_auto import (
-    CONFIG_ARCHIVE_MAP_MAPPING_NAMES,
-    CONFIG_MAPPING_NAMES,
-    MODEL_NAMES_MAPPING,
-)
+from .configuration_auto import CONFIG_MAPPING_NAMES, MODEL_NAMES_MAPPING
 
 # TODO (junwei.Dong): 需要简化一下configuration_auto的逻辑
 
@@ -182,11 +178,6 @@ class _LazyLoadAllMappings(OrderedDict):
     def __contains__(self, item):
         self._initialize()
         return item in self._data
-
-
-ALL_PRETRAINED_CONFIG_ARCHIVE_MAP = _LazyLoadAllMappings(
-    CONFIG_ARCHIVE_MAP_MAPPING_NAMES
-)
 
 
 def _get_class_name(model_class: Union[str, List[str]]):

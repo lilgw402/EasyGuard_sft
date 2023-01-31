@@ -19,8 +19,17 @@ def test_list_pretrained_models():
     list_pretrained_models()
 
 
+def test_hf_name_or_path_check():
+    name_or_path = "fashion-deberta-ccr-order"
+    model_url = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order"
+    file_name = "vocab.txt"
+    model_type = "debert"
+    print(hf_name_or_path_check(name_or_path, model_url, file_name, model_type))
+
+
 if __name__ == "__main__":
     data = "hello world~"
     test_sha256(data)
     # test_cache_file()
-    test_list_pretrained_models()
+    # test_list_pretrained_models()
+    test_hf_name_or_path_check()

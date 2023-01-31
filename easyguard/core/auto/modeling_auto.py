@@ -95,11 +95,11 @@ class AutoModel(_BaseAutoModelClass):
     _model_key = "model"
 
 
-AutoModel = auto_class_update(AutoModel)
+# AutoModel = auto_class_update(AutoModel)
 
 
 class AutoModelForCausalLM(_BaseAutoModelClass):
     _model_mapping = MODEL_FOR_CAUSAL_LM_MAPPING
 
 
-AutoModelForCausalLM = auto_class_update(AutoModelForCausalLM)
+# AutoModelForCausalLM = auto_class_update(AutoModelForCausalLM)

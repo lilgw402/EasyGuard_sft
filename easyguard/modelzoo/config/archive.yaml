@@ -16,5 +16,10 @@ fashion-deberta-ccr-order:
   description: 订单型 + VOC
 bert-base-uncased:
   type: bert
+  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/bert_base_uncased
 facebook/bart-large:
   type: bart
+google/vit-base-patch16-224:
+  type: vit
+openai/clip-vit-base-patch32:
+  type: clip

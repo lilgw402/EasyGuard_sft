@@ -17,7 +17,6 @@ Base classes common to both the slow and the fast tokenization classes: PreTrain
 fronting encoding methods) Special token mixing (host the special tokens logic) and BatchEncoding (wrap the dictionary
 of output with special method for the Fast tokenizers)
 """
-
 import copy
 import io
 import json
@@ -42,6 +41,7 @@ from typing import (
 )
 
 import numpy as np
+import torch
 from packaging import version
 
 from .. import __version__
@@ -72,6 +72,7 @@ from ..utils import (
     logging,
     to_py_obj,
     torch_required,
+    typecheck,
 )
 from .dynamic_module_utils import custom_object_save
 
@@ -1896,9 +1897,9 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
             if config_tokenizer_class is None:
                 # Third attempt. If we have not yet found the original type of the tokenizer,
                 # we are loading we see if we can infer it from the type of the configuration file
-                from ..core.auto.tokenization_auto import (  # tests_ignore
+                from ..core.auto.tokenization_auto import (
                     TOKENIZER_MAPPING_NAMES,
-                )
+                )  # tests_ignore
 
                 if hasattr(config, "model_type"):
                     model_type = config.model_type
@@ -4071,8 +4072,73 @@ class TokenizerBase(ABC):
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return super().__call__(*args, **kwds)
+    def __call__(
+        self,
+        input_text: Union[str, List[str]],
+        max_length: Optional[int] = None,
+        text_completion: Optional[List[str]] = ["[CLS]", "[SEP]"],
+        padding: Optional[str] = "[PAD]",
+        input_segment_number: Optional[int] = 0,
+        *args: Any,
+        **kwds: Any,
+    ) -> Union[OrderedDict, List[OrderedDict]]:
+        """
+        used to encode a sequence or a list of sequences
+
+        Parameters
+        ----------
+        input_text : Union[str, List[str]]
+            the input text str or list
+        max_length : Optional[int], optional
+            max length of `input_text`, by default None
+        text_completion : Optional[List[str]], optional
+            used to wrap the `input_text`, by default ["[CLS]", "[SEP]"]
+        padding : Optional[str], optional
+            when max_length > the length of `input_text`, use `padding` to fill in, by default "[PAD]"
+        input_segment_number : Optional[int], optional
+            the segment number, by default 0
+
+        Returns
+        -------
+        Union[OrderedDict, List[OrderedDict]]
+            the encoded sequence(s)
+
+        Raises
+        ------
+        ValueError
+            _description_
+        """
+        if not isinstance(input_text, (str, list)):
+            raise ValueError(
+                f"the type of argument `input_text` must be {str} or {list}"
+            )
+
+        @typecheck(str)
+        def _str_encode(text: str):
+            text_tokens = self.tokenize(text)
+            text_tokens_complete = (
+                [text_completion[0]] + text_tokens + [text_completion[-1]]
+            )
+            token_ids = self.convert_tokens_to_ids(text_tokens_complete)
+            padding_id = self.convert_tokens_to_ids([padding])
+            extra_length = (max_length - len(token_ids)) if max_length else 0
+            input_ids = token_ids[:max_length] + padding_id * extra_length
+            input_mask = [1] * len(token_ids[:max_length]) + [0] * extra_length
+            input_segment_ids = [input_segment_number] * len(input_ids)
+
+            input_ids, input_mask, input_segment_ids = torch.tensor(
+                [[input_ids], [input_mask], [input_segment_ids]]
+            )
+            return OrderedDict(
+                input_ids=input_ids,
+                input_mask=input_mask,
+                input_segment_ids=input_segment_ids,
+            )
+
+        if isinstance(input_text, str):
+            return _str_encode(input_text)
+        else:
+            return list(map(_str_encode, input_text))
 
     @classmethod
     def from_pretrained(
@@ -4146,13 +4212,13 @@ class TokenizerBase(ABC):
         ...
 
     @abstractmethod
-    def tokenize(self):
-        raise NotImplementedError()
+    def tokenize(self) -> List[str]:
+        ...
 
     @abstractmethod
-    def convert_tokens_to_ids(self):
-        raise NotImplementedError()
+    def convert_tokens_to_ids(self) -> List[int]:
+        ...
 
     @abstractmethod
-    def convert_ids_to_tokens(self):
-        raise NotImplementedError()
+    def convert_ids_to_tokens(self) -> List[str]:
+        ...

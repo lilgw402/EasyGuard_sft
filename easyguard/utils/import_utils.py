@@ -28,6 +28,7 @@ from types import ModuleType
 from typing import Any
 
 from packaging import version
+
 from transformers.utils.versions import importlib_metadata
 
 from . import logging
@@ -1331,8 +1332,7 @@ class _LazyPackage(ModuleType):
 
 def lazy_model_import(package: str, module: str):
     # TODO (junwei.Dong): 之后可以变更为类, 用类的方式来处理更加合理, 扩展性更强
-    """配合models.yaml实现模块的的懒加载
-
+    """implement lazy module import associated with models.yaml
     Parameters
     ----------
     package : str
@@ -1346,7 +1346,7 @@ def lazy_model_import(package: str, module: str):
 
     Returns
     -------
-    _type_
+    Any
         module class
 
     Raises

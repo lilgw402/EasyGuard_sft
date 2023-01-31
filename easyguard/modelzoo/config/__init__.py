@@ -149,7 +149,7 @@ class ModelZooYaml(YamlConfig):
     def __getitem__(self, key: str):
         if not hasattr(self, "models"):
             self.model_detail_config()
-        if self.models.get(key, None) is not None:
+        if self.models.get(key, None):
             return self.models[key]
         raise KeyError(key)
 

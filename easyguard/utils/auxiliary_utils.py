@@ -1,6 +1,8 @@
 import hashlib
 import os
-from typing import Optional, Union
+from functools import wraps
+from inspect import signature
+from typing import List, Optional, Union
 
 import torch
 
@@ -13,6 +15,47 @@ from . import file_read, hexists, hmget
 from .logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def typecheck(*ty_args, **ty_kwargs):
+    """Decorator, used to check each argument for a function or class
+    example:
+        @typecheck(int, name=str)
+        def person(age, name):
+            age += 1
+            return f"age: {age}, name: {name}"
+        >>> person(31, "jack")
+        age: 32, name: jack
+        >>> person(31.5, "jack")
+        TypeError: Argument `age` must be <class 'int'>
+    """
+
+    def decorate(func):
+        # If in optimized mode, disable type checking
+        if not __debug__:
+            return func
+
+        # Map function argument names to supplied types
+        sig = signature(func)
+        bound_types = sig.bind_partial(*ty_args, **ty_kwargs).arguments
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            bound_values = sig.bind(*args, **kwargs)
+            # Enforce type assertions across supplied arguments
+            for name, value in bound_values.arguments.items():
+                if name in bound_types:
+                    if not isinstance(value, bound_types[name]):
+                        raise TypeError(
+                            "Argument `{}` must be {}".format(
+                                name, bound_types[name]
+                            )
+                        )
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorate
 
 
 def file_exist(prefix: str, choices: Union[str, set]) -> Optional[str]:
@@ -49,14 +92,16 @@ def sha256(data: str) -> str:
 def cache_file(
     model_name_path: str,
     file_name: Optional[Union[str, set]] = None,
+    remote_url: Optional[str] = None,
+    model_type: Optional[str] = None,
     *args,
     **kwargs,
 ) -> str:
     # TODO (junwei.Dong): 未来支持更多方式的读取
     """支持三种方式读取:
         1.本地指定文件读取: model_name_path直接指定到具体的文件
-        2.本地指定模型名字读取: model_name_path + file_name, 举例: deberta_base_6l + config.yaml
-        3.服务器端读取: model_name_path + file_name + remote_url, 举例: deberta_base_6l + config.yaml + hdfs://xxx/config.yaml
+        2.本地指定模型名字读取: model_name_path + file_name + model_type, 举例: deberta_base_6l + config.yaml + debert
+        3.服务器端读取: model_name_path + file_name + remote_url + model_type, 举例: deberta_base_6l + config.yaml + hdfs://xxx/config.yaml + debert
 
     Parameters
     ----------
@@ -64,11 +109,14 @@ def cache_file(
         模型名字或者指定路径
     file_name : Optional[Union[str, set]], optional
         想要获取的文件,按需指定, by default None
-
+    remote_url: Optional[str], optional
+        remote server directory
+    model_type: Optional[str], optional
+        the type of model, e.g., `bert`
     Returns
     -------
     str
-        本地文件路径或者远程拉取下来的文件的本地路径
+        the local path of the target file
 
     Raises
     ------
@@ -77,7 +125,6 @@ def cache_file(
     NotImplementedError
         _description_
     """
-    model_type = kwargs.pop("model_type", None)
     if os.path.exists(model_name_path):
         return model_name_path
     elif model_type is not None:
@@ -91,11 +138,12 @@ def cache_file(
             return model_file_local
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
-            model_path_remote = kwargs.pop("remote_url", None)
+            model_path_remote = remote_url
             assert (
                 model_path_remote is not None
             ), f"the argument `remote_url` doesn't exist"
             os.makedirs(model_path_local, exist_ok=True)
+            model_file_remote_list = []
             if isinstance(file_name, str):
                 model_file_remote_list = [
                     REMOTE_PATH_SEP.join([model_path_remote, file_name])
@@ -131,7 +179,7 @@ def cache_file(
                         )
                 else:
                     raise FileNotFoundError(
-                        f"`{model_file_remote_list}` can not find in remote server"
+                        f"`{model_file_remote_list}` can not be found in remote server"
                     )
 
             final_file_path = file_exist(model_path_local, file_name)
@@ -148,7 +196,65 @@ def cache_file(
     ...
 
 
-def list_pretrained_models():
+@typecheck(str)
+def hf_name_or_path_check(
+    pretrained_model_name_or_path: str,
+    model_url: Optional[str],
+    file_name: Union[str, set, List[set]],
+    model_type: str,
+) -> str:
+    """download required files from bytedance servers, which allows hf model to be used in easyguard framework
+    example:
+        >>> hf_name_or_path_check('fashion-deberta-ccr-order', 'hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order', 'vocab.txt', 'debert')
+        /root/.cache/easyguard/models/debert/6ca54229f34a5b0936d549632d9566a9a07be8ac430528306e27566964dc6a4a
+    Parameters
+    ----------
+    pretrained_model_name_or_path : str
+        archive name, e.g., fashion-deberta-ccr-order
+    model_url : str
+        remote url
+    file_name : Union[str, set, List[set]]
+        default names of the required files, e.g., [VOCAB_TXT, TOKENIZER_CONFIG_NAMES] or VOCAB_TXT
+    model_type : str
+        model architecture, e.g., debert
+
+    Returns
+    -------
+    str
+        the local directory which contains the downloaded files
+
+    Raises
+    ------
+    ValueError
+        _description_
+    """
+    if not model_url:
+        return pretrained_model_name_or_path
+    else:
+        if isinstance(file_name, (str, set)):
+            target_file_path = cache_file(
+                pretrained_model_name_or_path, file_name, model_url, model_type
+            )
+
+        elif isinstance(file_name, list):
+            for file_name_ in file_name:
+                target_file_path = cache_file(
+                    pretrained_model_name_or_path,
+                    file_name_,
+                    model_url,
+                    model_type,
+                )
+        else:
+            raise ValueError(
+                f"the type of argument `file_name` must be one of [{str}, {set}, {list}]"
+            )
+        return REMOTE_PATH_SEP.join(
+            target_file_path.split(REMOTE_PATH_SEP)[:-1]
+        )
+    ...
+
+
+def list_pretrained_models() -> None:
     """list all pretrained models from archive.yaml"""
     from prettytable import PrettyTable
 

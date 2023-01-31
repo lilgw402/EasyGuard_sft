@@ -189,6 +189,8 @@ _import_structure = {
         "get_configs",
         "load_pretrained_model_weights",
         "list_pretrained_models",
+        "typecheck",
+        "hf_name_or_path_check",
     ],
 }
 
@@ -198,9 +200,11 @@ if TYPE_CHECKING:
         EASYGUARD_CACHE,
         cache_file,
         get_configs,
+        hf_name_or_path_check,
         list_pretrained_models,
         load_pretrained_model_weights,
         sha256,
+        typecheck,
     )
     from .doc import (
         add_code_sample_docstrings,

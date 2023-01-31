@@ -29,11 +29,12 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
-from cruise.utilities.cloud_io import load as crs_load
-from cruise.utilities.rank_zero import rank_zero_info, rank_zero_warn
 from packaging import version
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
+
+from cruise.utilities.cloud_io import load as crs_load
+from cruise.utilities.rank_zero import rank_zero_info, rank_zero_warn
 from transformers.utils.hub import (
     convert_file_size_to_int,
     get_checkpoint_shard_files,

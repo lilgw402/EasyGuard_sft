@@ -19,7 +19,13 @@ from collections import OrderedDict
 from ...modelzoo.configuration_utils import ConfigBase, PretrainedConfig
 from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
 from ...modelzoo.modeling_utils import ModelBase
-from ...utils import cache_file, copy_func, lazy_model_import, logging
+from ...utils import (
+    cache_file,
+    copy_func,
+    hf_name_or_path_check,
+    lazy_model_import,
+    logging,
+)
 from . import (
     BACKENDS,
     HF_PATH,
@@ -229,8 +235,14 @@ class _BaseAutoModelClass:
             backend_default_flag = False
             if backend == "hf":
                 HFBaseAutoModelClass._model_mapping = cls._model_mapping
+                pretrained_model_name_or_path_ = hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    MODEL_SAVE_NAMES,
+                    model_type,
+                )
                 return HFBaseAutoModelClass.from_pretrained(
-                    pretrained_model_name_or_path, *model_args, **kwargs
+                    pretrained_model_name_or_path_, *model_args, **kwargs
                 )
             elif backend == "titan":
                 # TODO (junwei.Dong): 支持特殊的titan模型

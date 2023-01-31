@@ -15,15 +15,23 @@
 """ Auto Tokenizer class."""
 
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 from ...modelzoo.tokenization_utils_base import TOKENIZER_CONFIG_FILE
-from ...utils import cache_file, file_read, lazy_model_import, logging, sha256
+from ...utils import (
+    cache_file,
+    file_read,
+    hf_name_or_path_check,
+    lazy_model_import,
+    logging,
+    sha256,
+)
 from . import (
     BACKENDS,
     MODEL_ARCHIVE_CONFIG,
+    MODEL_CONFIG_NAMES,
     MODELZOO_CONFIG,
-    TOKENIZER_NAMES,
+    TOKENIZER_CONFIG_NAMES,
     VOCAB_NAME,
 )
 from .auto_factory import _LazyAutoMapping
@@ -57,8 +65,8 @@ class AutoTokenizer:
         )
 
     @classmethod
-    def from_config(cls, config_path: str, *inputs, **kwargs):
-        # TODO (junwei.Dong): 有待开发
+    def from_config(cls, config_path: Union[str, Any], *inputs, **kwargs):
+        # TODO (junwei.Dong): instantiate a tokenizer class from local path or config instance
         ...
 
     @classmethod
@@ -74,6 +82,7 @@ class AutoTokenizer:
         """
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
+            # TODO (junwei.Dong): instantiate a pretrained tokenizer class from local path
             raise KeyError(pretrained_model_name_or_path)
         else:
             model_archive = MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path]
@@ -91,8 +100,14 @@ class AutoTokenizer:
             if backend == "hf":
                 from .tokenization_auto_hf import HFTokenizer
 
+                pretrained_model_name_or_path_ = hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    [VOCAB_NAME, TOKENIZER_CONFIG_NAMES, MODEL_CONFIG_NAMES],
+                    model_type,
+                )
                 return HFTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, *inputs, **kwargs
+                    pretrained_model_name_or_path_, *inputs, **kwargs
                 )
             elif backend == "titan":
                 # TODO (junwei.Dong): 支持特殊的titan模型
@@ -103,7 +118,7 @@ class AutoTokenizer:
             else:
                 backend_default_flag = True
 
-            if backend_default_flag == True:
+            if backend_default_flag:
                 # just support base tokenizer
                 # lazily obtain tokenizer class
                 tokenizer_name_tuple = MODELZOO_CONFIG[model_type]["tokenizer"]
@@ -125,7 +140,9 @@ class AutoTokenizer:
 
                 # obtain tokenizer config file path
                 tokenizer_config_file_path = cache_file(
-                    pretrained_model_name_or_path, TOKENIZER_NAMES, **extra_dict
+                    pretrained_model_name_or_path,
+                    TOKENIZER_CONFIG_NAMES,
+                    **extra_dict,
                 )
                 tokenizer_config = file_read(tokenizer_config_file_path)
                 return tokenizer_class(vocab_file_path, **tokenizer_config)

@@ -1,1 +1,1 @@
-from .auto import AutoModel, AutoTokenizer
+from .auto import AutoImageProcessor, AutoModel, AutoProcessor, AutoTokenizer
