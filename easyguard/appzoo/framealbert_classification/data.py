@@ -270,6 +270,7 @@ class FacDataModule(CruiseDataModule):
             num_workers: int = 8,
             text_len: int = 128,
             frame_len: int = 1,
+            exp: str = 'default',
     ):
         super().__init__()
         self.save_hparams()
