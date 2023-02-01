@@ -6,6 +6,8 @@ unique_keys:
   - backend
   - config_archive
   - config
+  - text_config
+  - vision_config
   - tokenizer
   - tokenizer_fast
   - model_for_pretrained
@@ -72,6 +74,15 @@ models:
       processor: CLIPProcessor
     tokenization_clip:
       tokenizer: CLIPTokenizer
+  mdeberta_v2:
+    name: mDeBERTa
+    backend: hf
+    configuration_deberta_v2:
+      config: DebertaV2Config
+    modeling_deberta_v2:
+      model: DebertaV2ForMaskedLM
+    tokenization_deberta_v2:
+      tokenizer: DebertaV2Tokenizer
     
     
 

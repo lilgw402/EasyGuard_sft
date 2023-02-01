@@ -7,7 +7,12 @@ BACKENDS = set(["default", "hf", "titan", "fex"])
 MODEL_CONFIG_NAMES = set(["config.yaml", "config.json"])
 PYTORCH_MODLE = "pytorch_model"
 MODEL_SAVE_NAMES = set(
-    [f"{PYTORCH_MODLE}.ckpt", f"{PYTORCH_MODLE}.bin", f"{PYTORCH_MODLE}.pt"]
+    [
+        f"{PYTORCH_MODLE}.ckpt",
+        f"{PYTORCH_MODLE}.bin",
+        f"{PYTORCH_MODLE}.pt",
+        f"{PYTORCH_MODLE}.th",
+    ]
 )
 VOCAB_NAME = "vocab.txt"
 VOCAB_JSON_NAMES = set(["vocab.yaml", "vocab.json"])
@@ -23,6 +28,15 @@ SPECIAL_TOKENS_MAP_NAMES = set(
     ["special_tokens_map.yaml", "special_tokens_map.json"]
 )
 
+# # different pools for differrnt parts, files that are in pool will be downloaded together
+# TOKENIZER_FILE_POOL = [
+#     VOCAB_JSON_NAMES,
+#     VOCAB_NAME,
+#     TOKENIZER_CONFIG_NAMES,
+# ]
+# MODEL_FILE_POOL = [MODEL_SAVE_NAMES, MODEL_CONFIG_NAMES]
+# PROCESSOR_IMAGE_FILE_POOL = []
+# PROCESSOR_AUTO_FILE_POOL = []
 from ...modelzoo import MODEL_ARCHIVE_CONFIG, MODELZOO_CONFIG
 from .image_processing_auto import AutoImageProcessor
 from .modeling_auto import AutoModel

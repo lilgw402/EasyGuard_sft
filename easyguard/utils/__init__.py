@@ -1,3 +1,4 @@
+import os
 from typing import TYPE_CHECKING
 
 from .. import __version__
@@ -14,6 +15,9 @@ MODEL_CARD_NAME = "modelcard.json"
 SENTENCEPIECE_UNDERLINE = "▁"
 SPIECE_UNDERLINE = SENTENCEPIECE_UNDERLINE  # Kept for backward compatibility
 
+EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
+EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
+REMOTE_PATH_SEP = "/"
 _import_structure = {
     "yaml_utils": [
         "yaml_check",

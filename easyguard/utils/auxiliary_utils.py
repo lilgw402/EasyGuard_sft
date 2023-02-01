@@ -6,12 +6,15 @@ from typing import List, Optional, Union
 
 import torch
 
-EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
-EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
-REMOTE_PATH_SEP = "/"
-
 from ..modelzoo.config import MODEL_ARCHIVE_PATH
-from . import file_read, hexists, hmget
+from . import (
+    EASYGUARD_CACHE,
+    EASYGUARD_MODEL_CACHE,
+    REMOTE_PATH_SEP,
+    file_read,
+    hexists,
+    hmget,
+)
 from .logging import get_logger
 
 logger = get_logger(__name__)
@@ -101,7 +104,7 @@ def cache_file(
     """支持三种方式读取:
         1.本地指定文件读取: model_name_path直接指定到具体的文件
         2.本地指定模型名字读取: model_name_path + file_name + model_type, 举例: deberta_base_6l + config.yaml + debert
-        3.服务器端读取: model_name_path + file_name + remote_url + model_type, 举例: deberta_base_6l + config.yaml + hdfs://xxx/config.yaml + debert
+        3.服务器端读取: model_name_path + file_name + remote_url + model_type, 举例: deberta_base_6l + config.yaml + hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order + debert
 
     Parameters
     ----------
@@ -110,9 +113,9 @@ def cache_file(
     file_name : Optional[Union[str, set]], optional
         想要获取的文件,按需指定, by default None
     remote_url: Optional[str], optional
-        remote server directory
+        the remote directory of model, e.g., hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order
     model_type: Optional[str], optional
-        the type of model, e.g., `bert`
+        the type of model, for local operators, e.g., `bert`
     Returns
     -------
     str

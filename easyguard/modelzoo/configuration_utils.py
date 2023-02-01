@@ -18,6 +18,8 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from transformers.configuration_utils import *
+
 from .. import __version__
 from ..utils import logging
 

@@ -51,4 +51,4 @@ def test_deberta_model():
 
 if __name__ == "__main__":
     auto_model_test()
-    test_deberta_model()
+    # test_deberta_model()
