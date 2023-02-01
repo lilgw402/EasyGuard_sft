@@ -55,7 +55,7 @@ def p_fix_r(output, labels, fix_r):
     return precision, recall_sort[index], thr
 
 
-class HighQualityLiveVideoCLIP(CruiseModule):
+class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
             config_backbone,
@@ -63,7 +63,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             config_optim,
             load_pretrained: str = None,
     ):
-        super(HighQualityLiveVideoCLIP, self).__init__()
+        super(FrameAlbertClassify, self).__init__()
         self.save_hparams()
 
     def setup(self, stage) -> None:

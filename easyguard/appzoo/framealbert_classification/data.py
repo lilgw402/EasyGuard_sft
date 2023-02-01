@@ -1,6 +1,10 @@
 import io
+import os
 import json
-
+import random
+import re
+import base64
+import emoji
 import numpy as np
 import torch
 import torchvision.transforms as transforms
@@ -9,218 +13,263 @@ from cruise.data_module import (
     create_cruise_loader,
     customized_processor,
 )
-from cruise.data_module.preprocess.decode import save_args
-from PIL import Image
-
+from ptx.matx.pipeline import Pipeline
 from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
 
+from cruise.utilities.hdfs_io import hopen
+from cruise.data_module.preprocess.decode import save_args
+from .dist_dataset import DistLineReadingDataset
+from .download import get_real_url, get_original_url, download_url_with_exception
+from PIL import ImageFile, Image
 
-@save_args
-class HighQualityLiveDataDecode:
-    def __init__(self, key_mapping=None):
-        self.key_mapping = key_mapping
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-    def __call__(self, data):
-        if not self.key_mapping:
-            return json.loads(data.decode("utf-8"))
+_whitespace_re = re.compile(r'\s+')
+
+
+def rmEmoji(line):
+    return emoji.replace_emoji(line, replace=' ')
+
+
+def rmRepeat(line):
+    return re.sub(r'(.)\1{5,}', r'\1', line)
+
+
+def collapse_whitespace(text):
+    return re.sub(_whitespace_re, ' ', text)
+
+
+def text_preprocess(text):
+    if text is None:
+        return text
+
+    text = collapse_whitespace(rmRepeat(rmEmoji(text)))
+
+    try:
+        return re.sub(r"\<.*?\>", "", text).replace("\n", "").replace("\t", "").replace("\"", "").replace("\\",
+                                                                                                          "").strip()
+    except Exception:
+        return text
+
+
+def text_concat(title, desc=None):
+    title = text_preprocess(title)
+    desc = text_preprocess(desc)
+    if desc is None:
+        return title
+
+    if desc.startswith(title):
+        return desc
+
+    if len(desc) > 5:
+        text = title + ". " + desc
+    else:
+        text = title
+
+    return text
+
+
+class TorchvisionLabelDataset(DistLineReadingDataset):
+    """
+    dataset，继承的dataset是 DistLineReadingDataset，是一个逐行读hdfs数据的IterableDataset。
+    """
+
+    def __init__(self, config, data_path, rank=0, world_size=1, shuffle=True, repeat=False,
+                 is_training=False):
+        super().__init__(data_path, rank, world_size, shuffle, repeat)
+
+        # vocab_file = config.DATASET.VOCAB_FILE
+        self.text_len = config.text_len
+        self.frame_len = config.frame_len
+        if 'maplabel' in config.exp:
+            self.second_map = np.load('/opt/tiger/easyguard/second_map.npy', allow_pickle=True).item()
+            print(f'=============== apply label map to finetune on high risk map ===============')
         else:
-            data_dict = json.loads(data.decode("utf-8"))
-            for key in self.key_mapping:
-                data_dict[self.key_mapping[key]] = data_dict[key]
-                del data_dict[key]
-            return data_dict
+            self.second_map = None
+        self.gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
 
+        self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
+        self.PAD = self.pipe.special_tokens['pad']
+        self.preprocess = get_transform(mode='train' if is_training else 'val')
 
-# @customized_processor()
-class TextProcessor:
-    def __init__(
-        self,
-        vocab_file="zh_old_cut_145607.vocab",
-        do_lower_case=True,
-        tokenize_emoji=False,
-        greedy_sharp=False,
-        max_len={"text_ocr": 256, "text_asr": 256},
-        text_types=["text_ocr", "text_asr"],
-    ):
-        self.tokenizer = BertTokenizer(
-            vocab_file, do_lower_case, tokenize_emoji, greedy_sharp
-        )
-        self.max_len = {
-            "text_ocr": max_len["text_ocr"],
-            "text_asr": max_len["text_asr"],
-        }
-        self.CLS = self.tokenizer.vocab["[CLS]"]
-        self.PAD = self.tokenizer.vocab["[PAD]"]
-        self.SEP = self.tokenizer.vocab["[SEP]"]
-        self.MASK = self.tokenizer.vocab["[MASK]"]
-        self.text_types = text_types
+        with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
+            self.black_frame = self.preprocess(self._load_image(f.read()))
 
-    def __call__(self, texts):
-        tokens = ["[CLS]"]
-        for text_type in self.text_types:
-            text = texts[text_type]
-            tokens += self.tokenizer.tokenize(text)[
-                : self.max_len[text_type] - 2
-            ] + ["[SEP]"]
-        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
-        return token_ids
-
-
-# @customized_processor()
-class VideoFrameProcess:
-    def __init__(self, test_mode=False, frame_len=8):
-        self.transform = self.get_transform(test_mode)
-        self.frame_len = frame_len
-        self.test_mode = test_mode
-
-    def get_transform(self, test_mode: bool = False):
-        normalize = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )
-        if not test_mode:
-            com_transforms = transforms.Compose(
-                [
-                    transforms.RandomResizedCrop(224),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.ToTensor(),
-                    normalize,
-                ]
-            )
-        else:
-            com_transforms = transforms.Compose(
-                [
-                    transforms.Resize(256),
-                    transforms.CenterCrop(224),
-                    transforms.ToTensor(),
-                    normalize,
-                ]
-            )
-        return com_transforms
-
-    def __call__(self, image_paths):
-        frames = []
-        frames_raw = image_paths[: self.frame_len]
-        for frame_path in frames_raw:
+    def __iter__(self):
+        for example in self.generate():
             try:
-                image = Image.open(frame_path).convert("RGB")
-            except:
-                image = Image.new("RGB", (256, 256), (255, 255, 255))
-            image = self.transform(image)
-            frames.append(image)
-        return frames
+                data_item = json.loads(example)
+                cid = data_item['leaf_cid']
+                label = self.gec[cid]['label']
+                if self.second_map is not None:
+                    label = self.second_map[label]
+                # 文本
+                if 'translation' in data_item:
+                    country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
+                    title = data_item['translation'][country]
+                    desc = None
+                elif 'text' in data_item:
+                    title = data_item['text']
+                    desc = None
+                else:
+                    title = data_item['title']
+                    desc = data_item['desc']
+                text = text_concat(title, desc)
 
+                token_ids = self.pipe.preprocess([text])[0]
+                token_ids = token_ids.asnumpy()
+                token_ids = torch.from_numpy(token_ids)
 
-# @customized_processor(verbose=True)
-class HighQualityLiveProcessor:
-    def __init__(
-        self,
-        test_mode,
-        vocab_file="hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab",
-        ocr_max_len=128,
-        asr_max_len=128,
-        frame_len=8,
-        text_keys=("asr_text", "ocr_text"),
-        frame_key="frame_file_paths",
-        label_keys=("label",),
-    ):
-        self.text_process = TextProcessor(
-            vocab_file=vocab_file,
-            max_len={"text_ocr": ocr_max_len, "text_asr": asr_max_len},
-        )
-        self.frame_process = VideoFrameProcess(test_mode, frame_len=frame_len)
-        self.text_keys = text_keys
-        self.frame_key = frame_key
-        self.label_keys = label_keys
-        self.black_frame = self.frame_process.transform(
-            Image.new("RGB", (256, 256), (255, 255, 255))
-        )
-        self.PAD = self.text_process.PAD
-        self.frame_len = frame_len
+                # 图像
+                frames = []
 
-    def transform(self, data_dict: dict):
-        # parse text input
-        token_ids = self.text_process(
-            {
-                "text_ocr": data_dict["ocr_text"],
-                "text_asr": data_dict["asr_text"],
-            }
-        )
-        # parse frame input
-        frame_paths = data_dict[self.frame_key]
-        try:
-            item_id = frame_paths[0].split("/")[-2]
-        except:
-            item_id = None
-        frames = self.frame_process(frame_paths)
-        # print('data shape: token_ids({})'.format(len(token_ids)))
-        # print('data shape: token_ids({}), frames({})'.format(len(token_ids), frames.shape))
-        ret = {"token_ids": token_ids, "frames": frames, "item_id": item_id}
-        # parse label
-        labels = {}
-        for lk in self.label_keys:
-            labels[lk] = data_dict[lk]
-        ret.update(labels)
-        return ret
+                if 'image' in data_item:
+                    # get image by b64
+                    try:
+                        image_tensor = self.image_preprocess(data_item['image'])
+                        frames.append(image_tensor)
+                    except:
+                        print(f"load image base64 failed -- {data_item['pid']}")
+                        continue
+                elif 'images' in data_item:
+                    # get image by url
+                    image = None
+                    try:
+                        for url in data_item['images']:
+                            image_str = download_url_with_exception(get_original_url(url), timeout=3)
+                            if image_str != b'' and image_str != '':
+                                try:
+                                    image = Image.open(io.BytesIO(image_str)).convert("RGB")
+                                    break
+                                except:
+                                    continue
+                            else:
+                                pass
+                    except:
+                        pass
+                    if image is not None:
+                        image_tensor = self.preprocess(image)
+                        frames.append(image_tensor)
+                    else:
+                        print(f"No images in data {data_item['pid']} -- zero of {len(data_item['images'])}")
+                else:
+                    raise Exception(f'cannot find image or images')
 
-    def batch_transform(self, data):
+                input_dict = {'frames': frames,
+                              'label': label,
+                              'input_ids': token_ids}
+
+                yield input_dict
+
+            except Exception as e:
+                pass
+
+    def collect_fn(self, data):
+        frames = []
+        frames_mask = []
         labels = []
         input_ids = []
         input_mask = []
         input_segment_ids = []
-        frames = []
-        frames_mask = []
-        item_id = []
+        text_len = self.text_len
 
-        max_len = max([len(b["token_ids"]) for b in data])
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
-            item_id.append(ibatch["item_id"])
-
-            input_ids.append(
-                ibatch["token_ids"][:max_len]
-                + [self.PAD] * (max_len - len(ibatch["token_ids"]))
-            )
-            input_mask.append(
-                [1] * len(ibatch["token_ids"][:max_len])
-                + [0] * (max_len - len(ibatch["token_ids"]))
-            )
-            input_segment_ids.append([0] * max_len)
-
-            frames_cur = []
+            input_ids.append(ibatch['input_ids'])
+            input_mask_id = ibatch['input_ids'].clone()
+            input_mask_id[input_mask_id != 0] = 1
+            input_mask.append(input_mask_id)
+            input_segment_ids.append([0] * text_len)
+            img_np = ibatch['frames']
             frames_mask_cur = []
-            for img in ibatch["frames"]:
-                frames_cur.append(img)
-                frames_mask_cur.append(1)
-            while len(frames_cur) < self.frame_len:
-                frames_cur.append(self.black_frame)
-                frames_mask_cur.append(0)
-            frames.append(torch.stack(frames_cur, dim=0))
+            # 如果不够8帧，要补帧
+            if len(img_np) < self.frame_len:
+                # print('encouter not %s frames: %s ' % (self.frame_len, len(img_np)))
+                for i, img in enumerate(img_np):
+                    frames.append(img)
+                    frames_mask_cur.append(1)
+                for i in range(len(img_np), self.frame_len):
+                    # print('*******add black frame**********')
+                    frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
+                    frames_mask_cur.append(0)
+            else:
+                # 够的话就冲啊
+                for i, img in enumerate(img_np):
+                    frames.append(img)
+                    frames_mask_cur.append(1)
+
             frames_mask.append(frames_mask_cur)
 
-        batch = {
-            "frames": torch.stack(frames, dim=0),
-            "frames_mask": torch.tensor(frames_mask),
-            "input_ids": torch.tensor(input_ids),
-            "input_mask": torch.tensor(input_mask),
-            "input_segment_ids": torch.tensor(input_segment_ids),
-            "label": torch.tensor(labels, dtype=torch.long),
-            "item_id": item_id,
-        }
+        frames_mask = torch.tensor(frames_mask)  # [bsz, frame_num]
+        frames = torch.stack(frames, dim=0)  # [bsz * frame_num, c, h, w]
+        _, c, h, w = frames.shape
+        bsz, frame_num = frames_mask.shape
+        frames = frames.reshape([bsz, frame_num, c, h, w])
+        labels = torch.tensor(labels)
+        input_ids = torch.cat(input_ids, dim=0)
+        input_mask = torch.cat(input_mask, dim=0)
+        # input_ids = torch.tensor(input_ids)
+        # input_mask = torch.tensor(input_mask)
+        input_segment_ids = torch.tensor(input_segment_ids)
 
-        return batch
+        res = {"frames": frames, "frames_mask": frames_mask,
+               "label": labels,
+               "input_ids": input_ids, "input_mask": input_mask,
+               "input_segment_ids": input_segment_ids,
+               }
+        return res
+
+    def image_preprocess(self, image_str):
+        image = self._load_image(self.b64_decode(image_str))
+        image_tensor = self.preprocess(image)
+        return image_tensor
+
+    @staticmethod
+    def b64_decode(string):
+        if isinstance(string, str):
+            string = string.encode()
+        return base64.decodebytes(string)
+
+    @staticmethod
+    def _load_image(buffer):
+        img = Image.open(io.BytesIO(buffer))
+        img = img.convert('RGB')
+        return img
 
 
-class HighQualityLiveDataModule(CruiseDataModule):
+def get_transform(mode: str = "train"):
+    """
+    根据不同的data，返回不同的transform
+    """
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    if mode == "train":
+        com_transforms = transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize])
+    elif mode == 'val':
+        com_transforms = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize])
+    else:
+        raise ValueError('mode [%s] is not in [train, val]' % mode)
+    return com_transforms
+
+
+class FacDataModule(CruiseDataModule):
     def __init__(
-        self,
-        train_files: str = None,
-        val_files: str = None,
-        train_batch_size: int = 64,
-        val_batch_size: int = 32,
-        num_workers: int = 24,
-        ocr_max_len: int = 256,
-        asr_max_len: int = 256,
-        frame_len: int = 8,
+            self,
+            train_files: str = None,
+            val_files: str = None,
+            train_batch_size: int = 64,
+            val_batch_size: int = 32,
+            num_workers: int = 8,
+            text_len: int = 128,
+            frame_len: int = 1,
     ):
         super().__init__()
         self.save_hparams()
@@ -228,62 +277,38 @@ class HighQualityLiveDataModule(CruiseDataModule):
     def local_rank_zero_prepare(self) -> None:
         pass
 
-    def setup(self, stage) -> None:
-        self.train_files = self.hparams.train_files
-        self.val_files = self.hparams.val_files
+    def setup(self) -> None:
+        self.train_dataset = TorchvisionLabelDataset(
+            self.hparams,
+            data_path=self.hparams.train_files,
+            rank=int(os.environ.get('RANK') or 0),
+            world_size=int(os.environ.get('WORLD_SIZE') or 1),
+            shuffle=True,
+            repeat=True,
+            is_training=True)
+
+        self.val_dataset = TorchvisionLabelDataset(
+            self.hparams,
+            data_path=self.hparams.val_files,
+            rank=int(os.environ.get('RANK') or 0),
+            world_size=int(os.environ.get('WORLD_SIZE') or 1),
+            # world_size=1,
+            shuffle=False,
+            repeat=False,
+            is_training=False)
 
     def train_dataloader(self):
-        return create_cruise_loader(
-            data_sources=self.train_files,
-            data_types="kv",
-            batch_sizes=self.hparams.train_batch_size,
-            num_workers=self.hparams.num_workers,
-            num_readers=4,
-            shuffle=True,
-            # predefined_steps=2000,
-            processors=HighQualityLiveProcessor(
-                False,
-                ocr_max_len=self.hparams.ocr_max_len,
-                asr_max_len=self.hparams.asr_max_len,
-                frame_len=self.hparams.frame_len,
-            ),
-            decode_fn_list=[HighQualityLiveDataDecode()],
-        )
+        train_loader = torch.utils.data.DataLoader(self.train_dataset, batch_size=self.hparams.train_batch_size,
+                                                   num_workers=self.hparams.num_workers,
+                                                   pin_memory=True,
+                                                   drop_last=True,
+                                                   collate_fn=self.train_dataset.collect_fn)
+        return train_loader
 
     def val_dataloader(self):
-        return create_cruise_loader(
-            data_sources=self.val_files,
-            data_types="kv",
-            batch_sizes=self.hparams.val_batch_size,
-            num_workers=self.hparams.num_workers // 2,
-            num_readers=4,
-            shuffle=False,
-            # predefined_steps=2000,
-            processors=HighQualityLiveProcessor(
-                True,
-                ocr_max_len=self.hparams.ocr_max_len,
-                asr_max_len=self.hparams.asr_max_len,
-                frame_len=self.hparams.frame_len,
-            ),
-            decode_fn_list=[HighQualityLiveDataDecode()],
-        )
-
-    def predict_dataloader(
-        self, data_source=None, batch_size=32, num_workers=8
-    ):
-        return create_cruise_loader(
-            data_sources=data_source,
-            data_types="kv",
-            batch_sizes=batch_size,
-            num_workers=num_workers,
-            num_readers=4,
-            shuffle=False,
-            processors=HighQualityLiveProcessor(
-                True,
-                ocr_max_len=self.hparams.ocr_max_len,
-                asr_max_len=self.hparams.asr_max_len,
-                frame_len=self.hparams.frame_len,
-            ),
-            decode_fn_list=[HighQualityLiveDataDecode()],
-            drop_last=False,
-        )
+        val_loader = torch.utils.data.DataLoader(self.val_dataset, batch_size=self.hparams.val_batch_size,
+                                                 num_workers=1,
+                                                 pin_memory=True,
+                                                 drop_last=False,
+                                                 collate_fn=self.train_dataset.collect_fn)
+        return val_loader

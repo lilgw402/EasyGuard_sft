@@ -13,10 +13,8 @@ import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
 
-from easyguard.appzoo.high_quality_live.data import HighQualityLiveDataModule
-from easyguard.appzoo.high_quality_live.model_videoclip import (
-    HighQualityLiveVideoCLIP,
-)
+from easyguard.appzoo.framealbert_classification.data_bak import FacDataModule
+from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassify
 
 rand_seed = 42
 
@@ -36,9 +34,9 @@ def setup_seed(seed):
 setup_seed(rand_seed)
 
 cli = CruiseCLI(
-    HighQualityLiveVideoCLIP,
+    FrameAlbertClassify,
     trainer_class=CruiseTrainer,
-    datamodule_class=HighQualityLiveDataModule,
+    datamodule_class=FacDataModule,
     trainer_defaults={
         "summarize_model_depth": 3,
     },
