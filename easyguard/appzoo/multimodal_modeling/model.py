@@ -557,7 +557,7 @@ class FashionProduct(CruiseModule):
         betas: Tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-8,
         weight_decay: float = 0.02,
-        load_pretrained: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/model_state_epoch_83332.th",
+        load_pretrained: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_product_v2/model_state_epoch_44444.th",
         pretrained_model_dir: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720",
         local_pretrained_model_dir_prefix: str = "/opt/tiger/liuyuhang/ckpt/",
     ):
