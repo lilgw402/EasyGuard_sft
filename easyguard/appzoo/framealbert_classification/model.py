@@ -42,17 +42,17 @@ from .optimization import *
 from .optimization import AdamW
 
 
-def p_fix_r(output, labels, fix_r):
-    output_sort = output[(-output).argsort()]
-    labels_sort = labels[(-output).argsort()]
-    num_pos = np.sum(labels == 1)
-    recall_sort = np.cumsum(labels_sort) / float(num_pos)
-    index = np.abs(recall_sort - fix_r).argmin()
-    thr = output_sort[index]
-    precision = np.sum(((output >= thr) == labels) * labels) / np.sum(
-        output >= thr
-    )
-    return precision, recall_sort[index], thr
+# def p_fix_r(output, labels, fix_r):
+#     output_sort = output[(-output).argsort()]
+#     labels_sort = labels[(-output).argsort()]
+#     num_pos = np.sum(labels == 1)
+#     recall_sort = np.cumsum(labels_sort) / float(num_pos)
+#     index = np.abs(recall_sort - fix_r).argmin()
+#     thr = output_sort[index]
+#     precision = np.sum(((output >= thr) == labels) * labels) / np.sum(
+#         output >= thr
+#     )
+#     return precision, recall_sort[index], thr
 
 
 class FrameAlbertClassify(CruiseModule):
@@ -91,7 +91,8 @@ class FrameAlbertClassify(CruiseModule):
         # )
         feat_emb_size = self.config_fusion.feat_emb_size
         self.classifier_concat = torch.nn.Linear(feat_emb_size, self.config_fusion.class_num)
-        self.softmax = nn.Softmax(dim=1)
+        # self.softmax = nn.Softmax(dim=1)
+        self.criterion = torch.nn.CrossEntropyLoss()
         """
         Initialize some fixed parameters.
         """
@@ -111,36 +112,43 @@ class FrameAlbertClassify(CruiseModule):
         self.apply(init_weight_module)
 
         if self.hparams.load_pretrained:
-            state_dict_ori = self.state_dict()
-            # load weights of pretrained model
-            state_dict_new = OrderedDict()
-            pretrained_weights = load(
-                self.hparams.load_pretrained, map_location="cpu"
-            )
-            if "state_dict" in pretrained_weights:
-                pretrained_weights = pretrained_weights["state_dict"]
-
-            # pretrain_prefix_changes
-            unloaded_keys = []
+            # state_dict_ori = self.state_dict()
+            # # load weights of pretrained model
+            # state_dict_new = OrderedDict()
+            # pretrained_weights = load(
+            #     self.hparams.load_pretrained, map_location="cpu"
+            # )
+            # if "state_dict" in pretrained_weights:
+            #     pretrained_weights = pretrained_weights["state_dict"]
+            #
+            # # pretrain_prefix_changes
+            # unloaded_keys = []
+            # prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
+            # for key, value in pretrained_weights.items():
+            #     parsed_key = key
+            #     for pretrain_prefix, new_prefix in prefix_changes:
+            #         if parsed_key.startswith(pretrain_prefix):
+            #             parsed_key = new_prefix + parsed_key[len(pretrain_prefix):]
+            #     if (
+            #             parsed_key in state_dict_ori
+            #             and state_dict_ori[parsed_key].shape == value.shape
+            #     ):
+            #         state_dict_new[parsed_key] = value
+            #     else:
+            #         unloaded_keys.append(parsed_key)
+            # missing_keys, unexpected_keys = self.load_state_dict(
+            #     state_dict_new, strict=False
+            # )
+            # print("missing_keys: ", missing_keys)
+            # print("unexpected_keys: ", unexpected_keys)
+            # print("unloaded_keys: ", unloaded_keys)
             prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
-            for key, value in pretrained_weights.items():
-                parsed_key = key
-                for pretrain_prefix, new_prefix in prefix_changes:
-                    if parsed_key.startswith(pretrain_prefix):
-                        parsed_key = new_prefix + parsed_key[len(pretrain_prefix):]
-                if (
-                        parsed_key in state_dict_ori
-                        and state_dict_ori[parsed_key].shape == value.shape
-                ):
-                    state_dict_new[parsed_key] = value
-                else:
-                    unloaded_keys.append(parsed_key)
-            missing_keys, unexpected_keys = self.load_state_dict(
-                state_dict_new, strict=False
+            rename_params = {pretrain_prefix: new_prefix for pretrain_prefix, new_prefix in prefix_changes}
+            self.partial_load_from_checkpoints(
+                self.hparams.load_pretrained,
+                map_location='cpu',
+                rename_params=rename_params
             )
-            print("missing_keys: ", missing_keys)
-            print("unexpected_keys: ", unexpected_keys)
-            print("unloaded_keys: ", unloaded_keys)
 
     def freeze_params(self, freeze_prefix):
         for name, param in self.named_parameters():
@@ -184,7 +192,7 @@ class FrameAlbertClassify(CruiseModule):
         concat_feat = torch.cat([cls_emb, max_pooling], dim=1)
         logits = self.classifier_concat(concat_feat)
 
-        return {"feat": concat_feat, "out_lvl1": logits}
+        return {"feat": concat_feat, "logits": logits}
 
     def encode_multimodal(
             self,
@@ -219,13 +227,13 @@ class FrameAlbertClassify(CruiseModule):
         )
         return mmout
 
-    def cal_cls_loss(self, **kwargs):
-        for key in ["out_lvl1", "label"]:
-            if key in kwargs:
-                kwargs[key] = self.all_gather(kwargs[key].contiguous())
-                kwargs[key] = kwargs[key].flatten(0, 1)
-        loss = cross_entropy(kwargs["out_lvl1"], kwargs["label"])
-        return {"loss": loss}
+    # def cal_cls_loss(self, **kwargs):
+    #     for key in ["logits", "label"]:
+    #         if key in kwargs:
+    #             kwargs[key] = self.all_gather(kwargs[key].contiguous())
+    #             kwargs[key] = kwargs[key].flatten(0, 1)
+    #     loss = cross_entropy(kwargs["logits"], kwargs["label"])
+    #     return {"loss": loss}
 
     def training_step(self, batch, idx):
         token_ids, segment_ids, attn_mask, image, image_mask = (
@@ -243,48 +251,18 @@ class FrameAlbertClassify(CruiseModule):
             frames_mask=image_mask,
         )
         rep_dict.update({"label": batch["label"]})
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
+        res = {
+            "train_loss": loss,
+            "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+        }
+        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
+        for k, v in acc_dict.items():
+            res.update({f'val_{k}': v})
 
-        loss_dict = self.cal_cls_loss(**rep_dict)
-
-        acc, _, _ = accuracy(rep_dict["out_lvl1"], rep_dict["label"])
-        gt = torch.eq(rep_dict["label"], 2).int()
-        pred_score = self.softmax(rep_dict["out_lvl1"])[:, 2]
-        loss_dict.update({"acc": acc, "b_pred": pred_score, "b_gt": gt})
-        loss_dict.update(
-            {
-                "learning_rate": self.trainer.lr_scheduler_configs[
-                    0
-                ].scheduler.get_last_lr()[0]
-            }
-        )
-
-        return loss_dict
+        return res
 
     def validation_step(self, batch, idx):
-        return self.training_step(batch, idx)
-
-    def validation_epoch_end(self, outputs) -> None:
-        gathered_results = DIST_ENV.all_gather_object(outputs)
-        all_results = []
-        for item in gathered_results:
-            all_results.extend(item)
-        acc_all = [out["acc"] for out in all_results]
-        total_acc = sum(acc_all) / len(acc_all)
-        self.log("total_val_acc", total_acc, console=True)
-        labels, scores = [], []
-        for out in all_results:
-            labels.extend(out["b_gt"].detach().cpu().tolist())
-            scores.extend(out["b_pred"].detach().cpu().tolist())
-        # auc = roc_auc_score(labels, scores)
-        # precision, recall, thr = p_fix_r(
-        #     np.array(scores), np.array(labels), 0.3
-        # )
-        ###优质PR, auc
-        # self.log("total_val_prec", precision, console=True)
-        # self.log("total_val_rec", recall, console=True)
-        # self.log("total_val_auc", auc, console=True)
-
-    def predict_step(self, batch, idx):
         token_ids, segment_ids, attn_mask, image, image_mask = (
             batch["input_ids"],
             batch["input_segment_ids"],
@@ -299,11 +277,35 @@ class FrameAlbertClassify(CruiseModule):
             frames=image,
             frames_mask=image_mask,
         )
-        return {
-            "pred": self.softmax(rep_dict["out_lvl1"]),
-            "label": batch["label"],
-            "item_id": batch["item_id"],
-        }
+        rep_dict.update({"label": batch["label"]})
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
+        res = {"val_loss": loss}
+        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
+        for k, v in acc_dict.items():
+            res.update({f'val_{k}': v})
+
+        return res
+
+    def validation_epoch_end(self, outputs) -> None:
+        gathered_results = DIST_ENV.all_gather_object(outputs)
+        # all_results = []
+        # for item in gathered_results:
+        #     all_results.extend(item)
+        # acc_all = [out["acc"] for out in all_results]
+        # total_acc = sum(acc_all) / len(acc_all)
+        # self.log("total_val_acc", total_acc, console=True)
+        res_out = {}
+        top1_acc = []
+        top5_acc = []
+        for item in gathered_results:
+            top1_acc.append(item["val_top1_acc"].mean().item())
+            top5_acc.append(item["val_top5_acc"].mean().item())
+
+        top1_acc = torch.tensor(top1_acc).mean()
+        top5_acc = torch.tensor(top5_acc).mean()
+        res_out["val_top1_acc"] = top1_acc
+        res_out["val_top5_acc"] = top5_acc
+        self.log("res_out", res_out, console=True)
 
     def configure_optimizers(self):
         no_decay = ["bias", "bn", "norm"]
@@ -384,3 +386,21 @@ class FrameAlbertClassify(CruiseModule):
             )
 
         return {"optimizer": optm, "lr_scheduler": lr_scheduler}
+
+    @torch.no_grad()
+    def cal_acc(self, output: torch.Tensor, label: torch.Tensor, topk: Tuple[int] = (1,)):
+        """
+        Computes the accuracy over the k top predictions for the specified values of k
+        """
+        maxk = max(topk)
+        batch_size = label.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(label.view(1, -1).expand_as(pred))
+
+        res = {}
+        for k in topk:
+            correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
+            res[f"top{k}_acc"] = correct_k.mul_(100.0 / batch_size)
+        return res

@@ -18,14 +18,14 @@ trainer:
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: 50
+  val_check_interval: [50, 1.0]
   accumulate_grad_batches: null
   gradient_clip_val: 1.0
   seed: 42
   summarize_model_depth: 3
   resume_ckpt_path: null
   callbacks: null
-  enable_checkpoint: 100
+  enable_checkpoint: 50
   checkpoint_monitor: step
   checkpoint_mode: max
   dataloader_timeout: -1
