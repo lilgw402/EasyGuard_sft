@@ -25,7 +25,7 @@ trainer:
   summarize_model_depth: 3
   resume_ckpt_path: null
   callbacks: null
-  enable_checkpoint: 50
+  enable_checkpoint: true
   checkpoint_monitor: step
   checkpoint_mode: max
   dataloader_timeout: -1
@@ -37,12 +37,12 @@ trainer:
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
 model:
-  # config_backbone: examples/framealbert_classification/config/config_backbone.yaml
-  # config_fusion: examples/framealbert_classification/config/config_fusion.yaml
-  # config_optim: examples/framealbert_classification/config/config_optim.yaml
-  config_backbone: config/config_backbone.yaml
-  config_fusion: config/config_fusion.yaml
-  config_optim: config/config_optim.yaml
+  config_backbone: examples/framealbert_classification/config/config_backbone.yaml
+  config_fusion: examples/framealbert_classification/config/config_fusion.yaml
+  config_optim: examples/framealbert_classification/config/config_optim.yaml
+  # config_backbone: config/config_backbone.yaml
+  # config_fusion: config/config_fusion.yaml
+  # config_optim: config/config_optim.yaml
   load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/model_state_epoch_38000.th
   low_lr_prefix: [ ]
   prefix_changes:
@@ -50,10 +50,12 @@ model:
     - backbone.->falbert.
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/hr_train_jsonl,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/tmpmix_train_jsonl
+  train_size: 1500000
   val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/high_risk_1013_slices
-  train_batch_size: 64
+  val_size: 16000
+  train_batch_size: 128
   val_batch_size: 32
-  num_workers: 8
+  num_workers: 4
   text_len: 128
   frame_len: 1
   exp: cruise_raw_prop_from_trans_5e-6

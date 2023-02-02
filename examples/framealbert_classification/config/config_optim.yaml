@@ -5,5 +5,3 @@ learning_rate: 5.0e-6
 weight_decay: 1.e-4
 lr_schedule: linear
 warmup_steps_factor: 5
-low_lr_prefix:
-  - falbert.visual
