@@ -27,9 +27,15 @@ def test_hf_name_or_path_check():
     print(hf_name_or_path_check(name_or_path, model_url, file_name, model_type))
 
 
+def test_convert_model_weight():
+    path = "/root/.cache/easyguard/models/fashionxlm/8ee34e57fe94a2783d2d260122c2f9d04d9c312f84ccd58629c52348744f43e2/pytorch_model.bin"
+    convert_model_weights(path, "backbone.", remove_old=True)
+
+
 if __name__ == "__main__":
     data = "hello world~"
-    test_sha256(data)
+    # test_sha256(data)
     # test_cache_file()
-    # test_list_pretrained_models()
-    test_hf_name_or_path_check()
+    test_list_pretrained_models()
+    # test_hf_name_or_path_check()
+    # test_convert_model_weight()

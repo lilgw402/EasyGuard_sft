@@ -2,7 +2,7 @@ import hashlib
 import os
 from functools import wraps
 from inspect import signature
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, OrderedDict, Union
 
 import torch
 
@@ -10,9 +10,12 @@ from ..modelzoo.config import MODEL_ARCHIVE_PATH
 from . import (
     EASYGUARD_CACHE,
     EASYGUARD_MODEL_CACHE,
+    REGION_MAPPING,
     REMOTE_PATH_SEP,
+    SERVER_MAPPING,
     file_read,
     hexists,
+    hlist_files,
     hmget,
 )
 from .logging import get_logger
@@ -234,26 +237,51 @@ def hf_name_or_path_check(
     if not model_url:
         return pretrained_model_name_or_path
     else:
-        if isinstance(file_name, (str, set)):
-            target_file_path = cache_file(
-                pretrained_model_name_or_path, file_name, model_url, model_type
-            )
-
-        elif isinstance(file_name, list):
-            for file_name_ in file_name:
-                target_file_path = cache_file(
-                    pretrained_model_name_or_path,
-                    file_name_,
-                    model_url,
+        file_list = hlist_files([model_url])
+        if file_list:
+            target_file_path = ""
+            for file_path in file_list:
+                file_name = file_path.split(REMOTE_PATH_SEP)[-1]
+                target_file_path = os.path.join(
+                    EASYGUARD_MODEL_CACHE,
                     model_type,
+                    sha256(pretrained_model_name_or_path),
+                    file_name,
                 )
-        else:
-            raise ValueError(
-                f"the type of argument `file_name` must be one of [{str}, {set}, {list}]"
+                if not os.path.exists(target_file_path):
+                    target_file_path = cache_file(
+                        pretrained_model_name_or_path,
+                        file_name,
+                        model_url,
+                        model_type,
+                    )
+            return REMOTE_PATH_SEP.join(
+                target_file_path.split(REMOTE_PATH_SEP)[:-1]
             )
-        return REMOTE_PATH_SEP.join(
-            target_file_path.split(REMOTE_PATH_SEP)[:-1]
-        )
+        else:
+            raise FileExistsError(
+                f"not file found in server, please check the url {model_url}"
+            )
+        # if isinstance(file_name, (str, set)):
+        #     target_file_path = cache_file(
+        #         pretrained_model_name_or_path, file_name, model_url, model_type
+        #     )
+
+        # elif isinstance(file_name, list):
+        #     for file_name_ in file_name:
+        #         target_file_path = cache_file(
+        #             pretrained_model_name_or_path,
+        #             file_name_,
+        #             model_url,
+        #             model_type,
+        #         )
+        # else:
+        #     raise ValueError(
+        #         f"the type of argument `file_name` must be one of [{str}, {set}, {list}]"
+        #     )
+        # return REMOTE_PATH_SEP.join(
+        #     target_file_path.split(REMOTE_PATH_SEP)[:-1]
+        # )
     ...
 
 
@@ -272,6 +300,112 @@ def list_pretrained_models() -> None:
         temp_ = [key_] + [value_.get(_, None) for _ in filed_names]
         model_archive_table.add_row(temp_)
     logger.info("\n" + str(model_archive_table))
+
+
+def pretrained_model_archive_parse(
+    model_name: str,
+    model_config: Dict[str, Any],
+    target_region: Optional[str] = "CN",
+) -> Dict[str, Any]:
+    """parse the ptrained model based the server config
+
+    Parameters
+    ----------
+    model_name : str
+        archive name, e.g., 'bert-base-uncased'
+    model_config : Dict[str, Any]
+        a dict from model archive
+    target_region : Optional[str], optional
+        CN, VA, CN/VA, by default "CN"
+
+    Returns
+    -------
+    Dict[str, Any]
+        a updated `model_config`
+    """
+    model_name_ = model_name.replace("-", "_")
+    server = model_config.get("server", None)
+
+    if not server:
+        return model_config
+    else:
+        region = model_config.get("region", "CN")
+        regions = region.split("/")
+        target_region_ = (
+            target_region if target_region in regions else regions[0]
+        )
+        region_index = REGION_MAPPING[target_region_]
+        model_dir_remote = SERVER_MAPPING[server][region_index]
+        model_config["url_or_path"] = REMOTE_PATH_SEP.join(
+            [model_dir_remote, "models", model_name_]
+        )
+        return model_config
+
+
+def convert_model_weights(
+    model_weights_path: str,
+    prefix: str,
+    output_name: Optional[str] = None,
+    remove_old: Optional[bool] = False,
+    map_location: Optional[str] = "cpu",
+):
+    """remove `prefix` of the weights' key in `model_weights_path`
+    example:
+    >>> path = '/root/.cache/easyguard/models/mdeberta_v2/4e7be1b4eb8d77a4a5932fa55ce000832b5deb76011d36820c5f78f5caf2ee83/pytorch_model.bin'
+    >>> convert_model_weights(path, "backbone.")
+    2023-02-01 20:05:29,211 INFO 58539 [/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/easyguard/utils/auxiliary_utils.py:367]  start load weights from /root/.cache/easyguard/models/mdeberta_v2/4e7be1b4eb8d77a4a5932fa55ce000832b5deb76011d36820c5f78f5caf2ee83/pytorch_model.bin
+    2023-02-01 20:05:30,704 INFO 58539 [/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/easyguard/utils/auxiliary_utils.py:375]  save model into /root/.cache/easyguard/models/mdeberta_v2/4e7be1b4eb8d77a4a5932fa55ce000832b5deb76011d36820c5f78f5caf2ee83/pytorch_model_new.bin
+    2023-02-01 20:05:33,728 INFO 58539 [/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/easyguard/utils/auxiliary_utils.py:377]  convert successfully~
+
+    Parameters
+    ----------
+    model_weights_path : str
+        the path of the weights
+    prefix : str
+        the prefix, e.g., 'backbone.'
+    output_name : Optional[str], optional
+        the output name, e.g., '_v2', by default None
+    remove_old : Optional[bool], optional
+        if true, remove the old one, by default False
+    map_location : Optional[str], optional
+        used for `torch.load`, by default "cpu"
+
+    Raises
+    ------
+    ValueError
+        _description_
+    ValueError
+        _description_
+    FileExistsError
+        _description_
+    """
+
+    if not isinstance(prefix, str):
+        raise ValueError(f"the argument `prefix` must be {str}")
+    model_name = model_weights_path.split(os.path.sep)[-1]
+    model_name_sep = model_name.split(".")
+    if not output_name:
+        model_name_sep[0] += "_new"
+        output_name = ".".join(model_name_sep)
+    elif output_name == model_name:
+        raise ValueError(f"{output_name} is same as the orginal model")
+
+    if remove_old:
+        output_name = model_name
+    output_path = model_weights_path[: -len(model_name)] + output_name
+    if not os.path.exists(model_weights_path):
+        raise FileExistsError(f"the file {model_weights_path} does not exist")
+    logger.info(f"start load weights from {model_weights_path}")
+    weights: OrderedDict = torch.load(
+        model_weights_path, map_location=map_location
+    )
+    for key_ in list(weights.keys()):
+        if key_.startswith(prefix):
+            key_new = key_[len(prefix) :]
+            weights[key_new] = weights.pop(key_)
+    logger.info(f"save model into {output_path}")
+    torch.save(weights, output_path)
+    logger.info(f"convert successfully~")
 
 
 # from titan

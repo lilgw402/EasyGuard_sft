@@ -1,5 +1,6 @@
-from typing import Any, Union
+from typing import Any, Optional, Union
 
+from ...utils import pretrained_model_archive_parse
 from . import BACKENDS, MODEL_ARCHIVE_CONFIG, MODELZOO_CONFIG
 
 IMAGE_PROCESSOR_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("image_processor")
@@ -19,7 +20,11 @@ class AutoImageProcessor:
 
     @classmethod
     def from_pretrained(
-        cls, pretrained_model_name_or_path: str, *inputs, **kwargs
+        cls,
+        pretrained_model_name_or_path: str,
+        region: Optional[str] = "CN",
+        *inputs,
+        **kwargs,
     ):
         """instantiate a processor class based on `pretrained_model_name_or_path`
 
@@ -38,7 +43,11 @@ class AutoImageProcessor:
             # TODO (junwei.Dong): instantiate a pretrained processor class from local path
             raise KeyError(pretrained_model_name_or_path)
         else:
-            model_archive = MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path]
+            model_archive = pretrained_model_archive_parse(
+                pretrained_model_name_or_path,
+                MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
+                region,
+            )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)

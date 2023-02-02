@@ -75,7 +75,7 @@ models:
     tokenization_clip:
       tokenizer: CLIPTokenizer
   mdeberta_v2:
-    name: mDeBERTa
+    name: mDeBERTa_V2
     backend: hf
     configuration_deberta_v2:
       config: DebertaV2Config
@@ -83,6 +83,24 @@ models:
       model: DebertaV2ForMaskedLM
     tokenization_deberta_v2:
       tokenizer: DebertaV2Tokenizer
+  mdeberta_v2_moe:
+    name: mDeBERTa_V2_moe
+    backend: hf
+    configuration_deberta_v2:
+      config: DebertaV2Config
+    modeling_deberta_moe:
+      model: DebertaV2ForMaskedLMMoE
+    tokenization_deberta_v2:
+      tokenizer: DebertaV2Tokenizer
+  fashionxlm:
+    name: FashionXLM
+    backend: hf
+    configuration_xlm_roberta:
+      config: XLMRobertaConfig
+    modeling_xlm_roberta:
+      model: XLMRobertaForMaskedLM
+    tokenization_xlm_roberta:
+      tokenizer: XLMRobertaTokenizer
     
     
 

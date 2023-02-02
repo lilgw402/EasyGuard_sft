@@ -15,6 +15,7 @@
 """Factory function to build auto-model classes."""
 import importlib
 from collections import OrderedDict
+from typing import Optional
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
@@ -27,6 +28,7 @@ from ...utils import (
     hf_name_or_path_check,
     lazy_model_import,
     logging,
+    pretrained_model_archive_parse,
 )
 from . import (
     BACKENDS,
@@ -218,13 +220,21 @@ class _BaseAutoModelClass:
 
     @classmethod
     def from_pretrained(
-        cls, pretrained_model_name_or_path: str, *model_args, **kwargs
+        cls,
+        pretrained_model_name_or_path: str,
+        region: Optional[str] = "CN",
+        *model_args,
+        **kwargs,
     ):
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
             raise KeyError(pretrained_model_name_or_path)
         else:
-            model_archive = MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path]
+            model_archive = pretrained_model_archive_parse(
+                pretrained_model_name_or_path,
+                MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
+                region,
+            )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)

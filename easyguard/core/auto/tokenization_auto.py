@@ -25,6 +25,7 @@ from ...utils import (
     hf_name_or_path_check,
     lazy_model_import,
     logging,
+    pretrained_model_archive_parse,
     sha256,
 )
 from . import (
@@ -72,7 +73,11 @@ class AutoTokenizer:
 
     @classmethod
     def from_pretrained(
-        cls, pretrained_model_name_or_path: str, *inputs, **kwargs
+        cls,
+        pretrained_model_name_or_path: str,
+        region: Optional[str] = "CN",
+        *inputs,
+        **kwargs,
     ):
         """
 
@@ -86,7 +91,11 @@ class AutoTokenizer:
             # TODO (junwei.Dong): instantiate a pretrained tokenizer class from local path
             raise KeyError(pretrained_model_name_or_path)
         else:
-            model_archive = MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path]
+            model_archive = pretrained_model_archive_parse(
+                pretrained_model_name_or_path,
+                MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
+                region,
+            )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)

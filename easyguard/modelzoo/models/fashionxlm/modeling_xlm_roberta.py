@@ -16,7 +16,6 @@
 """PyTorch XLM-RoBERTa model."""
 
 from transformers.file_utils import add_start_docstrings
-from transformers.utils import logging
 from transformers.models.roberta.modeling_roberta import (
     RobertaForCausalLM,
     RobertaForMaskedLM,
@@ -26,9 +25,10 @@ from transformers.models.roberta.modeling_roberta import (
     RobertaForTokenClassification,
     RobertaModel,
 )
-from transformers.models.xlm_roberta.configuration_xlm_roberta import XLMRobertaConfig
+from transformers.utils import logging
 
 from ...modeling_utils import ModelBase
+from .configuration_xlm_roberta import XLMRobertaConfig
 
 logger = logging.get_logger(__name__)
 
@@ -106,7 +106,9 @@ class XLMRobertaForMaskedLM(RobertaForMaskedLM, ModelBase):
     """,
     XLM_ROBERTA_START_DOCSTRING,
 )
-class XLMRobertaForSequenceClassification(RobertaForSequenceClassification, ModelBase):
+class XLMRobertaForSequenceClassification(
+    RobertaForSequenceClassification, ModelBase
+):
     """
     This class overrides [`RobertaForSequenceClassification`]. Please check the superclass for the appropriate
     documentation alongside usage examples.
@@ -138,7 +140,9 @@ class XLMRobertaForMultipleChoice(RobertaForMultipleChoice, ModelBase):
     """,
     XLM_ROBERTA_START_DOCSTRING,
 )
-class XLMRobertaForTokenClassification(RobertaForTokenClassification, ModelBase):
+class XLMRobertaForTokenClassification(
+    RobertaForTokenClassification, ModelBase
+):
     """
     This class overrides [`RobertaForTokenClassification`]. Please check the superclass for the appropriate
     documentation alongside usage examples.

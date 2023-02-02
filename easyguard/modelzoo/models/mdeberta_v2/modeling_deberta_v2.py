@@ -36,10 +36,9 @@ from transformers.modeling_outputs import (
     TokenClassifierOutput,
 )
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.deberta_v2.configuration_deberta_v2 import (
-    DebertaV2Config,
-)
 from transformers.utils import logging
+
+from .configuration_deberta_v2 import DebertaV2Config
 
 logger = logging.get_logger(__name__)
 

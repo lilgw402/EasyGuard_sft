@@ -49,6 +49,20 @@ def test_deberta_model():
     print(result)
 
 
+def test_hf_modified_model():
+    archive = "fashionxlm-base"
+    archive = "fashionxlm-moe-base"
+    archive = "xlmr-base"
+
+    tokenizer = AutoTokenizer.from_pretrained(archive)
+    model = AutoModel.from_pretrained(archive)
+    inputs = tokenizer("Hello world!", return_tensors="pt")
+    print(inputs)
+    ouputs = model(**inputs)
+    print(ouputs)
+
+
 if __name__ == "__main__":
-    auto_model_test()
+    # auto_model_test()
     # test_deberta_model()
+    test_hf_modified_model()

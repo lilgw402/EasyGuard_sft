@@ -1,22 +1,45 @@
-# specific pretrained models
-deberta_base_6l: 
-  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/deberta_base_6l
+# all available pretrained models
+# server: server name
+# url_or_path: remote url
+# type: model name in `easyguard.modelzoo.modles`
+# description: a short introduction to the pretrained model
+# region: CN [available in China], VA [available overseas], CN/VA [available both]
+# available server urls: hdfs://haruna/home/byte_ecom_govern/easyguard/models [China]
+deberta_base_6l:
+  server: hdfs
   type: deberta
+  region: CN
 fashion-deberta:
-  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta
+  server: hdfs
   type: deberta
   description: CCR + ASR 各1亿 MLM
+  region: CN
 fashion-deberta-asr:
-  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_asr
+  server: hdfs
   type: deberta
   description: 风险预测task, 6层deberta
+  region: CN
 fashion-deberta-ccr-order:
-  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order
+  server: hdfs
   type: deberta
   description: 订单型 + VOC
+  region: CN
+fashionxlm-base:
+  server: hdfs
+  type: mdeberta_v2
+  region: CN
+fashionxlm-moe-base:
+  server: hdfs
+  type: mdeberta_v2_moe
+  region: CN
+xlmr-base:
+  server: hdfs
+  type: fashionxlm
+  region: CN
 bert-base-uncased:
+  server: hdfs
   type: bert
-  url_or_path: hdfs://haruna/home/byte_ecom_govern/easyguard/models/bert_base_uncased
+  region: CN
 facebook/bart-large:
   type: bart
 google/vit-base-patch16-224:

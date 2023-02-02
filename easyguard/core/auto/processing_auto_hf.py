@@ -26,6 +26,7 @@ from transformers.image_processing_utils import ImageProcessingMixin
 from transformers.tokenization_utils import TOKENIZER_CONFIG_FILE
 
 from ...utils import FEATURE_EXTRACTOR_NAME, get_file_from_repo, logging
+from . import HF_PATH
 from .auto_factory import _LazyAutoMapping
 from .configuration_auto import (
     CONFIG_MAPPING_NAMES,
@@ -53,9 +54,7 @@ def processor_class_from_name(class_name: str):
         if class_name in processors:
             module_name = model_type_to_module_name(module_name)
 
-            module = importlib.import_module(
-                f".{module_name}", "transformers.models"
-            )
+            module = importlib.import_module(f".{module_name}", HF_PATH)
             try:
                 return getattr(module, class_name)
             except AttributeError:

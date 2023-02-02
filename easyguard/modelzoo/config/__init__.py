@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
 MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
-MODEL_REMOTE_ZOO = "hdfs://haruna/home/byte_ecom_govern/easyguard/models"
 MODELZOO_NAME = "models"
 YAML_DEEP = 3
 

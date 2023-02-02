@@ -400,6 +400,9 @@ class HFAutoConfig:
                 pretrained_model_name_or_path, **kwargs
             )
         elif "model_type" in config_dict:
+            config_dict["model_type"] = config_dict["model_type"].replace(
+                "-", "_"
+            )
             config_class = CONFIG_MAPPING[config_dict["model_type"]]
             return config_class.from_dict(config_dict, **unused_kwargs)
         else:

@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 from typing import TYPE_CHECKING
 
 from .. import __version__
@@ -14,10 +15,15 @@ MODEL_CARD_NAME = "modelcard.json"
 
 SENTENCEPIECE_UNDERLINE = "▁"
 SPIECE_UNDERLINE = SENTENCEPIECE_UNDERLINE  # Kept for backward compatibility
-
+# for local cache
 EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
 EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
 REMOTE_PATH_SEP = "/"
+# for pretrained model parse
+HDFS_HUB_CN = "hdfs://haruna/home/byte_ecom_govern/easyguard"
+HDFS_HUB_VA = "hdfs://haruna/home/byte_ecom_govern/easyguard"
+SERVER_MAPPING = OrderedDict([["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)]])
+REGION_MAPPING = OrderedDict([["CN", 0], ["VA", 1]])
 _import_structure = {
     "yaml_utils": [
         "yaml_check",
@@ -195,6 +201,7 @@ _import_structure = {
         "list_pretrained_models",
         "typecheck",
         "hf_name_or_path_check",
+        "pretrained_model_archive_parse",
     ],
 }
 
@@ -207,6 +214,7 @@ if TYPE_CHECKING:
         hf_name_or_path_check,
         list_pretrained_models,
         load_pretrained_model_weights,
+        pretrained_model_archive_parse,
         sha256,
         typecheck,
     )
@@ -375,7 +383,7 @@ else:
 
     globals_ = dict(globals().items())
     for key_, value_ in globals_.items():
-        if isinstance(value_, str):
+        if isinstance(value_, (str, list, dict)):
             _import_structure[key_] = value_
 
     sys.modules[__name__] = _LazyPackage(

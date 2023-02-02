@@ -1240,6 +1240,7 @@ class OptionalDependencyNotAvailable(BaseException):
 EASYGUARD_PATH = "easyguard.modelzoo"
 
 EASYGUARD_PACKAGES = OrderedDict()
+# TODO (junwei.Dong): 实现一个基于easyguard注册机制的懒加载来彻底对接hf模型，让hf模型的__init__只需要基于typing即可完成懒加载
 
 
 class _LazyPackage(ModuleType):
@@ -1264,8 +1265,8 @@ class _LazyPackage(ModuleType):
             if isinstance(values, list):
                 for value in values:
                     self._class_to_module[value] = key
-            else:
-                self._class_to_module[values] = key
+            # else:
+            #     self._class_to_module[values] = key
         # Needed for autocompletion in an IDE
         self.__all__ = list(import_structure.keys()) + list(
             chain(
@@ -1313,7 +1314,8 @@ class _LazyPackage(ModuleType):
 
     def _get_module(self, module_name: str):
         try:
-            if not isinstance(self._import_structure[module_name], list):
+            # if not isinstance(self._import_structure[module_name], list):
+            if not importlib.util.find_spec("." + module_name, self.__name__):
                 return self._import_structure[module_name]
             else:
                 return importlib.import_module("." + module_name, self.__name__)
