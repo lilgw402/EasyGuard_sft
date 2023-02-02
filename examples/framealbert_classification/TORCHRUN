@@ -59,6 +59,9 @@ hdfs dfs -get hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_m
 hdfs dfs -get hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12
 echo "pip3 install ptx ..."
 pip3 install https://d.scm.byted.org/api/v2/download/nlp.lib.ptx2_1.0.0.176.tar.gz
+pip3 install https://d.scm.byted.org/api/v2/download/byted.matx.matxscript_cu113_1.6.3.2.tar.gz
+pip3 install https://d.scm.byted.org/api/v2/download/byted.matx.matx_text_pip_wheels_1.4.2.6.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
+pip3 install https://d.scm.byted.org/api/v2/download/byted.matx.matx4_pip_wheels_1.4.2.4.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
 # ==============================
 
 torchrun \

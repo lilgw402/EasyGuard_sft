@@ -2,6 +2,8 @@
 import os
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
 try:
     import easyguard
 except ImportError:
@@ -13,7 +15,7 @@ import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
 
-from easyguard.appzoo.framealbert_classification.data_bak import FacDataModule
+from easyguard.appzoo.framealbert_classification.data import FacDataModule
 from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassify
 
 rand_seed = 42
@@ -38,7 +40,7 @@ cli = CruiseCLI(
     trainer_class=CruiseTrainer,
     datamodule_class=FacDataModule,
     trainer_defaults={
-        "summarize_model_depth": 3,
+        "summarize_model_depth": 2,
     },
 )
 
