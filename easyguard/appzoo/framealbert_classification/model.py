@@ -253,12 +253,12 @@ class FrameAlbertClassify(CruiseModule):
         rep_dict.update({"label": batch["label"]})
         loss = self.criterion(rep_dict["logits"], rep_dict["label"])
         res = {
-            "train_loss": loss,
+            "loss": loss,
             "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
         }
         acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
         for k, v in acc_dict.items():
-            res.update({f'val_{k}': v})
+            res.update({f'train_{k}': v})
 
         return res
 
@@ -295,17 +295,25 @@ class FrameAlbertClassify(CruiseModule):
         # total_acc = sum(acc_all) / len(acc_all)
         # self.log("total_val_acc", total_acc, console=True)
         res_out = {}
-        top1_acc = []
-        top5_acc = []
+        all_results = []
         for item in gathered_results:
-            top1_acc.append(item["val_top1_acc"].mean().item())
-            top5_acc.append(item["val_top5_acc"].mean().item())
+            all_results.extend(item)
+        val_loss_all = [out["val_loss"] for out in all_results]
+        top1_acc_all = [out["val_top1_acc"] for out in all_results]
+        top5_acc_all = [out["val_top5_acc"] for out in all_results]
+ 
+        val_loss = sum(val_loss_all) / len(val_loss_all)
+        top1_acc = sum(top1_acc_all) / len(top1_acc_all)
+        top5_acc = sum(top5_acc_all) / len(top5_acc_all)
 
-        top1_acc = torch.tensor(top1_acc).mean()
-        top5_acc = torch.tensor(top5_acc).mean()
+        res_out["val_loss"] = val_loss
         res_out["val_top1_acc"] = top1_acc
         res_out["val_top5_acc"] = top5_acc
-        self.log("res_out", res_out, console=True)
+
+        self.log_dict(res_out, console=True)
+        self.log("val_loss", val_loss, console=True)
+        self.log("val_top1_acc", top1_acc, console=True)
+        self.log("val_top5_acc", top1_acc, console=True)
 
     def configure_optimizers(self):
         no_decay = ["bias", "bn", "norm"]

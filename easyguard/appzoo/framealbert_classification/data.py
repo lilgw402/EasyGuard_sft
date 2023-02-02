@@ -77,8 +77,9 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
     def __init__(self, config, data_path, rank=0, world_size=1, shuffle=True, repeat=False,
                  is_training=False):
         super().__init__(data_path, rank, world_size, shuffle, repeat)
-
-        # vocab_file = config.DATASET.VOCAB_FILE
+        
+        self.config = config
+        self.is_training = is_training
         self.text_len = config.text_len
         self.frame_len = config.frame_len
         if 'maplabel' in config.exp:
@@ -94,6 +95,14 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
         with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
             self.black_frame = self.preprocess(self._load_image(f.read()))
+
+    def __len__(self):
+        print(f"os.world_size: {int(os.environ.get('WORLD_SIZE'))}")
+        if self.is_training:
+            return self.config.train_size // 16 #int(os.environ.get('WORLD_SIZE'))
+        else:
+            return self.config.val_size // 16 #int(os.environ.get('WORLD_SIZE'))
+
 
     def __iter__(self):
         for example in self.generate():
@@ -264,7 +273,9 @@ class FacDataModule(CruiseDataModule):
     def __init__(
             self,
             train_files: str = None,
+            train_size: int = 1500000,
             val_files: str = None,
+            val_size: int = 16000,
             train_batch_size: int = 64,
             val_batch_size: int = 32,
             num_workers: int = 8,
@@ -287,6 +298,7 @@ class FacDataModule(CruiseDataModule):
             shuffle=True,
             repeat=True,
             is_training=True)
+        print(f'len of trainset: {len(self.train_dataset)}')
 
         self.val_dataset = TorchvisionLabelDataset(
             self.hparams,
@@ -304,6 +316,7 @@ class FacDataModule(CruiseDataModule):
                                                    pin_memory=True,
                                                    drop_last=True,
                                                    collate_fn=self.train_dataset.collect_fn)
+        print(len(train_loader))
         return train_loader
 
     def val_dataloader(self):
