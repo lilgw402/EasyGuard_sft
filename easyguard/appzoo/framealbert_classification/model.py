@@ -62,6 +62,8 @@ class FrameAlbertClassify(CruiseModule):
             config_fusion,
             config_optim,
             load_pretrained: str = None,
+            low_lr_prefix: list = [],
+            prefix_changes: list = [],
     ):
         super(FrameAlbertClassify, self).__init__()
         self.save_hparams()
@@ -117,23 +119,42 @@ class FrameAlbertClassify(CruiseModule):
             )
             if "state_dict" in pretrained_weights:
                 pretrained_weights = pretrained_weights["state_dict"]
+
+            # pretrain_prefix_changes
+            unloaded_keys = []
+            prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
             for key, value in pretrained_weights.items():
+                parsed_key = key
+                for pretrain_prefix, new_prefix in prefix_changes:
+                    if parsed_key.startswith(pretrain_prefix):
+                        parsed_key = new_prefix + parsed_key[len(pretrain_prefix):]
                 if (
-                        key in state_dict_ori
-                        and state_dict_ori[key].shape == value.shape
+                        parsed_key in state_dict_ori
+                        and state_dict_ori[parsed_key].shape == value.shape
                 ):
-                    state_dict_new[key] = value
+                    state_dict_new[parsed_key] = value
+                else:
+                    unloaded_keys.append(parsed_key)
             missing_keys, unexpected_keys = self.load_state_dict(
                 state_dict_new, strict=False
             )
             print("missing_keys: ", missing_keys)
             print("unexpected_keys: ", unexpected_keys)
+            print("unloaded_keys: ", unloaded_keys)
 
     def freeze_params(self, freeze_prefix):
         for name, param in self.named_parameters():
             for prefix in freeze_prefix:
                 if name.startswith(prefix):
                     param.requires_grad = False
+
+    def maxpooling_with_mask(self, hidden_state, attention_mask):
+        mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_state.size()).half()
+        mask_expanded = 1e4 * (mask_expanded - 1)
+        hidden_masked = hidden_state + mask_expanded  # sum instead of multiple
+        max_pooling = torch.max(hidden_masked, dim=1)[0]
+
+        return max_pooling
 
     def forward_step(
             self,
@@ -254,14 +275,14 @@ class FrameAlbertClassify(CruiseModule):
         for out in all_results:
             labels.extend(out["b_gt"].detach().cpu().tolist())
             scores.extend(out["b_pred"].detach().cpu().tolist())
-        auc = roc_auc_score(labels, scores)
-        precision, recall, thr = p_fix_r(
-            np.array(scores), np.array(labels), 0.3
-        )
+        # auc = roc_auc_score(labels, scores)
+        # precision, recall, thr = p_fix_r(
+        #     np.array(scores), np.array(labels), 0.3
+        # )
         ###优质PR, auc
-        self.log("total_val_prec", precision, console=True)
-        self.log("total_val_rec", recall, console=True)
-        self.log("total_val_auc", auc, console=True)
+        # self.log("total_val_prec", precision, console=True)
+        # self.log("total_val_rec", recall, console=True)
+        # self.log("total_val_auc", auc, console=True)
 
     def predict_step(self, batch, idx):
         token_ids, segment_ids, attn_mask, image, image_mask = (
@@ -300,7 +321,7 @@ class FrameAlbertClassify(CruiseModule):
         low_lr_keys = []
         for n, p in self.named_parameters():
             low_lr = False
-            for low_lr_prefix in self.config.TRAIN.low_lr_prefix:
+            for low_lr_prefix in self.hparams.low_lr_prefix:
                 if n.startswith(low_lr_prefix):
                     low_lr = True
                     low_lr_params_dict['params'].append(p)
