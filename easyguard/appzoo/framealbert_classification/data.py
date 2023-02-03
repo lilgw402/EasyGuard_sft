@@ -79,6 +79,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         super().__init__(data_path, rank, world_size, shuffle, repeat)
         
         self.config = config
+        self.world_size = world_size
         self.is_training = is_training
         self.text_len = config.text_len
         self.frame_len = config.frame_len
@@ -97,11 +98,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             self.black_frame = self.preprocess(self._load_image(f.read()))
 
     def __len__(self):
-        print(f"os.world_size: {int(os.environ.get('WORLD_SIZE'))}")
+        # world_size = os.environ.get('WORLD_SIZE') if os.environ.get('WORLD_SIZE') is not None else 1
         if self.is_training:
-            return self.config.train_size // 16 #int(os.environ.get('WORLD_SIZE'))
+            return self.config.train_size // self.world_size
         else:
-            return self.config.val_size // 16 #int(os.environ.get('WORLD_SIZE'))
+            return self.config.val_size // self.world_size
 
 
     def __iter__(self):

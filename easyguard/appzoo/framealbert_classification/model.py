@@ -374,6 +374,8 @@ class FrameAlbertClassify(CruiseModule):
             )
 
         if self.config_optim.lr_schedule == "linear":
+            print(f'warmup: {self.config_optim.warmup_steps_factor * self.trainer.steps_per_epoch}')
+            print(f'total step: {self.trainer.total_steps}')
             lr_scheduler = get_linear_schedule_with_warmup(
                 optimizer=optm,
                 num_warmup_steps=self.config_optim.warmup_steps_factor
