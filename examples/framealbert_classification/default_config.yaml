@@ -50,10 +50,10 @@ model:
     - backbone.->falbert.
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/hr_train_jsonl,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/tmpmix_train_jsonl
-  train_size: 1500000
+  train_size: 1570000
   val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/high_risk_1013_slices
   val_size: 16000
-  train_batch_size: 128
+  train_batch_size: 64
   val_batch_size: 32
   num_workers: 4
   text_len: 128
