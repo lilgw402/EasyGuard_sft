@@ -18,8 +18,8 @@ def test_deberta_model():
     import torch
 
     archive = "fashion-deberta-ccr-order"
-    my_tokenizer = AutoTokenizer.from_pretrained(archive)
     my_model = AutoModel.from_pretrained(archive, dim_shrink=128)
+    my_tokenizer = AutoTokenizer.from_pretrained(archive)
     my_model.eval()
     max_length = 512
     text = "我的手机"
@@ -39,6 +39,7 @@ def test_deberta_model():
     input_ids = torch.tensor([input_ids])
     input_mask = torch.tensor([input_mask])
     input_segment_ids = torch.tensor([input_segment_ids])
+    input_ids, input_mask, input_segment_ids = my_tokenizer(text).values()
     with torch.no_grad():
         result = my_model(
             input_ids=input_ids,
@@ -64,5 +65,5 @@ def test_hf_modified_model():
 
 if __name__ == "__main__":
     # auto_model_test()
-    # test_deberta_model()
-    test_hf_modified_model()
+    test_deberta_model()
+    # test_hf_modified_model()

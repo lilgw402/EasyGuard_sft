@@ -36,13 +36,14 @@ import torch
 
 from .. import __version__
 from ..utils import hexists, hopen, logging, typecheck
+from .hub import AutoHubClass
 
 logger = logging.get_logger(__name__)
 
 
 # TODO (junwei.Dong): 一些通用的方法注册到该基类中去，例如通过hdfs来load vocab文件，这时候这个通用方法一旦注册进基类中，那么所有子类获取hdfs的方法就可以调用基类的load
 # EasyGuard tokenizer base class
-class TokenizerBase(ABC):
+class TokenizerBase(ABC, AutoHubClass):
     def __init__(self, **kwargs) -> None:
         super().__init__()
 

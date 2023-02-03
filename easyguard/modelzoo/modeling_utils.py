@@ -12,6 +12,7 @@ from ..utils import (  # DUMMY_INPUTS,; FLAX_WEIGHTS_NAME,; SAFE_WEIGHTS_INDEX_N
     load_pretrained_model_weights,
     logging,
 )
+from .hub import AutoHubClass
 
 # from .utils.versions import require_version_core
 # -*- coding: utf-8 -*-
@@ -79,8 +80,8 @@ def load_pretrained(load_pretrain, model):
 # EasyGuard Model base class
 
 
-class ModelBase(nn.Module, ABC):
-    def __init__(self, **kwargs) -> None:
+class ModelBase(AutoHubClass):
+    def __init__(self, **kargs) -> None:
         super().__init__()
 
     def load_pretrained_weights(self, weight_file_path, **kwargs):

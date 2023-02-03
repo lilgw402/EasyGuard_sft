@@ -17,10 +17,13 @@ import importlib
 from collections import OrderedDict
 from typing import Optional
 
+from pyexpat import model
+
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
 
 from ...modelzoo.configuration_utils import ConfigBase
+from ...modelzoo.hub import AutoHubClass
 from ...modelzoo.modeling_utils import ModelBase
 from ...utils import (
     cache_file,
@@ -237,7 +240,9 @@ class _BaseAutoModelClass:
             )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
+            server_name = model_archive.get("server", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)
+
             assert (
                 model_config is not None
             ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
@@ -277,10 +282,15 @@ class _BaseAutoModelClass:
                 )
 
                 extra_dict = {
+                    "server_name": server_name,
+                    "archive_name": pretrained_model_name_or_path,
                     "model_type": model_type,
                     "remote_url": model_url,
                     "backend": backend,
+                    "region": region,
                 }
+
+                AutoHubClass.kwargs = extra_dict
                 # obtain model config class
                 model_config_class_: ConfigBase = AutoConfig.from_pretrained(
                     pretrained_model_name_or_path, **extra_dict

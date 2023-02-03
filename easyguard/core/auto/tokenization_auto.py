@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 from transformers.tokenization_utils_base import TOKENIZER_CONFIG_FILE
 
+from ...modelzoo.hub import AutoHubClass
 from ...utils import (
     cache_file,
     file_read,
@@ -98,6 +99,7 @@ class AutoTokenizer:
             )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
+            server_name = model_archive.get("server", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)
             assert (
                 model_config is not None
@@ -140,9 +142,13 @@ class AutoTokenizer:
                     tokenizer_module_package, tokenizer_module_name
                 )
                 extra_dict = {
+                    "server_name": server_name,
+                    "archive_name": pretrained_model_name_or_path,
                     "model_type": model_type,
                     "remote_url": model_url,
+                    "region": region,
                 }
+                AutoHubClass.kwargs = extra_dict
                 # obtain vocab file path
                 vocab_file_path = cache_file(
                     pretrained_model_name_or_path, VOCAB_NAME, **extra_dict
@@ -155,5 +161,7 @@ class AutoTokenizer:
                     **extra_dict,
                 )
                 tokenizer_config = file_read(tokenizer_config_file_path)
-                return tokenizer_class(vocab_file_path, **tokenizer_config)
+                return tokenizer_class(
+                    vocab_file_path, **tokenizer_config, **extra_dict
+                )
         ...
