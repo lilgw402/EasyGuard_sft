@@ -397,6 +397,13 @@ class FrameAlbertClassify(CruiseModule):
 
         return {"optimizer": optm, "lr_scheduler": lr_scheduler}
 
+    def lr_scheduler_step(self, schedulers, **kwargs,) -> None:
+        """
+        默认是per epoch的lr schedule, 改成per step的
+        """
+        for scheduler in schedulers:
+            scheduler.step()
+
     @torch.no_grad()
     def cal_acc(self, output: torch.Tensor, label: torch.Tensor, topk: Tuple[int] = (1,)):
         """
