@@ -77,7 +77,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
     def __init__(self, config, data_path, rank=0, world_size=1, shuffle=True, repeat=False,
                  is_training=False):
         super().__init__(data_path, rank, world_size, shuffle, repeat)
-        
+
         self.config = config
         self.world_size = world_size
         self.is_training = is_training
@@ -103,7 +103,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             return self.config.train_size // self.world_size
         else:
             return self.config.val_size // self.world_size
-
 
     def __iter__(self):
         for example in self.generate():
@@ -218,8 +217,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         labels = torch.tensor(labels)
         input_ids = torch.cat(input_ids, dim=0)
         input_mask = torch.cat(input_mask, dim=0)
-        # input_ids = torch.tensor(input_ids)
-        # input_mask = torch.tensor(input_mask)
         input_segment_ids = torch.tensor(input_segment_ids)
 
         res = {"frames": frames, "frames_mask": frames_mask,
@@ -283,12 +280,19 @@ class FacDataModule(CruiseDataModule):
             text_len: int = 128,
             frame_len: int = 1,
             exp: str = 'default',
+            download_files: list = []
     ):
         super().__init__()
         self.save_hparams()
 
     def local_rank_zero_prepare(self) -> None:
-        pass
+        # download cutter resource
+        if self.hparams.download_files:
+            to_download = [df.split('->') for df in self.hparams.download_files]
+            for src, tar in to_download:
+                if not os.path.exists(tar):
+                    os.makedirs(tar)
+                os.system(f"hdfs dfs -copyToLocal {src} {tar}")
 
     def setup(self) -> None:
         self.train_dataset = TorchvisionLabelDataset(

@@ -97,6 +97,14 @@ class FrameAlbertClassify(CruiseModule):
         Initialize some fixed parameters.
         """
         self.init_weights()
+        if self.hparams.load_pretrained:
+            prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
+            rename_params = {pretrain_prefix: new_prefix for pretrain_prefix, new_prefix in prefix_changes}
+            self.partial_load_from_checkpoints(
+                self.hparams.load_pretrained,
+                map_location='cpu',
+                rename_params=rename_params
+            )
         self.freeze_params(self.config_backbone.freeze_prefix)
 
     def init_weights(self):
@@ -110,45 +118,6 @@ class FrameAlbertClassify(CruiseModule):
                 module.bias.data.zero_()
 
         self.apply(init_weight_module)
-
-        if self.hparams.load_pretrained:
-            # state_dict_ori = self.state_dict()
-            # # load weights of pretrained model
-            # state_dict_new = OrderedDict()
-            # pretrained_weights = load(
-            #     self.hparams.load_pretrained, map_location="cpu"
-            # )
-            # if "state_dict" in pretrained_weights:
-            #     pretrained_weights = pretrained_weights["state_dict"]
-            #
-            # # pretrain_prefix_changes
-            # unloaded_keys = []
-            # prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
-            # for key, value in pretrained_weights.items():
-            #     parsed_key = key
-            #     for pretrain_prefix, new_prefix in prefix_changes:
-            #         if parsed_key.startswith(pretrain_prefix):
-            #             parsed_key = new_prefix + parsed_key[len(pretrain_prefix):]
-            #     if (
-            #             parsed_key in state_dict_ori
-            #             and state_dict_ori[parsed_key].shape == value.shape
-            #     ):
-            #         state_dict_new[parsed_key] = value
-            #     else:
-            #         unloaded_keys.append(parsed_key)
-            # missing_keys, unexpected_keys = self.load_state_dict(
-            #     state_dict_new, strict=False
-            # )
-            # print("missing_keys: ", missing_keys)
-            # print("unexpected_keys: ", unexpected_keys)
-            # print("unloaded_keys: ", unloaded_keys)
-            prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
-            rename_params = {pretrain_prefix: new_prefix for pretrain_prefix, new_prefix in prefix_changes}
-            self.partial_load_from_checkpoints(
-                self.hparams.load_pretrained,
-                map_location='cpu',
-                rename_params=rename_params
-            )
 
     def freeze_params(self, freeze_prefix):
         for name, param in self.named_parameters():

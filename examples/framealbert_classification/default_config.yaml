@@ -59,4 +59,8 @@ data:
   text_len: 128
   frame_len: 1
   exp: cruise_raw_prop_from_trans_5e-6
+  download_files:
+    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/GEC_cat.npy->/opt/tiger/easyguard
+    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
+    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
 log_level: INFO
