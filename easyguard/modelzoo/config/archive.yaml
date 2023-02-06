@@ -26,15 +26,15 @@ fashion-deberta-ccr-order:
   region: CN
 fashionxlm-base:
   server: hdfs
-  type: mdeberta_v2
+  type: fashionxlm
   region: CN
 fashionxlm-moe-base:
   server: hdfs
-  type: mdeberta_v2_moe
+  type: fashionxlm_moe
   region: CN
 xlmr-base:
   server: hdfs
-  type: fashionxlm
+  type: xlmr
   region: CN
 bert-base-uncased:
   server: hdfs

@@ -22,7 +22,7 @@ from ...utils import logging
 logger = logging.get_logger(__name__)
 
 
-class DebertaV2Config(PretrainedConfig):
+class FashionxlmConfig(PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`DebertaV2Model`]. It is used to instantiate a
     DeBERTa-v2 model according to the specified arguments, defining the model architecture. Instantiating a

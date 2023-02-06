@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 try:
@@ -21,10 +22,13 @@ from cruise.utilities.distributed import DIST_ENV
 
 from ...core.optimizers import build_optimizer, build_scheduler
 from ...modelzoo.modeling_utils import load_pretrained
+from ...modelzoo.models.fashionxlm import (
+    MLP,
+    DebertaV2ForMaskedLMMoE,
+    XLMRobertaForMaskedLM,
+)
 from ...modelzoo.models.mdeberta_v2 import DebertaV2ForMaskedLM
-from ...modelzoo.models.fashionxlm import DebertaV2ForMaskedLMMoE, MLP
-from ...modelzoo.models.fashionxlm import XLMRobertaForMaskedLM
-from ...utils.losses import cross_entropy, LearnableNTXentLoss
+from ...utils.losses import LearnableNTXentLoss, cross_entropy
 
 
 class LanguageModel(CruiseModule):
@@ -59,12 +63,18 @@ class LanguageModel(CruiseModule):
         self.save_hparams()
         self.moe = False
         if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
-            self.backbone = DebertaV2ForMaskedLM.from_pretrained('microsoft/mdeberta-v3-base')
+            self.backbone = DebertaV2ForMaskedLM.from_pretrained(
+                "microsoft/mdeberta-v3-base"
+            )
         elif pretrained_model_name_or_path == "fashionxlm-mdeberta-moe-adv":
             self.moe = True
-            self.backbone = DebertaV2ForMaskedLMMoE.from_pretrained('microsoft/mdeberta-v3-base')
+            self.backbone = DebertaV2ForMaskedLMMoE.from_pretrained(
+                "microsoft/mdeberta-v3-base"
+            )
         elif pretrained_model_name_or_path == "xlm-roberta-base":
-            self.backbone = XLMRobertaForMaskedLM.from_pretrained('xlm-roberta-base')
+            self.backbone = XLMRobertaForMaskedLM.from_pretrained(
+                "xlm-roberta-base"
+            )
         else:
             self.backbone = AutoModelForMaskedLM.from_pretrained(
                 pretrained_model_name_or_path
@@ -89,12 +99,17 @@ class LanguageModel(CruiseModule):
         if self.classification_task_enable:
             self.classification_task_head = classification_task_head
             cla_input_size = hidden_size * 2 if self.moe else hidden_size
-            self.classifier = torch.nn.Linear(cla_input_size, self.classification_task_head)
+            self.classifier = torch.nn.Linear(
+                cla_input_size, self.classification_task_head
+            )
 
         if self.moe:
             self.moe_hard_heads = nn.ModuleDict(
-                    {k: MLP(hidden_size, hidden_size, hidden_size) for k in
-                     ['GB', 'ID', 'TH', 'MY', 'VN', 'PH']})
+                {
+                    k: MLP(hidden_size, hidden_size, hidden_size)
+                    for k in ["GB", "ID", "TH", "MY", "VN", "PH"]
+                }
+            )
             self.moe_share_head = MLP(hidden_size, hidden_size, hidden_size)
             self.kl_loss = nn.KLDivLoss(reduction="batchmean")
             self.adv_head = nn.Linear(hidden_size, 6)
@@ -187,7 +202,15 @@ class LanguageModel(CruiseModule):
 
         return loss
 
-    def forward(self, input_ids, token_type_ids, attention_mask, labels, classification_label=None, language=None):
+    def forward(
+        self,
+        input_ids,
+        token_type_ids,
+        attention_mask,
+        labels,
+        classification_label=None,
+        language=None,
+    ):
         """
         input_ids: [bsz, seq_len]
         input_segment_ids: [bsz, seq_len]
@@ -211,7 +234,7 @@ class LanguageModel(CruiseModule):
 
         # mlm acc
         mlm_acc = self.mlm_acc(mmout.logits, labels)
-        output_dict['mlm_acc'] = mlm_acc
+        output_dict["mlm_acc"] = mlm_acc
 
         # cl loss
         if self.cl_enable:
@@ -223,26 +246,39 @@ class LanguageModel(CruiseModule):
             aux_loss = 0.0
             entroy, sep_loss = 0, 0
             if self.moe:
-                cls_status_ = torch.stack([self.moe_hard_heads[k](xi) for xi, k in zip(cls_status, language)],
-                                              dim=0)  # language proj
+                cls_status_ = torch.stack(
+                    [
+                        self.moe_hard_heads[k](xi)
+                        for xi, k in zip(cls_status, language)
+                    ],
+                    dim=0,
+                )  # language proj
                 cls_status_share = self.moe_share_head(cls_status)
-                entroy, sep_loss, acc_input = self.hard_moe_loss(cls_status, cls_status_share, language)
+                entroy, sep_loss, acc_input = self.hard_moe_loss(
+                    cls_status, cls_status_share, language
+                )
                 moe_acc = self.cla_acc(acc_input[0], acc_input[1])
                 cls_status_ = torch.cat((cls_status_, cls_status_share), dim=1)
             else:
                 cls_status_ = cls_status
             loss2 = self.cl_loss(cls_status_)
-            self.log('cl_loss', loss2)
+            self.log("cl_loss", loss2)
             cl_acc = self.cl_acc(cls_status_)
-            loss = loss1 + self.cl_weight * loss2 + self.moe_aux_weight * aux_loss + entroy + self.moe_share_weight * sep_loss
-            output_dict['mlm_loss'] = loss1
-            output_dict['aux_loss'] = aux_loss
-            output_dict['cl_loss'] = loss2
-            output_dict['entroy'] = entroy
-            output_dict['sep_loss'] = sep_loss
-            output_dict['loss'] = loss
+            loss = (
+                loss1
+                + self.cl_weight * loss2
+                + self.moe_aux_weight * aux_loss
+                + entroy
+                + self.moe_share_weight * sep_loss
+            )
+            output_dict["mlm_loss"] = loss1
+            output_dict["aux_loss"] = aux_loss
+            output_dict["cl_loss"] = loss2
+            output_dict["entroy"] = entroy
+            output_dict["sep_loss"] = sep_loss
+            output_dict["loss"] = loss
             output_dict.update(cl_acc)
-            output_dict['moe_acc'] = moe_acc
+            output_dict["moe_acc"] = moe_acc
 
         # classification task
         if self.classification_task_enable:
@@ -254,10 +290,17 @@ class LanguageModel(CruiseModule):
             aux_loss = 0.0
             entroy, sep_loss = 0, 0
             if self.moe:
-                cls_status_ = torch.stack([self.moe_hard_heads[k](xi) for xi, k in zip(cls_status, language)],
-                                          dim=0)  # language proj
+                cls_status_ = torch.stack(
+                    [
+                        self.moe_hard_heads[k](xi)
+                        for xi, k in zip(cls_status, language)
+                    ],
+                    dim=0,
+                )  # language proj
                 cls_status_share = self.moe_share_head(cls_status)
-                entroy, sep_loss, acc_input = self.hard_moe_loss(cls_status, cls_status_share, language)
+                entroy, sep_loss, acc_input = self.hard_moe_loss(
+                    cls_status, cls_status_share, language
+                )
                 moe_acc = self.cla_acc(acc_input[0], acc_input[1])
                 cls_status_ = torch.cat((cls_status_, cls_status_share), dim=1)
             else:
@@ -267,15 +310,21 @@ class LanguageModel(CruiseModule):
             loss3 = cross_entropy(logits, classification_label)
             cla_acc = self.cla_acc(logits, classification_label)
 
-            loss = loss1 + loss3 + aux_loss + entroy + self.moe_share_weight * sep_loss
-            output_dict['mlm_loss'] = loss1
-            output_dict['cla_loss'] = loss3
-            output_dict['aux_loss'] = aux_loss
-            output_dict['entroy'] = entroy
-            output_dict['sep_loss'] = sep_loss
-            output_dict['loss'] = loss
-            output_dict['cla_acc'] = cla_acc
-            output_dict['moe_acc'] = moe_acc
+            loss = (
+                loss1
+                + loss3
+                + aux_loss
+                + entroy
+                + self.moe_share_weight * sep_loss
+            )
+            output_dict["mlm_loss"] = loss1
+            output_dict["cla_loss"] = loss3
+            output_dict["aux_loss"] = aux_loss
+            output_dict["entroy"] = entroy
+            output_dict["sep_loss"] = sep_loss
+            output_dict["loss"] = loss
+            output_dict["cla_acc"] = cla_acc
+            output_dict["moe_acc"] = moe_acc
 
         return output_dict
 
@@ -313,7 +362,6 @@ class LanguageModel(CruiseModule):
             self.log("total_origin2trans_acc", origin2trans_acc, console=True)
             print("total_origin2trans_acc", origin2trans_acc)
 
-
     def configure_optimizers(self):
         optimizer = build_optimizer(self.hparams, self)
         lr_scheduler = build_scheduler(
@@ -334,7 +382,9 @@ class LanguageModel(CruiseModule):
             )
 
     def on_fit_start(self) -> None:
-        self.rank_zero_print('===========My custom fit start function is called!============')
+        self.rank_zero_print(
+            "===========My custom fit start function is called!============"
+        )
 
     @torch.no_grad()
     def mlm_acc(self, mlm_logits, mlm_labels, PAD_IDX=-100) -> torch.Tensor:
@@ -349,7 +399,9 @@ class LanguageModel(CruiseModule):
         mlm_true = mlm_labels.reshape(-1)
 
         mlm_acc = mlm_pred.eq(mlm_true)  # 计算预测值与正确值比较的情况
-        mask = torch.logical_not(mlm_true.eq(PAD_IDX))  # 找到真实标签中，mask位置的信息。 mask位置为TRUE
+        mask = torch.logical_not(
+            mlm_true.eq(PAD_IDX)
+        )  # 找到真实标签中，mask位置的信息。 mask位置为TRUE
         mlm_acc = mlm_acc.logical_and(mask)  # 去掉acc中非mask的部分
         mlm_correct = mlm_acc.sum().item()
         mlm_total = mask.sum().item()

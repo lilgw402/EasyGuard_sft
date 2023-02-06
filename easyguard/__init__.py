@@ -7,6 +7,7 @@ from .utils import EASYGUARD_CACHE
 
 # set the easyguard cache directory
 os.environ["EASYGUARD_CACHE"] = EASYGUARD_CACHE
+os.environ["EASYGUARD_HOME"] = os.path.dirname(os.path.dirname(__file__))
 
 from .core import AutoImageProcessor, AutoModel, AutoProcessor, AutoTokenizer
 from .modelzoo.config import MODELZOO_CONFIG

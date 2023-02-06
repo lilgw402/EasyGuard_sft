@@ -10,9 +10,11 @@ unique_keys:
   - vision_config
   - tokenizer
   - tokenizer_fast
-  - model_for_pretrained
   - image_processor
   - processor
+  - model
+  - sequence_model
+
 
 # all models' settings
 models:
@@ -74,26 +76,27 @@ models:
       processor: CLIPProcessor
     tokenization_clip:
       tokenizer: CLIPTokenizer
-  mdeberta_v2:
-    name: mDeBERTa_V2
-    backend: hf
-    configuration_deberta_v2:
-      config: DebertaV2Config
-    modeling_deberta_v2:
-      model: DebertaV2ForMaskedLM
-    tokenization_deberta_v2:
-      tokenizer: DebertaV2Tokenizer
-  mdeberta_v2_moe:
-    name: mDeBERTa_V2_moe
-    backend: hf
-    configuration_deberta_v2:
-      config: DebertaV2Config
-    modeling_deberta_moe:
-      model: DebertaV2ForMaskedLMMoE
-    tokenization_deberta_v2:
-      tokenizer: DebertaV2Tokenizer
   fashionxlm:
     name: FashionXLM
+    backend: hf
+    configuration_fashionxlm:
+      config: FashionxlmConfig
+    modeling_fashionxlm:
+      model: FashionxlmForMaskedLM
+    tokenization_fashionxlm:
+      tokenizer: FashionxlmTokenizer
+  fashionxlm_moe:
+    name: FashionXLM_MoE
+    backend: hf
+    configuration_fashionxlm_moe:
+      config: FashionxlmMoEConfig
+    modeling_fashionxlm_moe:
+      model: FashionxlmMoEForMaskedLMMoE
+      sequence_model: FashionxlmForSequencelCassificationMoE
+    tokenization_fashionxlm_moe:
+      tokenizer: FashionxlmMoETokenizer
+  xlmr:
+    name: XLMR
     backend: hf
     configuration_xlm_roberta:
       config: XLMRobertaConfig

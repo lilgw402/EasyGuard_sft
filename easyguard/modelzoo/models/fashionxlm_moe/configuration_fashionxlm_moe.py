@@ -22,7 +22,7 @@ from ...utils import logging
 logger = logging.get_logger(__name__)
 
 
-class DebertaV2Config(PretrainedConfig):
+class FashionxlmMoEConfig(PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`DebertaV2Model`]. It is used to instantiate a
     DeBERTa-v2 model according to the specified arguments, defining the model architecture. Instantiating a
@@ -79,10 +79,10 @@ class DebertaV2Config(PretrainedConfig):
     Example:
 
     ```python
-    >>> from transformers import DebertaV2Config, DebertaV2Model
+    >>> from transformers import FashionxlmMoEConfig, DebertaV2Model
 
     >>> # Initializing a DeBERTa-v2 microsoft/deberta-v2-xlarge style configuration
-    >>> configuration = DebertaV2Config()
+    >>> configuration = FashionxlmMoEConfig()
 
     >>> # Initializing a model (with random weights) from the microsoft/deberta-v2-xlarge style configuration
     >>> model = DebertaV2Model(configuration)

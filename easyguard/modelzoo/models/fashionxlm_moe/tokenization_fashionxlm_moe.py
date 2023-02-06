@@ -52,7 +52,7 @@ PRETRAINED_INIT_CONFIGURATION = {
 VOCAB_FILES_NAMES = {"vocab_file": "spm.model"}
 
 
-class DebertaV2Tokenizer(PreTrainedTokenizer):
+class FashionxlmMoETokenizer(PreTrainedTokenizer):
     r"""
     Constructs a DeBERTa-v2 tokenizer. Based on [SentencePiece](https://github.com/google/sentencepiece).
 

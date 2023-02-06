@@ -51,19 +51,32 @@ def test_deberta_model():
 
 
 def test_hf_modified_model():
-    archive = "fashionxlm-base"
-    archive = "fashionxlm-moe-base"
-    archive = "xlmr-base"
+    text = "good good study, day day up!"
 
+    # archive = "fashionxlm-base"
+    # tokenizer = AutoTokenizer.from_pretrained(archive)
+    # inputs = tokenizer(text, return_tensors="pt", max_length=84)
+    # model = AutoModel.from_pretrained(archive)
+    # ouputs = model(**inputs)
+    # print(ouputs)
+
+    archive = "fashionxlm-moe-base"
     tokenizer = AutoTokenizer.from_pretrained(archive)
+    inputs = tokenizer(text, return_tensors="pt", max_length=84)
+    model = AutoModel.from_pretrained(archive, model_cls="sequence_model")
+    ouputs = model(**inputs, language=["GB"])
+    print(ouputs)
+
+    archive = "xlmr-base"
+    tokenizer = AutoTokenizer.from_pretrained(archive)
+    inputs = tokenizer(text, return_tensors="pt", max_length=84)
     model = AutoModel.from_pretrained(archive)
-    inputs = tokenizer("Hello world!", return_tensors="pt")
-    print(inputs)
+
     ouputs = model(**inputs)
     print(ouputs)
 
 
 if __name__ == "__main__":
     # auto_model_test()
-    test_deberta_model()
-    # test_hf_modified_model()
+    # test_deberta_model()
+    test_hf_modified_model()

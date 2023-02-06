@@ -38,11 +38,11 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 
-from .configuration_deberta_v2 import DebertaV2Config
+from .configuration_fashionxlm import FashionxlmConfig
 
 logger = logging.get_logger(__name__)
 
-_CONFIG_FOR_DOC = "DebertaV2Config"
+_CONFIG_FOR_DOC = "FashionxlmConfig"
 _TOKENIZER_FOR_DOC = "DebertaV2Tokenizer"
 _CHECKPOINT_FOR_DOC = "microsoft/deberta-v2-xlarge"
 
@@ -709,9 +709,9 @@ class DisentangledSelfAttention(nn.Module):
     Disentangled self-attention module
 
     Parameters:
-        config (`DebertaV2Config`):
+        config (`FashionxlmConfig`):
             A model config class instance with the configuration to build a new model. The schema is similar to
-            *BertConfig*, for more details, please refer [`DebertaV2Config`]
+            *BertConfig*, for more details, please refer [`FashionxlmConfig`]
 
     """
 
@@ -1121,7 +1121,7 @@ class DebertaV2PreTrainedModel(PreTrainedModel):
     models.
     """
 
-    config_class = DebertaV2Config
+    config_class = FashionxlmConfig
     base_model_prefix = "deberta"
     _keys_to_ignore_on_load_missing = ["position_ids"]
     _keys_to_ignore_on_load_unexpected = ["position_embeddings"]
@@ -1161,7 +1161,7 @@ DEBERTA_START_DOCSTRING = r"""
 
 
     Parameters:
-        config ([`DebertaV2Config`]): Model configuration class with all the parameters of the model.
+        config ([`FashionxlmConfig`]): Model configuration class with all the parameters of the model.
             Initializing with a config file does not load the weights associated with the model, only the
             configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
 """
@@ -1357,7 +1357,7 @@ class DebertaV2Model(DebertaV2PreTrainedModel):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForMaskedLM with Deberta->DebertaV2
-class DebertaV2ForMaskedLM(DebertaV2PreTrainedModel):
+class FashionxlmForMaskedLM(DebertaV2PreTrainedModel):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [
         r"position_ids",

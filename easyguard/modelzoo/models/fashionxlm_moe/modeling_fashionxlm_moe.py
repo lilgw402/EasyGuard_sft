@@ -40,12 +40,12 @@ from transformers.modeling_utils import PreTrainedModel
 
 from ...modeling_utils import ModelBase
 from ...utils import logging
-from .configuration_deberta_v2 import DebertaV2Config
+from .configuration_fashionxlm_moe import FashionxlmMoEConfig
 
 logger = logging.get_logger(__name__)
 
-_CONFIG_FOR_DOC = "DebertaV2Config"
-_TOKENIZER_FOR_DOC = "DebertaV2Tokenizer"
+_CONFIG_FOR_DOC = "FashionxlmMoEConfig"
+_TOKENIZER_FOR_DOC = "FashionxlmMoETokenizer"
 _CHECKPOINT_FOR_DOC = "microsoft/deberta-v2-xlarge"
 
 DEBERTA_V2_PRETRAINED_MODEL_ARCHIVE_LIST = [
@@ -817,9 +817,9 @@ class DisentangledSelfAttention(nn.Module):
     Disentangled self-attention module
 
     Parameters:
-        config (`DebertaV2Config`):
+        config (`FashionxlmMoEConfig`):
             A model config class instance with the configuration to build a new model. The schema is similar to
-            *BertConfig*, for more details, please refer [`DebertaV2Config`]
+            *BertConfig*, for more details, please refer [`FashionxlmMoEConfig`]
 
     """
 
@@ -1229,7 +1229,7 @@ class DebertaV2PreTrainedModel(PreTrainedModel):
     models.
     """
 
-    config_class = DebertaV2Config
+    config_class = FashionxlmMoEConfig
     base_model_prefix = "deberta"
     _keys_to_ignore_on_load_missing = ["position_ids"]
     _keys_to_ignore_on_load_unexpected = ["position_embeddings"]
@@ -1269,7 +1269,7 @@ DEBERTA_START_DOCSTRING = r"""
 
 
     Parameters:
-        config ([`DebertaV2Config`]): Model configuration class with all the parameters of the model.
+        config ([`FashionxlmMoEConfig`]): Model configuration class with all the parameters of the model.
             Initializing with a config file does not load the weights associated with the model, only the
             configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
 """
@@ -1279,7 +1279,7 @@ DEBERTA_INPUTS_DOCSTRING = r"""
         input_ids (`torch.LongTensor` of shape `({0})`):
             Indices of input sequence tokens in the vocabulary.
 
-            Indices can be obtained using [`DebertaV2Tokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            Indices can be obtained using [`FashionxlmMoETokenizer`]. See [`PreTrainedTokenizer.encode`] and
             [`PreTrainedTokenizer.__call__`] for details.
 
             [What are input IDs?](../glossary#input-ids)
@@ -1469,7 +1469,7 @@ class DebertaV2Model(DebertaV2PreTrainedModel):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForMaskedLM with Deberta->DebertaV2
-class DebertaV2ForMaskedLMMoE(DebertaV2PreTrainedModel, ModelBase):
+class FashionxlmMoEForMaskedLMMoE(DebertaV2PreTrainedModel):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [
         r"position_ids",
@@ -1627,9 +1627,7 @@ class DebertaV2OnlyMLMHead(nn.Module):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
-class DebertaV2ForSequencelCassificationMoE(
-    DebertaV2PreTrainedModel, ModelBase
-):
+class FashionxlmForSequencelCassificationMoE(DebertaV2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
@@ -1640,6 +1638,13 @@ class DebertaV2ForSequencelCassificationMoE(
         self.pooler = ContextPooler(config)
         output_dim = self.pooler.output_dim
 
+        self.moe_hard_heads = nn.ModuleDict(
+            {
+                k: MLP(output_dim, output_dim, output_dim)
+                for k in ["GB", "ID", "TH", "MY", "VN", "PH"]
+            }
+        )
+        self.moe_share_head = MLP(output_dim, output_dim, output_dim)
         self.classifier = nn.Linear(output_dim, num_labels)
         drop_out = getattr(config, "cls_dropout", None)
         drop_out = (
@@ -1656,15 +1661,6 @@ class DebertaV2ForSequencelCassificationMoE(
     def set_input_embeddings(self, new_embeddings):
         self.deberta.set_input_embeddings(new_embeddings)
 
-    @add_start_docstrings_to_model_forward(
-        DEBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length")
-    )
-    @add_code_sample_docstrings(
-        processor_class=_TOKENIZER_FOR_DOC,
-        checkpoint=_CHECKPOINT_FOR_DOC,
-        output_type=SequenceClassifierOutput,
-        config_class=_CONFIG_FOR_DOC,
-    )
     def forward(
         self,
         input_ids=None,
@@ -1705,6 +1701,17 @@ class DebertaV2ForSequencelCassificationMoE(
         encoder_layer = outputs[0]
         pooled_output = self.pooler(encoder_layer)
         pooled_output = self.dropout(pooled_output)
+
+        pooled_output_ = torch.stack(
+            [
+                self.moe_hard_heads[k](xi)
+                for xi, k in zip(pooled_output, language)
+            ],
+            dim=0,
+        )  # language proj
+        pooled_output_share = self.moe_share_head(pooled_output)
+        pooled_output = torch.cat((pooled_output_, pooled_output_share), dim=1)
+
         logits = self.classifier(pooled_output)
 
         loss = None

@@ -91,7 +91,7 @@ MODEL_FOR_CAUSAL_LM_MAPPING = _LazyAutoMapping(
 
 class AutoModel(_BaseAutoModelClass):
     _model_mapping = MODEL_MAPPING
-    _model_key = "model"
+    _model_key = None
 
 
 # AutoModel = auto_class_update(AutoModel)

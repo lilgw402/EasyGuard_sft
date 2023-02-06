@@ -22,6 +22,7 @@ from pyexpat import model
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
 
+from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
 from ...modelzoo.hub import AutoHubClass
 from ...modelzoo.modeling_utils import ModelBase
@@ -41,7 +42,7 @@ from . import (
     MODEL_SAVE_NAMES,
     MODELZOO_CONFIG,
 )
-from .configuration_auto import AutoConfig
+from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
 from .configuration_auto_hf import model_type_to_module_name
 
 # TODO (junwei.Dong): 需要简化一下工厂函数的逻辑
@@ -226,13 +227,46 @@ class _BaseAutoModelClass:
         cls,
         pretrained_model_name_or_path: str,
         region: Optional[str] = "CN",
+        model_cls: Optional[str] = "model",
         *model_args,
         **kwargs,
     ):
+        """instatiate a model class from a pretrained model name
+
+        Parameters
+        ----------
+        pretrained_model_name_or_path : str
+            the pretrained model name or local path
+        region : Optional[str], optional
+            avaiable region, CN (China), VA (oversea), CN/VA (both), by default "CN"
+        model_cls : Optional[str], optional
+            different categories of models, such as "model", "sequence_model", which can be found in unique_key of models.yaml, by default "model"
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        KeyError
+            _description_
+        NotImplementedError
+            _description_
+        NotImplementedError
+            _description_
+        """
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
             raise KeyError(pretrained_model_name_or_path)
         else:
+            # a model mapping for hf models, which is merely used to find the category of the target model
+            cls._model_mapping = _LazyAutoMapping(
+                CONFIG_MAPPING_NAMES, MODELZOO_CONFIG.get_mapping(model_cls)
+            )
+            # which is used to find the category of the target model for default models
+            cls._model_key = model_cls
+            # parse model for integrating the url of targe server into model arhive config
             model_archive = pretrained_model_archive_parse(
                 pretrained_model_name_or_path,
                 MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
