@@ -115,9 +115,9 @@ class AutoTokenizer:
                 pretrained_model_name_or_path_ = hf_name_or_path_check(
                     pretrained_model_name_or_path,
                     model_url,
-                    [VOCAB_NAME, TOKENIZER_CONFIG_NAMES, MODEL_CONFIG_NAMES],
                     model_type,
                 )
+
                 return HFTokenizer.from_pretrained(
                     pretrained_model_name_or_path_, *inputs, **kwargs
                 )

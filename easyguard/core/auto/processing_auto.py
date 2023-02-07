@@ -1,7 +1,14 @@
+from http import server
 from typing import Any, List, Optional, Union
 
-from ...utils import pretrained_model_archive_parse
-from . import BACKENDS, MODEL_ARCHIVE_CONFIG, MODELZOO_CONFIG
+from ...modelzoo.hub import AutoHubClass
+from ...utils import hf_name_or_path_check, pretrained_model_archive_parse
+from . import (
+    BACKENDS,
+    MODEL_ARCHIVE_CONFIG,
+    MODEL_CONFIG_NAMES,
+    MODELZOO_CONFIG,
+)
 
 PROCESSOR_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("processor")
 
@@ -45,6 +52,7 @@ class AutoProcessor:
             )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
+            server_name = model_archive.get("server", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)
             assert (
                 model_config is not None
@@ -57,8 +65,13 @@ class AutoProcessor:
             if backend == "hf":
                 from .processing_auto_hf import HFAutoProcessor
 
+                pretrained_model_name_or_path_ = hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    model_type,
+                )
                 return HFAutoProcessor.from_pretrained(
-                    pretrained_model_name_or_path, *inputs, **kwargs
+                    pretrained_model_name_or_path_, *inputs, **kwargs
                 )
             elif backend == "titan":
                 # TODO (junwei.Dong): support titan models
@@ -71,3 +84,14 @@ class AutoProcessor:
 
             if backend_default_flag:
                 ...
+                extra_dict = {
+                    "server_name": server_name,
+                    "archive_name": pretrained_model_name_or_path,
+                    "model_type": model_type,
+                    "remote_url": model_url,
+                    "region": region,
+                }
+
+                AutoHubClass.kwargs = extra_dict
+                # support simplified models
+                # support the huggingface-like models

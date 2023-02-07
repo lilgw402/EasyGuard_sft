@@ -206,7 +206,6 @@ def cache_file(
 def hf_name_or_path_check(
     pretrained_model_name_or_path: str,
     model_url: Optional[str],
-    file_name: Union[str, set, List[set]],
     model_type: str,
 ) -> str:
     """download required files from bytedance servers, which allows hf model to be used in easyguard framework
@@ -219,8 +218,8 @@ def hf_name_or_path_check(
         archive name, e.g., fashion-deberta-ccr-order
     model_url : str
         remote url
-    file_name : Union[str, set, List[set]]
-        default names of the required files, e.g., [VOCAB_TXT, TOKENIZER_CONFIG_NAMES] or VOCAB_TXT
+    # file_name : Union[str, set, List[set]]
+    #     default names of the required files, e.g., [VOCAB_TXT, TOKENIZER_CONFIG_NAMES] or VOCAB_TXT
     model_type : str
         model architecture, e.g., debert
 
@@ -401,14 +400,14 @@ def convert_model_weights(
     )
     for key_ in list(weights.keys()):
         if key_.startswith(prefix):
-            key_new = key_[len(prefix) :]
+            key_new = key_.repalce(prefix, "", 1)
             weights[key_new] = weights.pop(key_)
     logger.info(f"save model into {output_path}")
     torch.save(weights, output_path)
     logger.info(f"convert successfully~")
 
 
-# from titan
+# all code from titan
 def get_configs(**kwargs):
     pretrained_config = {}
     pretrained_config["tos_helper"] = kwargs.pop("tos_helper", None)

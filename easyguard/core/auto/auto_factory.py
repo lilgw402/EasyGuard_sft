@@ -289,7 +289,6 @@ class _BaseAutoModelClass:
                 pretrained_model_name_or_path_ = hf_name_or_path_check(
                     pretrained_model_name_or_path,
                     model_url,
-                    MODEL_SAVE_NAMES,
                     model_type,
                 )
                 return HFBaseAutoModelClass.from_pretrained(

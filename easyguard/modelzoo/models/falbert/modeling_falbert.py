@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import yaml
 
-from .albert import albert
+from . import albert
 from .swin import SwinTransformer
 
 

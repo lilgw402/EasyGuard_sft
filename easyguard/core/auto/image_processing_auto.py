@@ -1,7 +1,19 @@
 from typing import Any, Optional, Union
 
-from ...utils import pretrained_model_archive_parse
-from . import BACKENDS, MODEL_ARCHIVE_CONFIG, MODELZOO_CONFIG
+from ...modelzoo.hub import AutoHubClass
+from ...utils import (
+    cache_file,
+    file_read,
+    hf_name_or_path_check,
+    lazy_model_import,
+    pretrained_model_archive_parse,
+)
+from . import (
+    BACKENDS,
+    MODEL_ARCHIVE_CONFIG,
+    MODELZOO_CONFIG,
+    PROCESSOR_CONFIG_NAMES,
+)
 
 IMAGE_PROCESSOR_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("image_processor")
 
@@ -50,6 +62,7 @@ class AutoImageProcessor:
             )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
+            server_name = model_archive.get("server", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)
             assert (
                 model_config is not None
@@ -62,17 +75,53 @@ class AutoImageProcessor:
             if backend == "hf":
                 from .image_processing_auto_hf import HFAutoImageProcessor
 
+                pretrained_model_name_or_path_ = hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    model_type,
+                )
                 return HFAutoImageProcessor.from_pretrained(
-                    pretrained_model_name_or_path, *inputs, **kwargs
+                    pretrained_model_name_or_path_, *inputs, **kwargs
                 )
             elif backend == "titan":
-                # TODO (junwei.Dong): support titan model
+                # TODO (junwei.Dong): support titan models
                 raise NotImplementedError(backend)
             elif backend == "fex":
-                # TODO (junwei.Dong): support fex model
+                # TODO (junwei.Dong): support fex models
                 raise NotImplementedError(backend)
             else:
                 backend_default_flag = True
 
             if backend_default_flag:
-                ...
+                # just support base image_processor
+                # lazily obtain image_processor class
+                image_processor_name_tuple = MODELZOO_CONFIG[model_type][
+                    "image_processor"
+                ]
+                (
+                    image_processor_module_package,
+                    image_processor_module_name,
+                ) = MODELZOO_CONFIG.to_module(image_processor_name_tuple)
+                image_processor_class = lazy_model_import(
+                    image_processor_module_package, image_processor_module_name
+                )
+                extra_dict = {
+                    "server_name": server_name,
+                    "archive_name": pretrained_model_name_or_path,
+                    "model_type": model_type,
+                    "remote_url": model_url,
+                    "region": region,
+                }
+                AutoHubClass.kwargs = extra_dict
+                # obtain image_processor config file path
+                image_processor_config_file_path = cache_file(
+                    pretrained_model_name_or_path,
+                    PROCESSOR_CONFIG_NAMES,
+                    **extra_dict,
+                )
+                image_processor_config = file_read(
+                    image_processor_config_file_path
+                )
+                return image_processor_class(
+                    **image_processor_config, **extra_dict
+                )

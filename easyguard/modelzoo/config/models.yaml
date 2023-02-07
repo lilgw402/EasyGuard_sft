@@ -80,7 +80,7 @@ models:
       model: XLMRobertaForMaskedLM
     tokenization_xlm_roberta:
       tokenizer: XLMRobertaTokenizer
-   vit:
+  vit:
     name: Vit
     backend: hf
     configuration_vit:
@@ -104,6 +104,13 @@ models:
       processor: CLIPProcessor
     tokenization_clip:
       tokenizer: CLIPTokenizer
+  falbert:
+    name: FalBert
+    backend: default
+    modeling_falbert:
+      model: FrameALBert
+    
+
     
     
 

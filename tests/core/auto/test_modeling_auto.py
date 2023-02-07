@@ -3,7 +3,7 @@ from easyguard.core import AutoModel, AutoTokenizer
 
 def auto_model_test():
     archive = "bert-base-uncased"
-    # archive = "deberta_base_6l"
+    archive = "deberta_base_6l"
     # archive = "bert-base-uncased"
     # archive = "facebook/bart-large"
     tokenizer = AutoTokenizer.from_pretrained(archive)
@@ -77,6 +77,6 @@ def test_hf_modified_model():
 
 
 if __name__ == "__main__":
-    # auto_model_test()
+    auto_model_test()
     # test_deberta_model()
-    test_hf_modified_model()
+    # test_hf_modified_model()
