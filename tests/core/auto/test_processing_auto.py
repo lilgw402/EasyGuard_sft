@@ -1,4 +1,5 @@
 import requests
+from easyguard import AutoModel, AutoProcessor
 from PIL import Image
 
 from transformers import AutoProcessor, CLIPModel, CLIPProcessor

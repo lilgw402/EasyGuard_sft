@@ -15,7 +15,7 @@
 """ Auto Config class."""
 
 from collections import OrderedDict
-from typing import List, Union
+from typing import List, Optional, Union
 
 from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
@@ -56,7 +56,12 @@ class AutoConfig:
         )
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: str, **kwargs):
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        config_name: Optional[str] = "config",
+        **kwargs,
+    ):
         backend = kwargs.pop("backend", None)
         model_type = kwargs.pop("model_type", None)
         model_url = kwargs.pop("remote_url", None)
@@ -83,7 +88,7 @@ class AutoConfig:
             )
 
         if backend_default_flag:
-            model_config_name_tuple = MODELZOO_CONFIG[model_type]["config"]
+            model_config_name_tuple = MODELZOO_CONFIG[model_type][config_name]
             (
                 model_config_module_package,
                 model_config_module_name,

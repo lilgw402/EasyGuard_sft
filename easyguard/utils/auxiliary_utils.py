@@ -428,30 +428,35 @@ def get_configs(**kwargs):
     return pretrained_config, model_config
 
 
-# from titan
+# main code from titan
 def load_pretrained_model_weights(
-    model, model_path, strict=False, rm_deberta_prefix=False, **kwargs
+    model,
+    model_path: str,
+    strict: Optional[bool] = False,
+    rm_prefix: Optional[str] = None,
+    **kwargs,
 ):
     """load pretrained model weights
 
     Parameters
     ----------
     model : _type_
-        _description_
-    model_path : _type_
-        _description_
-    strict : bool, optional
-        _description_, by default False
-    rm_deberta_prefix : bool, optional
-        _description_, by default False
+        the model
+    model_path : str
+        the path of model weights
+    strict : Optional[bool], optional
+        the arguments about torch, by default False
+    rm_prefix : Optional[str], optional
+        if not none, will remove the prefixs of the model weighs and then load model weighs, by default None
     """
     if model_path is None:
-        # rank zero only mode, other rank skip loading
-        return
+        raise FileExistsError("no file for the model weight")
+
     map_location = kwargs.pop("map_location", "cpu")
 
     # load weights
     ckpt = torch.load(model_path, map_location=map_location)
+
     if ckpt.get("state_dict", None):
         state_dict = ckpt["state_dict"]
     elif ckpt.get("state_dict_ema", None):
@@ -460,17 +465,14 @@ def load_pretrained_model_weights(
         state_dict = ckpt["model"]
     else:
         state_dict = ckpt
-    if rm_deberta_prefix:
-        new_state_dict = {}
-        for k, v in state_dict.items():
-            if k.startswith("deberta.deberta."):
-                k = k.replace("deberta.deberta.", "deberta.")
-            elif k.startswith("deberta."):
-                k = k.replace("deberta.", "")
-            new_state_dict[k] = v
-        keys = model.load_state_dict(new_state_dict, strict=strict)
-    else:
-        keys = model.load_state_dict(state_dict, strict=strict)
+
+    if rm_prefix:
+        for key_ in list(state_dict.keys()):
+            if key_.startswith(rm_prefix):
+                key_new = key_.replace(rm_prefix, "", 1)
+                state_dict[key_new] = state_dict.pop(key_)
+
+    keys = model.load_state_dict(state_dict, strict=strict)
 
     if len(keys.missing_keys) > 0:
         logger.warning(

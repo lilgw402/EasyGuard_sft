@@ -7,8 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import yaml
 
-from easyguard.modelzoo.models.albert import albert
-from easyguard.modelzoo.models.swin import SwinTransformer
+from .albert import albert
+from .swin import SwinTransformer
 
 
 class FrameALBert(nn.Module):

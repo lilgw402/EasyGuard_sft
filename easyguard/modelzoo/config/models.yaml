@@ -52,30 +52,6 @@ models:
       model: DebertaModel
     tokenization_deberta:
       tokenizer: DeBERTaTokenizer
-  vit:
-    name: Vit
-    backend: hf
-    configuration_vit:
-      config: ViTConfig
-    image_processing_vit:
-      image_processor: ViTImageProcessor
-    modeling_vit:
-      model: ViTModel
-  clip:
-    name: Clip
-    backend: hf
-    configuration_clip:
-      config: CLIPConfig
-      text_config: CLIPTextConfig
-      vision_config: CLIPVisionConfig
-    image_processing_clip:
-      image_processor: CLIPImageProcessor
-    modeling_clip:
-      model: CLIPModel
-    processing_clip:
-      processor: CLIPProcessor
-    tokenization_clip:
-      tokenizer: CLIPTokenizer
   fashionxlm:
     name: FashionXLM
     backend: hf
@@ -104,6 +80,30 @@ models:
       model: XLMRobertaForMaskedLM
     tokenization_xlm_roberta:
       tokenizer: XLMRobertaTokenizer
+   vit:
+    name: Vit
+    backend: hf
+    configuration_vit:
+      config: ViTConfig
+    image_processing_vit:
+      image_processor: ViTImageProcessor
+    modeling_vit:
+      model: ViTModel
+  clip:
+    name: Clip
+    backend: hf
+    configuration_clip:
+      config: CLIPConfig
+      text_config: CLIPTextConfig
+      vision_config: CLIPVisionConfig
+    image_processing_clip:
+      image_processor: CLIPImageProcessor
+    modeling_clip:
+      model: CLIPModel
+    processing_clip:
+      processor: CLIPProcessor
+    tokenization_clip:
+      tokenizer: CLIPTokenizer
     
     
 
