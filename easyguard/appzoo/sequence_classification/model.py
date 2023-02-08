@@ -65,7 +65,11 @@ class SequenceClassificationModel(CruiseModule):
         #         pretrained_model_name_or_path
         #     )
 
-        self.model = AutoModel.from_pretrained(pretrained_model_name_or_path, model_cls="sequence_model", num_labels=2)
+        self.model = AutoModel.from_pretrained(
+            pretrained_model_name_or_path,
+            model_cls="sequence_model",
+            num_labels=2,
+        )
         # use classification learning loss
         # self.classification_task_head = classification_task_head
         # self.classifier = torch.nn.Linear(
@@ -120,7 +124,7 @@ class SequenceClassificationModel(CruiseModule):
         # logits = self.classifier(cls_status)  # batch * label_size
         # loss = cross_entropy(logits, labels)
         #
-        # output_dict["loss"] = mmout.loss
+        output_dict["loss"] = mmout.loss
 
         # collect results for validation
         output_dict["diff"] = (
