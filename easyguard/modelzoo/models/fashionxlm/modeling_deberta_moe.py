@@ -1360,6 +1360,11 @@ class DebertaV2ForSequenceClassificationMoE(DebertaV2PreTrainedModel, ModelBase)
         self.pooler = ContextPooler(config)
         output_dim = self.pooler.output_dim
 
+        self.moe_hard_heads = nn.ModuleDict(
+            {k: MLP(output_dim, output_dim, output_dim) for k in
+             ['GB', 'ID', 'TH', 'MY', 'VN', 'PH']})
+        self.moe_share_head = MLP(output_dim, output_dim, output_dim)
+
         self.classifier = nn.Linear(output_dim, num_labels)
         drop_out = getattr(config, "cls_dropout", None)
         drop_out = self.config.hidden_dropout_prob if drop_out is None else drop_out
@@ -1417,6 +1422,12 @@ class DebertaV2ForSequenceClassificationMoE(DebertaV2PreTrainedModel, ModelBase)
         encoder_layer = outputs[0]
         pooled_output = self.pooler(encoder_layer)
         pooled_output = self.dropout(pooled_output)
+
+        pooled_output_ = torch.stack([self.moe_hard_heads[k](xi) for xi, k in zip(pooled_output, language)],
+                                  dim=0)  # language proj
+        pooled_output_share = self.moe_share_head(pooled_output)
+        pooled_output = torch.cat((pooled_output_, pooled_output_share), dim=1)
+
         logits = self.classifier(pooled_output)
 
         loss = None
