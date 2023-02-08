@@ -18,7 +18,7 @@
 
 from typing import TYPE_CHECKING
 
-from ....file_utils import (
+from transformers.file_utils import (
     _BaseLazyModule,
     is_sentencepiece_available,
     is_tf_available,

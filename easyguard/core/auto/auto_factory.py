@@ -15,11 +15,25 @@
 """Factory function to build auto-model classes."""
 import importlib
 from collections import OrderedDict
+from typing import Optional
 
-from ...modelzoo.configuration_utils import ConfigBase, PretrainedConfig
-from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
+from pyexpat import model
+
+from transformers.configuration_utils import PretrainedConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
+
+from ...modelzoo import MODELZOO_CONFIG
+from ...modelzoo.configuration_utils import ConfigBase
+from ...modelzoo.hub import AutoHubClass
 from ...modelzoo.modeling_utils import ModelBase
-from ...utils import cache_file, copy_func, lazy_model_import, logging
+from ...utils import (
+    cache_file,
+    copy_func,
+    hf_name_or_path_check,
+    lazy_model_import,
+    logging,
+    pretrained_model_archive_parse,
+)
 from . import (
     BACKENDS,
     HF_PATH,
@@ -28,7 +42,7 @@ from . import (
     MODEL_SAVE_NAMES,
     MODELZOO_CONFIG,
 )
-from .configuration_auto import AutoConfig
+from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
 from .configuration_auto_hf import model_type_to_module_name
 
 # TODO (junwei.Dong): 需要简化一下工厂函数的逻辑
@@ -210,16 +224,59 @@ class _BaseAutoModelClass:
 
     @classmethod
     def from_pretrained(
-        cls, pretrained_model_name_or_path: str, *model_args, **kwargs
+        cls,
+        pretrained_model_name_or_path: str,
+        region: Optional[str] = "CN",
+        model_cls: Optional[str] = "model",
+        *model_args,
+        **kwargs,
     ):
+        """instatiate a model class from a pretrained model name
+
+        Parameters
+        ----------
+        pretrained_model_name_or_path : str
+            the pretrained model name or local path
+        region : Optional[str], optional
+            avaiable region, CN (China), VA (oversea), CN/VA (both), by default "CN"
+        model_cls : Optional[str], optional
+            different categories of models, such as "model", "sequence_model", which can be found in unique_key of models.yaml, by default "model"
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        KeyError
+            _description_
+        NotImplementedError
+            _description_
+        NotImplementedError
+            _description_
+        """
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
             raise KeyError(pretrained_model_name_or_path)
         else:
-            model_archive = MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path]
+            # a model mapping for hf models, which is merely used to find the category of the target model
+            cls._model_mapping = _LazyAutoMapping(
+                CONFIG_MAPPING_NAMES, MODELZOO_CONFIG.get_mapping(model_cls)
+            )
+            # which is used to find the category of the target model for default models
+            cls._model_key = model_cls
+            # parse model for integrating the url of targe server into model arhive config
+            model_archive = pretrained_model_archive_parse(
+                pretrained_model_name_or_path,
+                MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
+                region,
+            )
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
+            server_name = model_archive.get("server", None)
             model_config = MODELZOO_CONFIG.get(model_type, None)
+
             assert (
                 model_config is not None
             ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
@@ -229,8 +286,14 @@ class _BaseAutoModelClass:
             backend_default_flag = False
             if backend == "hf":
                 HFBaseAutoModelClass._model_mapping = cls._model_mapping
+                pretrained_model_name_or_path_ = hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    MODEL_SAVE_NAMES,
+                    model_type,
+                )
                 return HFBaseAutoModelClass.from_pretrained(
-                    pretrained_model_name_or_path, *model_args, **kwargs
+                    pretrained_model_name_or_path_, *model_args, **kwargs
                 )
             elif backend == "titan":
                 # TODO (junwei.Dong): 支持特殊的titan模型
@@ -253,10 +316,15 @@ class _BaseAutoModelClass:
                 )
 
                 extra_dict = {
+                    "server_name": server_name,
+                    "archive_name": pretrained_model_name_or_path,
                     "model_type": model_type,
                     "remote_url": model_url,
                     "backend": backend,
+                    "region": region,
                 }
+
+                AutoHubClass.kwargs = extra_dict
                 # obtain model config class
                 model_config_class_: ConfigBase = AutoConfig.from_pretrained(
                     pretrained_model_name_or_path, **extra_dict

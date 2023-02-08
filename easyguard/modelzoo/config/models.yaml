@@ -6,9 +6,15 @@ unique_keys:
   - backend
   - config_archive
   - config
+  - text_config
+  - vision_config
   - tokenizer
   - tokenizer_fast
-  - model_for_pretrained
+  - image_processor
+  - processor
+  - model
+  - sequence_model
+
 
 # all models' settings
 models:
@@ -46,6 +52,61 @@ models:
       model: DebertaModel
     tokenization_deberta:
       tokenizer: DeBERTaTokenizer
+  vit:
+    name: Vit
+    backend: hf
+    configuration_vit:
+      config: ViTConfig
+    image_processing_vit:
+      image_processor: ViTImageProcessor
+    modeling_vit:
+      model: ViTModel
+  clip:
+    name: Clip
+    backend: hf
+    configuration_clip:
+      config: CLIPConfig
+      text_config: CLIPTextConfig
+      vision_config: CLIPVisionConfig
+    image_processing_clip:
+      image_processor: CLIPImageProcessor
+    modeling_clip:
+      model: CLIPModel
+    processing_clip:
+      processor: CLIPProcessor
+    tokenization_clip:
+      tokenizer: CLIPTokenizer
+  fashionxlm:
+    name: FashionXLM
+    backend: hf
+    configuration_fashionxlm:
+      config: FashionxlmConfig
+    modeling_fashionxlm:
+      model: FashionxlmForMaskedLM
+    tokenization_fashionxlm:
+      tokenizer: FashionxlmTokenizer
+  fashionxlm_moe:
+    name: FashionXLM_MoE
+    backend: hf
+    configuration_fashionxlm_moe:
+      config: FashionxlmMoEConfig
+    modeling_fashionxlm_moe:
+      model: FashionxlmMoEForMaskedLMMoE
+      sequence_model: FashionxlmForSequencelCassificationMoE
+    tokenization_fashionxlm_moe:
+      tokenizer: FashionxlmMoETokenizer
+  xlmr:
+    name: XLMR
+    backend: hf
+    configuration_xlm_roberta:
+      config: XLMRobertaConfig
+    modeling_xlm_roberta:
+      model: XLMRobertaForMaskedLM
+    tokenization_xlm_roberta:
+      tokenizer: XLMRobertaTokenizer
+    
+    
+
     
     
     

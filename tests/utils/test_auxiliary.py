@@ -19,8 +19,23 @@ def test_list_pretrained_models():
     list_pretrained_models()
 
 
+def test_hf_name_or_path_check():
+    name_or_path = "fashion-deberta-ccr-order"
+    model_url = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order"
+    file_name = "vocab.txt"
+    model_type = "debert"
+    print(hf_name_or_path_check(name_or_path, model_url, file_name, model_type))
+
+
+def test_convert_model_weight():
+    path = "/root/.cache/easyguard/models/fashionxlm_moe/6c2f5988fb7ea932b4914cf0fc6c1acb2460de2ee93f2a31370fa9d45f070f37/pytorch_model_old.bin"
+    convert_model_weights(path, "backbone.", remove_old=False)
+
+
 if __name__ == "__main__":
     data = "hello world~"
-    test_sha256(data)
+    # test_sha256(data)
     # test_cache_file()
-    test_list_pretrained_models()
+    # test_list_pretrained_models()
+    # test_hf_name_or_path_check()
+    test_convert_model_weight()

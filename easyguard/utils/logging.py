@@ -10,7 +10,7 @@ from .config import LOGGER_CONFIG
 logging.config.dictConfig(config=LOGGER_CONFIG)
 
 
-# TODO (junwei.Dong): 可以扩展自定义filter机制
+# TODO (junwei.Dong): 可以扩展自定义filter机制，过滤hf的提示【适配hf的logger，warning等级】
 
 log_levels = {
     "debug": logging.DEBUG,

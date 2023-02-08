@@ -1,15 +1,6 @@
-from .modeling_deberta_moe import (
-    DebertaV2ForMaskedLMMoE,
-    DebertaV2ForQuestionAnsweringMoE, MLP,
-    DebertaV2ForSequenceClassificationMoE,
-    DebertaV2ForTokenClassificationMoE
-)
+from typing import TYPE_CHECKING
 
-from .modeling_xlm_roberta import (
-    XLMRobertaForCausalLM,
-    XLMRobertaForMaskedLM,
-    XLMRobertaForMultipleChoice,
-    XLMRobertaForQuestionAnswering,
-    XLMRobertaForSequenceClassification,
-    XLMRobertaForTokenClassification
-)
+if TYPE_CHECKING:
+    from .configuration_fashionxlm import FashionxlmConfig
+    from .modeling_fashionxlm import FashionxlmForMaskedLM
+    from .tokenization_fashionxlm import FashionxlmTokenizer

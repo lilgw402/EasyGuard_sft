@@ -91,6 +91,8 @@ class DeBERTaTokenizer(TokenizerBase):
         greedy_sharp=True,
         max_len=None,
         never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
+        *args,
+        **kwargs,
     ):
         """
         vocab_file: 词表文件
@@ -101,6 +103,7 @@ class DeBERTaTokenizer(TokenizerBase):
             默认google的tokenizer是greedy_sharp=False 的形式。
             如果greedy_sharp 是true，则会先看 "##x" 是在词表里，如果不在，会看 "x" 是否在词表里。
         """
+        super().__init__(**kwargs)
         self.vocab = self.load_vocab(vocab_file)
         self.ids_to_tokens = collections.OrderedDict(
             [(ids, tok) for tok, ids in self.vocab.items()]

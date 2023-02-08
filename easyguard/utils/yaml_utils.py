@@ -114,7 +114,7 @@ class YamlConfig(ABC):
 
     @abstractmethod
     def check(self):
-        raise NotImplementedError()
+        ...
 
     @classmethod
     def yaml_reader(

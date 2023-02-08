@@ -1,11 +1,11 @@
 from easyguard.core import AutoModel, AutoTokenizer
 
-archive = "deberta_base_6l"
-# archive = "bert-base-uncased"
-# archive = "facebook/bart-large"
-
 
 def auto_model_test():
+    archive = "bert-base-uncased"
+    # archive = "deberta_base_6l"
+    # archive = "bert-base-uncased"
+    # archive = "facebook/bart-large"
     tokenizer = AutoTokenizer.from_pretrained(archive)
     model = AutoModel.from_pretrained(archive)
     inputs = tokenizer("Hello world!", return_tensors="pt")
@@ -18,10 +18,8 @@ def test_deberta_model():
     import torch
 
     archive = "fashion-deberta-ccr-order"
+    my_model = AutoModel.from_pretrained(archive, dim_shrink=128)
     my_tokenizer = AutoTokenizer.from_pretrained(archive)
-    my_model = AutoModel.from_pretrained(
-        archive, dim_shrink=128, rm_deberta_prefix=True
-    )
     my_model.eval()
     max_length = 512
     text = "我的手机"
@@ -41,6 +39,7 @@ def test_deberta_model():
     input_ids = torch.tensor([input_ids])
     input_mask = torch.tensor([input_mask])
     input_segment_ids = torch.tensor([input_segment_ids])
+    input_ids, input_mask, input_segment_ids = my_tokenizer(text).values()
     with torch.no_grad():
         result = my_model(
             input_ids=input_ids,
@@ -51,6 +50,33 @@ def test_deberta_model():
     print(result)
 
 
+def test_hf_modified_model():
+    text = "good good study, day day up!"
+
+    # archive = "fashionxlm-base"
+    # tokenizer = AutoTokenizer.from_pretrained(archive)
+    # inputs = tokenizer(text, return_tensors="pt", max_length=84)
+    # model = AutoModel.from_pretrained(archive)
+    # ouputs = model(**inputs)
+    # print(ouputs)
+
+    archive = "fashionxlm-moe-base"
+    tokenizer = AutoTokenizer.from_pretrained(archive)
+    inputs = tokenizer(text, return_tensors="pt", max_length=84)
+    model = AutoModel.from_pretrained(archive, model_cls="sequence_model")
+    ouputs = model(**inputs, language=["GB"])
+    print(ouputs)
+
+    archive = "xlmr-base"
+    tokenizer = AutoTokenizer.from_pretrained(archive)
+    inputs = tokenizer(text, return_tensors="pt", max_length=84)
+    model = AutoModel.from_pretrained(archive)
+
+    ouputs = model(**inputs)
+    print(ouputs)
+
+
 if __name__ == "__main__":
     # auto_model_test()
-    test_deberta_model()
+    # test_deberta_model()
+    test_hf_modified_model()

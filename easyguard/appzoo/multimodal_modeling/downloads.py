@@ -18,12 +18,12 @@ def get_real_url(url):
         return url
     elif url.startswith("v1"):
         url = url.split("~")[0]
-        return "https://p-multimodal.byted.org/img/ecom-shop-material/{}~800x800.jpg".format(
+        return "https://p-multimodal.byted.org/img/ecom-shop-material/{}~tplv-houlpd90xl-mm.png".format(
             url
         )
     else:
         url = url.split("~")[0]
-        return "https://p-multimodal.byted.org/img/temai/{}~800x800.jpg".format(
+        return "https://p-multimodal.byted.org/img/temai/{}~tplv-houlpd90xl-mm.png".format(
             url
         )
 

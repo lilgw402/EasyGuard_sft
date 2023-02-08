@@ -20,8 +20,9 @@ from typing import List, Optional, Tuple
 
 import regex as re
 
+from transformers.tokenization_utils import AddedToken, PreTrainedTokenizer
+
 from ....utils import logging
-from ...tokenization_utils import AddedToken, PreTrainedTokenizer
 
 logger = logging.get_logger(__name__)
 

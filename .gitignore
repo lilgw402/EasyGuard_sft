@@ -137,6 +137,7 @@ sample
 
 *.wandb
 wandb/*
+*wandb
 cruise_logs/*
 
 .idea
@@ -150,3 +151,6 @@ node_modules/
 events.out*
 
 *.attach_pid*
+
+# model
+*.model
