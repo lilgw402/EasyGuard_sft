@@ -63,6 +63,13 @@ def test_hf_modified_model():
     archive = "fashionxlm-moe-base"
     tokenizer = AutoTokenizer.from_pretrained(archive)
     inputs = tokenizer(text, return_tensors="pt", max_length=84)
+    model = AutoModel.from_pretrained(archive)
+    ouputs = model(**inputs, language=["GB"])
+    print(ouputs)
+
+    archive = "fashionxlm-moe-base"
+    tokenizer = AutoTokenizer.from_pretrained(archive)
+    inputs = tokenizer(text, return_tensors="pt", max_length=84)
     model = AutoModel.from_pretrained(archive, model_cls="sequence_model")
     ouputs = model(**inputs, language=["GB"])
     print(ouputs)
@@ -77,6 +84,6 @@ def test_hf_modified_model():
 
 
 if __name__ == "__main__":
-    auto_model_test()
+    # auto_model_test()
     # test_deberta_model()
-    # test_hf_modified_model()
+    test_hf_modified_model()

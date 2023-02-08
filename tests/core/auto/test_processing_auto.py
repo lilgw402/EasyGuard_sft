@@ -51,5 +51,11 @@ def test_clip():
     )  # we can take the softmax to get the label probabilitiesx = 1
 
 
+def test_falbert():
+    archive = "falbert-hq-live"
+    processor = AutoProcessor.from_pretrained(archive)
+
+
 if __name__ == "__main__":
-    test_clip()
+    # test_clip()
+    test_falbert()

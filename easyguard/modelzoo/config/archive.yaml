@@ -36,6 +36,10 @@ xlmr-base:
   server: hdfs
   type: xlmr
   region: CN
+falbert-hq-live:
+  server: hdfs
+  type: falbert
+  region: CN
 bert-base-uncased:
   server: hdfs
   type: bert

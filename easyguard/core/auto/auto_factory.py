@@ -335,6 +335,8 @@ class _BaseAutoModelClass:
                     MODEL_SAVE_NAMES,
                     **extra_dict,
                 )
+                # config merge
+
                 # instantiate model
                 model_: ModelBase = model_class(**model_config_class_.asdict())
                 # load weights

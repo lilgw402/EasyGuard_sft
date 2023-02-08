@@ -1,14 +1,14 @@
+from asyncio.log import logger
 from http import server
 from typing import Any, List, Optional, Union
 
 from ...modelzoo.hub import AutoHubClass
-from ...utils import hf_name_or_path_check, pretrained_model_archive_parse
-from . import (
-    BACKENDS,
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_CONFIG_NAMES,
-    MODELZOO_CONFIG,
+from ...utils import (
+    hf_name_or_path_check,
+    lazy_model_import,
+    pretrained_model_archive_parse,
 )
+from . import BACKENDS, MODEL_ARCHIVE_CONFIG, MODELZOO_CONFIG
 
 PROCESSOR_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("processor")
 
@@ -84,6 +84,10 @@ class AutoProcessor:
 
             if backend_default_flag:
                 ...
+                if not model_config.get("processor"):
+                    raise ModuleNotFoundError(
+                        f"the model {model_type} does not implement a processor class, please check ~"
+                    )
                 extra_dict = {
                     "server_name": server_name,
                     "archive_name": pretrained_model_name_or_path,
@@ -93,5 +97,13 @@ class AutoProcessor:
                 }
 
                 AutoHubClass.kwargs = extra_dict
-                # support simplified models
+                processor_name_tuple = MODELZOO_CONFIG[model_type]["processor"]
+                (
+                    processor_module_package,
+                    processor_module_name,
+                ) = MODELZOO_CONFIG.to_module(processor_name_tuple)
+                processor_class = lazy_model_import(
+                    processor_module_package, processor_module_name
+                )
+
                 # support the huggingface-like models

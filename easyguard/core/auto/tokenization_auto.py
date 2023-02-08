@@ -133,7 +133,10 @@ class AutoTokenizer:
             if backend_default_flag:
                 # just support base tokenizer
                 # lazily obtain tokenizer class
-                tokenizer_name_tuple = MODELZOO_CONFIG[model_type]["tokenizer"]
+                tokenizer_key = "tokenizer"
+                tokenizer_name_tuple = MODELZOO_CONFIG[model_type][
+                    tokenizer_key
+                ]
                 (
                     tokenizer_module_package,
                     tokenizer_module_name,
