@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunasg/home/byte_magellan_govern/users/jiangjunjun.happy/xlmr14
+  default_hdfs_dir: hdfs://harunasg/home/byte_magellan_govern/users/jiangjunjun.happy/xlmr_debug
   logger: true
   log_every_n_steps: 50
   benchmark: false
@@ -8,7 +8,7 @@ trainer:
   enable_versions: true
   detect_anomaly: false
   deterministic: false
-  accelerator: gpu
+  accelerator: cpu
   accelerator_kwargs: {}
   precision: fp16
   max_epochs: 1

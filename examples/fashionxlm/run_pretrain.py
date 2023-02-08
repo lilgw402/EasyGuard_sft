@@ -28,7 +28,6 @@ cli = CruiseCLI(LanguageModel,
                     'summarize_model_depth': 2,
                     'checkpoint_monitor': 'loss',
                     'checkpoint_mode': 'min',
-                    'default_hdfs_dir': 'hdfs://harunasg/home/byte_magellan_govern/users/jiangjunjun.happy/xlmr14' # use your own path to save model
                 }
                 )
 cfg, trainer, model, datamodule = cli.parse_args()

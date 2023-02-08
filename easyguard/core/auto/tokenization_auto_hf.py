@@ -19,11 +19,13 @@ import json
 import os
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
-from ...modelzoo.configuration_utils import PretrainedConfig
-from ...modelzoo.dynamic_module_utils import get_class_from_dynamic_module
-from ...modelzoo.tokenization_utils import PreTrainedTokenizer
-from ...modelzoo.tokenization_utils_base import TOKENIZER_CONFIG_FILE
-from ...modelzoo.tokenization_utils_fast import PreTrainedTokenizerFast
+from transformers.configuration_utils import PretrainedConfig
+from transformers.dynamic_module_utils import get_class_from_dynamic_module
+from transformers.models.encoder_decoder import EncoderDecoderConfig
+from transformers.tokenization_utils import PreTrainedTokenizer
+from transformers.tokenization_utils_base import TOKENIZER_CONFIG_FILE
+from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+
 from ...utils import (
     cached_file,
     extract_commit_hash,
@@ -31,7 +33,6 @@ from ...utils import (
     is_tokenizers_available,
     logging,
 )
-from ..encoder_decoder import EncoderDecoderConfig
 from . import HF_PATH
 from .configuration_auto_hf import (
     HFAutoConfig,
@@ -39,7 +40,11 @@ from .configuration_auto_hf import (
     model_type_to_module_name,
     replace_list_option_in_docstrings,
 )
-from .tokenization_auto import CONFIG_TO_TYPE, TOKENIZER_MAPPING
+from .tokenization_auto import (
+    CONFIG_TO_TYPE,
+    TOKENIZER_MAPPING,
+    TOKENIZER_MAPPING_NAMES,
+)
 
 # TODO (junwei.Dong): 简化hf的tokenization的机制，所有针对hf的tokenization的代码都在该模块里进行修改
 logger = logging.get_logger(__name__)

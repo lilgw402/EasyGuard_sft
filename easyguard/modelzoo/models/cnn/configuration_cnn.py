@@ -20,7 +20,8 @@ from __future__ import (
     unicode_literals,
 )
 
-from ....configuration_utils import PretrainedConfig
+from transformers.configuration_utils import PretrainedConfig
+
 from ..bert import BertConfig
 
 CNN_PRETRAINED_CONFIG_ARCHIVE_MAP = {

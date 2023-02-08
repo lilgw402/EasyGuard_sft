@@ -23,6 +23,7 @@ from ...utils import (
     CONFIG_NAME,
     cache_file,
     file_read,
+    hf_name_or_path_check,
     lazy_model_import,
     logging,
 )
@@ -33,7 +34,6 @@ from . import MODEL_CONFIG_NAMES, MODELZOO_CONFIG
 logger = logging.get_logger(__name__)
 
 CONFIG_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("config")
-CONFIG_ARCHIVE_MAP_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("config_archive")
 MODEL_NAMES_MAPPING = MODELZOO_CONFIG.get_mapping("name")
 SPECIAL_MODEL_TYPE_TO_MODULE_NAME = OrderedDict(
     [
@@ -72,8 +72,14 @@ class AutoConfig:
         else:
             from .configuration_auto_hf import HFAutoConfig
 
+            pretrained_model_name_or_path_ = hf_name_or_path_check(
+                pretrained_model_name_or_path,
+                model_url,
+                MODEL_CONFIG_NAMES,
+                model_type,
+            )
             return HFAutoConfig.from_pretrained(
-                pretrained_model_name_or_path, **kwargs
+                pretrained_model_name_or_path_, **kwargs
             )
 
         if backend_default_flag:

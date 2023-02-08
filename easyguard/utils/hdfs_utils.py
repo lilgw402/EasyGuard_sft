@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import glob
 import os
 import random
@@ -283,24 +282,3 @@ def fetch_file_from_hdfs(file_path, dir_path="/tmp"):
         file_path = local_file_path
 
     return file_path
-
-
-if __name__ == '__main__':
-    hdfs_file = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt"
-    vocab_set = set()
-    with hopen(hdfs_file) as fr:
-        for item in fr:
-            # bytes
-            #item = item.decode("utf-8")
-            #item = item.strip()
-
-            # str
-            item = str(item, encoding="utf-8")
-            item = item.strip()
-            vocab_set.add(item)
-    for item in vocab_set:
-        print(item)
-        break
-
-    is_bool = "中亚" in vocab_set
-    print(is_bool)
