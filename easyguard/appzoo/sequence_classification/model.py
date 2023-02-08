@@ -116,7 +116,7 @@ class SequenceClassificationModel(CruiseModule):
             input_ids,
             attention_mask,
             token_type_ids,
-            labels=None,
+            labels=labels,
             output_hidden_states=True,
         )
         # hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
