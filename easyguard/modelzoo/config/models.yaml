@@ -59,6 +59,7 @@ models:
       config: FashionxlmConfig
     modeling_fashionxlm:
       model: FashionxlmForMaskedLM
+      sequence_model: DebertaV2ForSequenceClassification
     tokenization_fashionxlm:
       tokenizer: FashionxlmTokenizer
   fashionxlm_moe:

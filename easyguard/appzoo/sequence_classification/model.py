@@ -7,8 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from easyguard import AutoModel
 
 try:
     import cruise
@@ -26,7 +25,7 @@ from ...utils.losses import LearnableNTXentLoss, cross_entropy
 class SequenceClassificationModel(CruiseModule):
     def __init__(
         self,
-        pretrained_model_name_or_path: str = "fashionxlm-mdeberta-v3-base",
+        pretrained_model_name_or_path: str = "fashionxlm-base",
         #  cl_enable: bool = False,
         #  cl_temp: float = 0.05,
         #  cl_weight: float = 1.0,
@@ -52,51 +51,56 @@ class SequenceClassificationModel(CruiseModule):
         super().__init__()
         self.save_hparams()
 
-        if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
-            # load mdeberta-v3-base backbone and then restore new pre-trained fashionxlm parameters
-            from ...modelzoo.models.mdeberta_v2 import (
-                DebertaV2ForSequenceClassification,
-            )
+        # if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
+        #     # load mdeberta-v3-base backbone and then restore new pre-trained fashionxlm parameters
+        #     from ...modelzoo.models.mdeberta_v2 import (
+        #         DebertaV2ForSequenceClassification,
+        #     )
+        #
+        #     self.backbone = DebertaV2ForSequenceClassification.from_pretrained(
+        #         "microsoft/mdeberta-v3-base"
+        #     )
+        # else:
+        #     self.backbone = AutoModelForSequenceClassification.from_pretrained(
+        #         pretrained_model_name_or_path
+        #     )
 
-            self.backbone = DebertaV2ForSequenceClassification.from_pretrained(
-                "microsoft/mdeberta-v3-base"
-            )
-        else:
-            self.backbone = AutoModelForSequenceClassification.from_pretrained(
-                pretrained_model_name_or_path
-            )
-
-        # use classification learning loss
-        self.classification_task_head = classification_task_head
-        self.classifier = torch.nn.Linear(
-            hidden_size, self.classification_task_head
+        self.model = AutoModel.from_pretrained(
+            pretrained_model_name_or_path,
+            model_cls="sequence_model",
+            num_labels=2,
         )
+        # use classification learning loss
+        # self.classification_task_head = classification_task_head
+        # self.classifier = torch.nn.Linear(
+        #     hidden_size, self.classification_task_head
+        # )
 
         # setup nce allgather group if has limit
         # self.nce_group = False
 
-    def init_weights(self):
-        def init_weight_module(module):
-            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
-                torch.nn.init.xavier_uniform_(module.weight)
-            elif isinstance(module, (torch.nn.BatchNorm2d, torch.nn.LayerNorm)):
-                module.bias.data.zero_()
-                module.weight.data.fill_(1.0)
-            if isinstance(module, torch.nn.Linear) and module.bias is not None:
-                module.bias.data.zero_()
+    # def init_weights(self):
+    #     def init_weight_module(module):
+    #         if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
+    #             torch.nn.init.xavier_uniform_(module.weight)
+    #         elif isinstance(module, (torch.nn.BatchNorm2d, torch.nn.LayerNorm)):
+    #             module.bias.data.zero_()
+    #             module.weight.data.fill_(1.0)
+    #         if isinstance(module, torch.nn.Linear) and module.bias is not None:
+    #             module.bias.data.zero_()
+    #
+    #     self.apply(init_weight_module)
 
-        self.apply(init_weight_module)
+    # def freeze_params(self, freeze_prefix):
+    #     for name, param in self.named_parameters():
+    #         for prefix in freeze_prefix:
+    #             if name.startswith(prefix):
+    #                 param.requires_grad = False
 
-    def freeze_params(self, freeze_prefix):
-        for name, param in self.named_parameters():
-            for prefix in freeze_prefix:
-                if name.startswith(prefix):
-                    param.requires_grad = False
-
-    def rank_zero_prepare(self):
-        # load partial pretrain
-        if self.hparams.load_pretrain:
-            load_pretrained(self.hparams.load_pretrain, self)
+    # def rank_zero_prepare(self):
+    #     # load partial pretrain
+    #     if self.hparams.load_pretrain:
+    #         load_pretrained(self.hparams.load_pretrain, self)
 
     def forward(self, input_ids, token_type_ids, attention_mask, labels):
         """
@@ -108,23 +112,23 @@ class SequenceClassificationModel(CruiseModule):
         output_dict = {}
 
         # classification task
-        mmout = self.backbone(
+        mmout = self.model(
             input_ids,
             attention_mask,
             token_type_ids,
-            labels=None,
+            labels=labels,
             output_hidden_states=True,
         )
-        hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
-        cls_status = hidden_states[:, 0, :]  # batch * emd_size
-        logits = self.classifier(cls_status)  # batch * label_size
-        loss = cross_entropy(logits, labels)
-
-        output_dict["loss"] = loss
+        # hidden_states = mmout.hidden_states[-1]  # batch * sen_len * emd_size
+        # cls_status = hidden_states[:, 0, :]  # batch * emd_size
+        # logits = self.classifier(cls_status)  # batch * label_size
+        # loss = cross_entropy(logits, labels)
+        #
+        output_dict["loss"] = mmout.loss
 
         # collect results for validation
         output_dict["diff"] = (
-            labels.long() == torch.argmax(logits, 1).long()
+            labels.long() == torch.argmax(mmout.logits, 1).long()
         ).float()
         # output_dict['predictions'] = torch.argmax(logits, 1).float()
 

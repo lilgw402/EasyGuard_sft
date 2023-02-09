@@ -4,7 +4,7 @@ from typing import List, Union
 
 import torch
 from torch.utils.data._utils.collate import default_collate
-from transformers import AutoTokenizer
+from easyguard import AutoTokenizer
 
 try:
     import cruise
@@ -98,7 +98,7 @@ class SequenceClassificationData(CruiseDataModule):
         data_size: int = 200000000,
         val_step: int = 500,
         num_workers: int = 1,
-        tokenizer: str = "microsoft/mdeberta-v3-base",
+        tokenizer: str = "fashionxlm-base",
         x_key: str = "text",
         y_key: str = "label",
         region_key: str = "country",

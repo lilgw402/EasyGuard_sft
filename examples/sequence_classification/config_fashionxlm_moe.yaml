@@ -35,7 +35,7 @@ trainer:
   project_name: null
   enable_trace: false
 model:
-  pretrained_model_name_or_path: fashionxlm-mdeberta-v3-base
+  pretrained_model_name_or_path: fashionxlm-moe-base
   classification_task_enable: false
   classification_task_head: 2
   hidden_size: 768
@@ -59,7 +59,7 @@ data:
   data_size: 16000
   val_step: -1
   num_workers: 1
-  tokenizer: microsoft/mdeberta-v2-base
+  tokenizer: fashionxlm-moe-base
   train_file: 'hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/ansa_train.json'
   val_file: 'hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/leaderboard/ansa_test.json'
   x_key: text
