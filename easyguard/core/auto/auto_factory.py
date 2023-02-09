@@ -16,10 +16,7 @@
 import importlib
 import os
 from collections import OrderedDict
-from distutils.command.config import config
 from typing import Optional
-
-from pyexpat import model
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
