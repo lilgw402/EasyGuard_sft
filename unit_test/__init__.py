@@ -1,0 +1,1 @@
+TEST_FLAGS = ["all"]
