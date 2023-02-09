@@ -9,15 +9,19 @@ class FalBertConfig(ConfigBase):
     @typecheck(object, dict, dict)
     def __init__(
         self,
+        model_type: str,
         text_config: Dict[str, Any],
         vision_config: Dict[str, Any],
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+        self.model_type = model_type
         self.text_config_dict = text_config
         self.vision_config_dict = vision_config
-        self.text_processor = FalBertTextConfig(**self.text_config_dict)
-        self.image_processor = FalBertVisionConfig(**self.vision_config_dict)
+        self.text_processor_config = FalBertTextConfig(**self.text_config_dict)
+        self.image_processor_config = FalBertVisionConfig(
+            **self.vision_config_dict
+        )
 
     def config_update_for_pretrained(self, **kwargs):
         ...
@@ -35,7 +39,6 @@ class FalBertVisionConfig(ConfigBase):
 
 @dataclass
 class FalBertTextConfig(ConfigBase):
-    model_name: str
     vocab_size: int
     embedding_size: int
     num_hidden_layers: int

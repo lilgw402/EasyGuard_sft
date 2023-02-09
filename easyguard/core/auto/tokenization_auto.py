@@ -14,6 +14,7 @@
 # limitations under the License.
 """ Auto Tokenizer class."""
 
+import os
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
@@ -24,6 +25,7 @@ from transformers.tokenization_utils_base import TOKENIZER_CONFIG_FILE
 from ...modelzoo.hub import AutoHubClass
 from ...utils import (
     cache_file,
+    file_exist,
     file_read,
     hf_name_or_path_check,
     lazy_model_import,
@@ -89,17 +91,38 @@ class AutoTokenizer:
         pretrained_model_name_or_path : str
             _description_
         """
+        model_url = None
+        server_name = None
+        is_local = False
+        config_path = None
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
             # TODO (junwei.Dong): instantiate a pretrained tokenizer class from local path
-            try:
-                from transformers import AutoTokenizer
-
-                return AutoTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, **kwargs
+            if os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
+                pretrained_model_name_or_path
+            ):
+                model_config_path = file_exist(
+                    pretrained_model_name_or_path, MODEL_CONFIG_NAMES
                 )
-            except:
-                raise KeyError(pretrained_model_name_or_path)
+                assert (
+                    model_config_path is not None
+                ), f"please make sure the model config file exist in f{pretrained_model_name_or_path}"
+                config_dict = file_read(model_config_path)
+                model_type = config_dict.get("model_type", None)
+                assert (
+                    model_type is not None
+                ), f"please check the config file in f{pretrained_model_name_or_path}, make sure the `model_type` key exists"
+                is_local = True
+                model_url = pretrained_model_name_or_path
+            else:
+                try:
+                    from transformers import AutoTokenizer
+
+                    return AutoTokenizer.from_pretrained(
+                        pretrained_model_name_or_path, **kwargs
+                    )
+                except:
+                    raise KeyError(pretrained_model_name_or_path)
         else:
             model_archive = pretrained_model_archive_parse(
                 pretrained_model_name_or_path,
@@ -109,71 +132,88 @@ class AutoTokenizer:
             model_type = model_archive.get("type", None)
             model_url = model_archive.get("url_or_path", None)
             server_name = model_archive.get("server", None)
-            model_config = MODELZOO_CONFIG.get(model_type, None)
-            assert (
-                model_config is not None
-            ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
 
-            backend = model_config.get("backend", None)
-            assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
-            backend_default_flag = False
+        model_config = MODELZOO_CONFIG.get(model_type, None)
+        assert (
+            model_config is not None
+        ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
 
-            if backend == "hf":
-                from .tokenization_auto_hf import HFTokenizer
+        backend = model_config.get("backend", None)
+        assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
+        backend_default_flag = False
 
-                pretrained_model_name_or_path_ = hf_name_or_path_check(
+        if backend == "hf":
+            from .tokenization_auto_hf import HFTokenizer
+
+            pretrained_model_name_or_path_ = (
+                hf_name_or_path_check(
                     pretrained_model_name_or_path,
                     model_url,
                     model_type,
                 )
+                if not is_local
+                else pretrained_model_name_or_path
+            )
 
-                return HFTokenizer.from_pretrained(
-                    pretrained_model_name_or_path_, *inputs, **kwargs
-                )
-            elif backend == "titan":
-                # TODO (junwei.Dong): 支持特殊的titan模型
-                raise NotImplementedError(backend)
-            elif backend == "fex":
-                # TODO (junwei.Dong): 支持特殊的fex模型
-                raise NotImplementedError(backend)
-            else:
-                backend_default_flag = True
+            return HFTokenizer.from_pretrained(
+                pretrained_model_name_or_path_, *inputs, **kwargs
+            )
+        elif backend == "titan":
+            # TODO (junwei.Dong): 支持特殊的titan模型
+            raise NotImplementedError(backend)
+        elif backend == "fex":
+            # TODO (junwei.Dong): 支持特殊的fex模型
+            raise NotImplementedError(backend)
+        else:
+            backend_default_flag = True
 
-            if backend_default_flag:
-                # just support base tokenizer
-                # lazily obtain tokenizer class
-                tokenizer_key = "tokenizer"
-                tokenizer_name_tuple = MODELZOO_CONFIG[model_type][
-                    tokenizer_key
-                ]
-                (
-                    tokenizer_module_package,
-                    tokenizer_module_name,
-                ) = MODELZOO_CONFIG.to_module(tokenizer_name_tuple)
-                tokenizer_class = lazy_model_import(
-                    tokenizer_module_package, tokenizer_module_name
-                )
-                extra_dict = {
-                    "server_name": server_name,
-                    "archive_name": pretrained_model_name_or_path,
-                    "model_type": model_type,
-                    "remote_url": model_url,
-                    "region": region,
-                }
-                AutoHubClass.kwargs = extra_dict
-                # obtain vocab file path
-                vocab_file_path = cache_file(
+        if backend_default_flag:
+            # just support base tokenizer
+            # lazily obtain tokenizer class
+            tokenizer_key = "tokenizer"
+            tokenizer_name_tuple = MODELZOO_CONFIG[model_type][tokenizer_key]
+            (
+                tokenizer_module_package,
+                tokenizer_module_name,
+            ) = MODELZOO_CONFIG.to_module(tokenizer_name_tuple)
+            tokenizer_class = lazy_model_import(
+                tokenizer_module_package, tokenizer_module_name
+            )
+            extra_dict = {
+                "server_name": server_name,
+                "archive_name": pretrained_model_name_or_path,
+                "model_type": model_type,
+                "remote_url": model_url,
+                "region": region,
+            }
+            AutoHubClass.kwargs = extra_dict
+            # obtain vocab file path
+            vocab_file_path = (
+                cache_file(
                     pretrained_model_name_or_path, VOCAB_NAME, **extra_dict
                 )
+                if not is_local
+                else file_exist(pretrained_model_name_or_path, VOCAB_NAME)
+            )
 
-                # obtain tokenizer config file path
-                tokenizer_config_file_path = cache_file(
+            # obtain tokenizer config file path
+            tokenizer_config_file_path = (
+                cache_file(
                     pretrained_model_name_or_path,
                     TOKENIZER_CONFIG_NAMES,
                     **extra_dict,
                 )
-                tokenizer_config = file_read(tokenizer_config_file_path)
-                return tokenizer_class(
-                    vocab_file_path, **tokenizer_config, **extra_dict
+                if not is_local
+                else file_exist(
+                    pretrained_model_name_or_path, TOKENIZER_CONFIG_NAMES
                 )
+            )
+            assert (
+                tokenizer_config_file_path is not None
+            ), f"tokenizer config file does not exist"
+
+            tokenizer_config = file_read(tokenizer_config_file_path)
+            return tokenizer_class(
+                vocab_file=vocab_file_path, **tokenizer_config, **extra_dict
+            )
         ...

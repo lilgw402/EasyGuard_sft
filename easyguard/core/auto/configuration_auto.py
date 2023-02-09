@@ -66,6 +66,7 @@ class AutoConfig:
         model_type = kwargs.pop("model_type", None)
         model_url = kwargs.pop("remote_url", None)
         backend_default_flag = False
+        is_local = kwargs.pop("is_local", None)
         if backend == "default":
             backend_default_flag = True
         elif backend == "titan":
@@ -77,10 +78,14 @@ class AutoConfig:
         else:
             from .configuration_auto_hf import HFAutoConfig
 
-            pretrained_model_name_or_path_ = hf_name_or_path_check(
-                pretrained_model_name_or_path,
-                model_url,
-                model_type,
+            pretrained_model_name_or_path_ = (
+                hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    model_type,
+                )
+                if not is_local
+                else pretrained_model_name_or_path
             )
 
             return HFAutoConfig.from_pretrained(
@@ -102,8 +107,14 @@ class AutoConfig:
                 "remote_url": model_url,
             }
             # obtain model config file path
-            model_config_file_path = cache_file(
-                pretrained_model_name_or_path, MODEL_CONFIG_NAMES, **extra_dict
+            model_config_file_path = (
+                cache_file(
+                    pretrained_model_name_or_path,
+                    MODEL_CONFIG_NAMES,
+                    **extra_dict,
+                )
+                if not is_local
+                else kwargs["config_path"]
             )
 
             model_config = file_read(model_config_file_path)

@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from typing import Optional
 
+from .. import EASYGUARD_CACHE, EASYGUARD_MODEL_CACHE
 from ..utils import (
-    EASYGUARD_CACHE,
-    EASYGUARD_MODEL_CACHE,
     HDFS_HUB_CN,
     HDFS_HUB_VA,
     REGION_MAPPING,
@@ -42,6 +41,7 @@ class HubBase(ABC):
         ...
 
 
+# TODO: 实现本地数据中心
 class AutoHubClass:
     kwargs = None
 
@@ -70,15 +70,16 @@ class AutoHubClass:
         if not module_name:
             return ValueError(f"not support {server_name}")
         module = importlib.import_module(__name__)
-        class_module = getattr(module, module_name)
-        class_instance = class_module(
-            archive_name=archive_name,
-            model_type=model_type,
-            **self.kwargs,
-        )
-        for key_ in dir(class_instance):
-            if not key_.startswith("__"):
-                setattr(self, key_, getattr(class_instance, key_))
+        class_module = getattr(module, module_name, None)
+        if not class_module:
+            class_instance = class_module(
+                archive_name=archive_name,
+                model_type=model_type,
+                **self.kwargs,
+            )
+            for key_ in dir(class_instance):
+                if not key_.startswith("__"):
+                    setattr(self, key_, getattr(class_instance, key_))
 
 
 # TODO (junwei.Dong): hub中心暂时能用了，但是__mro__的继承链问题仍然没有解决，不知道问题出在哪，在继承链里的类按照顺序没有正常初始化，很奇怪，该问题解决可以在多继承中不用显示进行父类的初始化
