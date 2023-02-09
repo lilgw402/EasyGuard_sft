@@ -91,11 +91,11 @@ model:
   - 0.999
   momentum: 0.9
 data:
-  train_batch_size: 64
-  val_batch_size: 16
+  train_batch_size: 48
+  val_batch_size: 48
   train_file: hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/ansa_train.json
   val_file: hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/leaderboard/ansa_test.json
-  data_size: 10000
+  data_size: 100000
   val_step: 500
   num_workers: 1
   tokenizer: fashionxlm-base
