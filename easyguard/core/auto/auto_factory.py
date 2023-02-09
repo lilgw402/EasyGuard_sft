@@ -258,7 +258,14 @@ class _BaseAutoModelClass:
         """
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
-            raise KeyError(pretrained_model_name_or_path)
+            try:
+                from transformers import AutoModel
+
+                return AutoModel.from_pretrained(
+                    pretrained_model_name_or_path, **kwargs
+                )
+            except:
+                raise KeyError(pretrained_model_name_or_path)
         else:
             # a model mapping for hf models, which is merely used to find the category of the target model
             cls._model_mapping = _LazyAutoMapping(
@@ -326,7 +333,7 @@ class _BaseAutoModelClass:
                 AutoHubClass.kwargs = extra_dict
                 # obtain model config class
                 model_config_class_: ConfigBase = AutoConfig.from_pretrained(
-                    pretrained_model_name_or_path, **extra_dict
+                    pretrained_model_name_or_path, **extra_dict, **kwargs
                 )
                 model_config_class_.config_update_for_pretrained(**kwargs)
                 # obtain model weight file path
@@ -336,9 +343,11 @@ class _BaseAutoModelClass:
                     **extra_dict,
                 )
                 # config merge
-
+                model_config_class_.update(kwargs)
+                config_dict = model_config_class_.asdict()
+                config_dict.update({"config": model_config_class_})
                 # instantiate model
-                model_: ModelBase = model_class(**model_config_class_.asdict())
+                model_: ModelBase = model_class(**config_dict)
                 # load weights
                 model_.load_pretrained_weights(model_weight_file_path, **kwargs)
 

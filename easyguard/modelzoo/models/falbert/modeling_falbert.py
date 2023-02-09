@@ -14,7 +14,7 @@ from .swin import SwinTransformer
 class FrameALBert(nn.Module):
     """Frame + ALBert"""
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         """
         n层的Transformer + resnet的结构
 

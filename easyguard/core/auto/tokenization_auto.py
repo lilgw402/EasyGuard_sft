@@ -17,6 +17,8 @@
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
+from matplotlib import transforms
+
 from transformers.tokenization_utils_base import TOKENIZER_CONFIG_FILE
 
 from ...modelzoo.hub import AutoHubClass
@@ -90,7 +92,14 @@ class AutoTokenizer:
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
             # TODO (junwei.Dong): instantiate a pretrained tokenizer class from local path
-            raise KeyError(pretrained_model_name_or_path)
+            try:
+                from transformers import AutoTokenizer
+
+                return AutoTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, **kwargs
+                )
+            except:
+                raise KeyError(pretrained_model_name_or_path)
         else:
             model_archive = pretrained_model_archive_parse(
                 pretrained_model_name_or_path,

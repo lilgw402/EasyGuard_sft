@@ -83,7 +83,6 @@ class AutoProcessor:
                 backend_default_flag = True
 
             if backend_default_flag:
-                ...
                 if not model_config.get("processor"):
                     raise ModuleNotFoundError(
                         f"the model {model_type} does not implement a processor class, please check ~"
