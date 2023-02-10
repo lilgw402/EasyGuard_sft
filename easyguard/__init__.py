@@ -3,9 +3,11 @@ import os
 
 __version__ = "0.0.2"
 
-from .utils import EASYGUARD_CACHE
-
 # set the easyguard cache directory
+# for local cache
+EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
+EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
+REMOTE_PATH_SEP = "/"
 os.environ["EASYGUARD_CACHE"] = EASYGUARD_CACHE
 os.environ["EASYGUARD_HOME"] = os.path.dirname(os.path.dirname(__file__))
 

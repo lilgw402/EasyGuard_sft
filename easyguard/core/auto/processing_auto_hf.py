@@ -28,12 +28,8 @@ from transformers.tokenization_utils import TOKENIZER_CONFIG_FILE
 from ...utils import FEATURE_EXTRACTOR_NAME, get_file_from_repo, logging
 from . import HF_PATH
 from .auto_factory import _LazyAutoMapping
-from .configuration_auto import (
-    CONFIG_MAPPING_NAMES,
-    AutoConfig,
-    model_type_to_module_name,
-    replace_list_option_in_docstrings,
-)
+from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
+from .configuration_auto_hf import model_type_to_module_name
 
 # from .feature_extraction_auto import AutoFeatureExtractor
 from .image_processing_auto import AutoImageProcessor
@@ -88,7 +84,6 @@ class HFAutoProcessor:
         )
 
     @classmethod
-    @replace_list_option_in_docstrings(PROCESSOR_MAPPING_NAMES)
     def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
         r"""
         Instantiate one of the processor classes of the library from a pretrained model vocabulary.

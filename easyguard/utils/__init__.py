@@ -2,9 +2,14 @@ import os
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
-from .. import __version__
-from .import_utils import _LazyPackage
+from .. import (
+    EASYGUARD_CACHE,
+    EASYGUARD_MODEL_CACHE,
+    REMOTE_PATH_SEP,
+    __version__,
+)
 
+# utils 里面的包只能相互引用，不能从.来拿, 单一功能的subclass尽量少去调用功能复杂的subclass，避免形成循环引用
 WEIGHTS_NAME = "pytorch_model.bin"
 WEIGHTS_INDEX_NAME = "pytorch_model.bin.index.json"
 CONFIG_NAME = "config.json"
@@ -15,10 +20,7 @@ MODEL_CARD_NAME = "modelcard.json"
 
 SENTENCEPIECE_UNDERLINE = "▁"
 SPIECE_UNDERLINE = SENTENCEPIECE_UNDERLINE  # Kept for backward compatibility
-# for local cache
-EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
-EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
-REMOTE_PATH_SEP = "/"
+
 # for pretrained model parse
 HDFS_HUB_CN = "hdfs://haruna/home/byte_ecom_govern/easyguard"
 HDFS_HUB_VA = "hdfs://haruna/home/byte_ecom_govern/easyguard"
@@ -194,29 +196,28 @@ _import_structure = {
     ],
     "auxiliary_utils": [
         "sha256",
-        "EASYGUARD_CACHE",
+        "file_exist",
         "cache_file",
         "get_configs",
         "load_pretrained_model_weights",
         "list_pretrained_models",
-        "typecheck",
         "hf_name_or_path_check",
         "pretrained_model_archive_parse",
     ],
+    "type_utils": ["typecheck"],
 }
 
 # keep each module independent
 if TYPE_CHECKING:
     from .auxiliary_utils import (
-        EASYGUARD_CACHE,
         cache_file,
+        file_exist,
         get_configs,
         hf_name_or_path_check,
         list_pretrained_models,
         load_pretrained_model_weights,
         pretrained_model_archive_parse,
         sha256,
-        typecheck,
     )
     from .doc import (
         add_code_sample_docstrings,
@@ -377,9 +378,12 @@ if TYPE_CHECKING:
         torch_required,
         torch_version,
     )
+    from .type_utils import typecheck
     from .yaml_utils import *
 else:
     import sys
+
+    from .import_utils import _LazyPackage
 
     globals_ = dict(globals().items())
     for key_, value_ in globals_.items():

@@ -21,20 +21,49 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from transformers.configuration_utils import *
 
 from .. import __version__
-from ..utils import logging
+from ..utils import logging, typecheck
 
 logger = logging.get_logger(__name__)
 
 
-# TODO (junwei.Dong): 一些通用的关于config的操作可以注册进该基类中去, 自己的config最好继承该基类
+# TODO (junwei.Dong): 一些通用的关于config的操作可以注册进该基类中去, 自己开发的config需要继承该基类
 # EasyGuard config base class
 @dataclass
 class ConfigBase(ABC):
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
+    @typecheck(object, str)
+    def __getitem__(self, key: str) -> Any:
+        """like a dict class"""
+        return self.__dict__[key]
+
     def asdict(self) -> Dict[str, Any]:
         return asdict(self)
 
+    @typecheck(object, dict)
+    def update(self, data: Dict[str, Any]):
+        """update arguments
+        example:
+
+        >>> self.model_name
+        output:
+            Bert
+        >>> data = {'model_name': 'bert', 'type': 'NLP'}
+        >>> self.update(data)
+        >>> self.model_name
+        output:
+            bert
+        >>> self.type
+        output:
+            NLP
+        output
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            _description_
+        """
+        self.__dict__.update(data)
+
     def config_update_for_pretrained(self, **kwargs):
-        ...
+        """pretrained config modify"""

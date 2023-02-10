@@ -1,7 +1,5 @@
 import hashlib
 import os
-from functools import wraps
-from inspect import signature
 from typing import Any, Dict, List, Optional, OrderedDict, Union
 
 import torch
@@ -13,55 +11,13 @@ from . import (
     REGION_MAPPING,
     REMOTE_PATH_SEP,
     SERVER_MAPPING,
-    file_read,
-    hexists,
-    hlist_files,
-    hmget,
 )
+from .hdfs_utils import hexists, hlist_files, hmget
 from .logging import get_logger
+from .type_utils import typecheck
+from .yaml_utils import file_read
 
 logger = get_logger(__name__)
-
-
-def typecheck(*ty_args, **ty_kwargs):
-    """Decorator, used to check each argument for a function or class
-    example:
-        @typecheck(int, name=str)
-        def person(age, name):
-            age += 1
-            return f"age: {age}, name: {name}"
-        >>> person(31, "jack")
-        age: 32, name: jack
-        >>> person(31.5, "jack")
-        TypeError: Argument `age` must be <class 'int'>
-    """
-
-    def decorate(func):
-        # If in optimized mode, disable type checking
-        if not __debug__:
-            return func
-
-        # Map function argument names to supplied types
-        sig = signature(func)
-        bound_types = sig.bind_partial(*ty_args, **ty_kwargs).arguments
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            bound_values = sig.bind(*args, **kwargs)
-            # Enforce type assertions across supplied arguments
-            for name, value in bound_values.arguments.items():
-                if name in bound_types:
-                    if not isinstance(value, bound_types[name]):
-                        raise TypeError(
-                            "Argument `{}` must be {}".format(
-                                name, bound_types[name]
-                            )
-                        )
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorate
 
 
 def file_exist(prefix: str, choices: Union[str, set]) -> Optional[str]:
@@ -206,7 +162,6 @@ def cache_file(
 def hf_name_or_path_check(
     pretrained_model_name_or_path: str,
     model_url: Optional[str],
-    file_name: Union[str, set, List[set]],
     model_type: str,
 ) -> str:
     """download required files from bytedance servers, which allows hf model to be used in easyguard framework
@@ -219,8 +174,8 @@ def hf_name_or_path_check(
         archive name, e.g., fashion-deberta-ccr-order
     model_url : str
         remote url
-    file_name : Union[str, set, List[set]]
-        default names of the required files, e.g., [VOCAB_TXT, TOKENIZER_CONFIG_NAMES] or VOCAB_TXT
+    # file_name : Union[str, set, List[set]]
+    #     default names of the required files, e.g., [VOCAB_TXT, TOKENIZER_CONFIG_NAMES] or VOCAB_TXT
     model_type : str
         model architecture, e.g., debert
 
@@ -401,14 +356,14 @@ def convert_model_weights(
     )
     for key_ in list(weights.keys()):
         if key_.startswith(prefix):
-            key_new = key_[len(prefix) :]
+            key_new = key_.repalce(prefix, "", 1)
             weights[key_new] = weights.pop(key_)
     logger.info(f"save model into {output_path}")
     torch.save(weights, output_path)
     logger.info(f"convert successfully~")
 
 
-# from titan
+# all code from titan
 def get_configs(**kwargs):
     pretrained_config = {}
     pretrained_config["tos_helper"] = kwargs.pop("tos_helper", None)
@@ -428,30 +383,35 @@ def get_configs(**kwargs):
     return pretrained_config, model_config
 
 
-# from titan
+# main code from titan
 def load_pretrained_model_weights(
-    model, model_path, strict=False, rm_deberta_prefix=False, **kwargs
+    model,
+    model_path: str,
+    strict: Optional[bool] = False,
+    rm_prefix: Optional[str] = None,
+    **kwargs,
 ):
     """load pretrained model weights
 
     Parameters
     ----------
     model : _type_
-        _description_
-    model_path : _type_
-        _description_
-    strict : bool, optional
-        _description_, by default False
-    rm_deberta_prefix : bool, optional
-        _description_, by default False
+        the model
+    model_path : str
+        the path of model weights
+    strict : Optional[bool], optional
+        the arguments about torch, by default False
+    rm_prefix : Optional[str], optional
+        if not none, will remove the prefixs of the model weighs and then load model weighs, by default None
     """
     if model_path is None:
-        # rank zero only mode, other rank skip loading
-        return
+        raise FileExistsError("no file for the model weight")
+
     map_location = kwargs.pop("map_location", "cpu")
 
     # load weights
     ckpt = torch.load(model_path, map_location=map_location)
+
     if ckpt.get("state_dict", None):
         state_dict = ckpt["state_dict"]
     elif ckpt.get("state_dict_ema", None):
@@ -460,17 +420,14 @@ def load_pretrained_model_weights(
         state_dict = ckpt["model"]
     else:
         state_dict = ckpt
-    if rm_deberta_prefix:
-        new_state_dict = {}
-        for k, v in state_dict.items():
-            if k.startswith("deberta.deberta."):
-                k = k.replace("deberta.deberta.", "deberta.")
-            elif k.startswith("deberta."):
-                k = k.replace("deberta.", "")
-            new_state_dict[k] = v
-        keys = model.load_state_dict(new_state_dict, strict=strict)
-    else:
-        keys = model.load_state_dict(state_dict, strict=strict)
+
+    if rm_prefix:
+        for key_ in list(state_dict.keys()):
+            if key_.startswith(rm_prefix):
+                key_new = key_.replace(rm_prefix, "", 1)
+                state_dict[key_new] = state_dict.pop(key_)
+
+    keys = model.load_state_dict(state_dict, strict=strict)
 
     if len(keys.missing_keys) > 0:
         logger.warning(

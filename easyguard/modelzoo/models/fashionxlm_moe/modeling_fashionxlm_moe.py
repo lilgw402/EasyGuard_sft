@@ -1627,7 +1627,7 @@ class DebertaV2OnlyMLMHead(nn.Module):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
-class FashionxlmForSequencelCassificationMoE(DebertaV2PreTrainedModel):
+class FashionxlmMoEForSequencelCassificationMoE(DebertaV2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
@@ -1645,7 +1645,7 @@ class FashionxlmForSequencelCassificationMoE(DebertaV2PreTrainedModel):
             }
         )
         self.moe_share_head = MLP(output_dim, output_dim, output_dim)
-        self.classifier = nn.Linear(output_dim, num_labels)
+        self.classifier = nn.Linear(output_dim * 2, num_labels)
         drop_out = getattr(config, "cls_dropout", None)
         drop_out = (
             self.config.hidden_dropout_prob if drop_out is None else drop_out

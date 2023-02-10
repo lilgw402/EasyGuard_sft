@@ -52,8 +52,38 @@ models:
       model: DebertaModel
     tokenization_deberta:
       tokenizer: DeBERTaTokenizer
+  fashionxlm:
+    name: Fashionxlm
+    backend: hf
+    configuration_fashionxlm:
+      config: FashionxlmConfig
+    modeling_fashionxlm:
+      model: FashionxlmForMaskedLM
+      sequence_model: FashionxlmForSequenceClassification
+    tokenization_fashionxlm:
+      tokenizer: FashionxlmTokenizer
+  fashionxlm_moe:
+    name: FashionXLM_MoE
+    backend: hf
+    configuration_fashionxlm_moe:
+      config: FashionxlmMoEConfig
+    modeling_fashionxlm_moe:
+      model: FashionxlmMoEForMaskedLMMoE
+      sequence_model: FashionxlmMoEForSequencelCassificationMoE
+    tokenization_fashionxlm_moe:
+      tokenizer: FashionxlmMoETokenizer
+  xlmr:
+    name: XLMR
+    backend: hf
+    configuration_xlm_roberta:
+      config: XLMRobertaConfig
+    modeling_xlm_roberta:
+      model: XLMRobertaForMaskedLM
+      sequence_model: XLMRobertaForSequenceClassification
+    tokenization_xlm_roberta:
+      tokenizer: XLMRobertaTokenizer
   vit:
-    name: Vit
+    name: ViT
     backend: hf
     configuration_vit:
       config: ViTConfig
@@ -62,7 +92,7 @@ models:
     modeling_vit:
       model: ViTModel
   clip:
-    name: Clip
+    name: CLIP
     backend: hf
     configuration_clip:
       config: CLIPConfig
@@ -76,34 +106,13 @@ models:
       processor: CLIPProcessor
     tokenization_clip:
       tokenizer: CLIPTokenizer
-  fashionxlm:
-    name: FashionXLM
-    backend: hf
-    configuration_fashionxlm:
-      config: FashionxlmConfig
-    modeling_fashionxlm:
-      model: FashionxlmForMaskedLM
-    tokenization_fashionxlm:
-      tokenizer: FashionxlmTokenizer
-  fashionxlm_moe:
-    name: FashionXLM_MoE
-    backend: hf
-    configuration_fashionxlm_moe:
-      config: FashionxlmMoEConfig
-    modeling_fashionxlm_moe:
-      model: FashionxlmMoEForMaskedLMMoE
-      sequence_model: FashionxlmForSequencelCassificationMoE
-    tokenization_fashionxlm_moe:
-      tokenizer: FashionxlmMoETokenizer
-  xlmr:
-    name: XLMR
-    backend: hf
-    configuration_xlm_roberta:
-      config: XLMRobertaConfig
-    modeling_xlm_roberta:
-      model: XLMRobertaForMaskedLM
-    tokenization_xlm_roberta:
-      tokenizer: XLMRobertaTokenizer
+  falbert:
+    name: FalBert
+    backend: default
+    modeling_falbert:
+      model: FrameALBert
+    
+
     
     
 

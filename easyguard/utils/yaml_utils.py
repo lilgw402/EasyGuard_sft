@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from .re_exp import E_STR
+from .type_utils import typecheck
 
 """Operators for yaml"""
 
@@ -70,6 +71,7 @@ def load_json(path: str) -> Dict[str, Any]:
     return data
 
 
+@typecheck(str)
 def file_read(path: str) -> Dict[str, Any]:
     """支持json和yaml的读写
 

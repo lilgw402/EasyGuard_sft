@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from typing import List, Union
+from typing import Any, List, Union
 
 import torch
+from easyguard import AutoTokenizer
 from torch.utils.data._utils.collate import default_collate
-from transformers import AutoTokenizer
 
 try:
     import cruise
@@ -13,56 +13,46 @@ except ImportError:
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 
+from dataclasses import dataclass
+
 from cruise.data_module import CruiseDataModule
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
 from cruise.utilities.hdfs_io import hlist_files
 
 
+@dataclass
 class TextPreProcessor:
-    def __init__(
-        self,
-        x_key,
-        y_key,
-        region_key,
-        pre_tokenize,  # mlm_probability, cl_enable, cla_task_enable, category_key,
-        max_len,
-        tokenizer,
-    ):
-        self._x_key = x_key
-        self._y_key = y_key
-        self._region_key = region_key
-        self._pre_tokenize = pre_tokenize
-        # self._mlm_probability = mlm_probability
-        # self._cl_enable = cl_enable
-        # self._cla_task_enable = cla_task_enable
-        # self._category_key = category_key
-        self._max_len = max_len
-        self._tokenizer = tokenizer
+    x_key: str
+    y_key: str
+    region_key: str
+    pre_tokenize: Any  # mlm_probability, cl_enable, cla_task_enable, category_key,
+    max_len: int
+    tokenizer: Any
 
     def transform(self, data_dict: dict):
         # == 文本 ==
-        if not self._pre_tokenize:  # do not pre tokenize
-            text = data_dict.get(self._x_key, " ")
-            text_token = self._tokenizer(
+        if not self.pre_tokenize:  # do not pre tokenize
+            text = data_dict.get(self.x_key, " ")
+            text_token = self.tokenizer(
                 text,
                 padding="max_length",
-                max_length=self._max_len,
+                max_length=self.max_len,
                 truncation=True,
             )
-            if "token_type_ids" not in self._tokenizer.model_input_names:
-                text_token["token_type_ids"] = [0] * self._max_len
+            if "token_type_ids" not in self.tokenizer.model_input_names:
+                text_token["token_type_ids"] = [0] * self.max_len
         else:
-            text_token = data_dict[self._x_key]
-            text_token[0] = self._tokenizer.cls_token
-            text_token[-1] = self._tokenizer.sep_token
-            text_token_ids = self._tokenizer.convert_tokens_to_ids(text_token)
+            text_token = data_dict[self.x_key]
+            text_token[0] = self.tokenizer.cls_token
+            text_token[-1] = self.tokenizer.sep_token
+            text_token_ids = self.tokenizer.convert_tokens_to_ids(text_token)
             text_token["input_ids"] = text_token_ids
             text_token["attention_mask"] = [1] * len(
-                text_token_ids[: self._max_len]
-            ) + [0] * (self._max_len - len(text_token_ids))
-            text_token["token_type_ids"] = [0] * self._max_len
+                text_token_ids[: self.max_len]
+            ) + [0] * (self.max_len - len(text_token_ids))
+            text_token["token_type_ids"] = [0] * self.max_len
 
-        language = data_dict[self._region_key]
+        language = data_dict[self.region_key]
 
         input_dict = {
             "language": language,
@@ -72,7 +62,7 @@ class TextPreProcessor:
         }
 
         # == 标签 ==
-        label = int(data_dict[self._y_key])
+        label = int(data_dict[self.y_key])
         input_dict["labels"] = torch.tensor(label)
 
         return input_dict
@@ -80,7 +70,13 @@ class TextPreProcessor:
     def batch_transform(self, batch_data):
         # batch_data: List[Dict[modal, modal_value]]
         out_batch = {}
-        keys = ("input_ids", "attention_mask", "token_type_ids", "labels")
+        keys = (
+            "input_ids",
+            "attention_mask",
+            "token_type_ids",
+            "labels",
+            "language",
+        )
 
         for k in keys:
             out_batch[k] = default_collate([data[k] for data in batch_data])
@@ -98,7 +94,7 @@ class SequenceClassificationData(CruiseDataModule):
         data_size: int = 200000000,
         val_step: int = 500,
         num_workers: int = 1,
-        tokenizer: str = "microsoft/mdeberta-v3-base",
+        tokenizer: str = "fashionxlm-base",
         x_key: str = "text",
         y_key: str = "label",
         region_key: str = "country",
@@ -116,17 +112,6 @@ class SequenceClassificationData(CruiseDataModule):
         AutoTokenizer.from_pretrained(self.hparams.tokenizer)
 
     def setup(self, stage) -> None:
-        # paths = self.hparams.paths
-        # if isinstance(paths, str):
-        #     paths = [paths]
-        # # split train/val
-        # files = hlist_files(paths)
-        # if not files:
-        #     raise RuntimeError(f"No valid files can be found matching `paths`: {paths}")
-        # files = sorted(files)
-        # # use the last file as validation
-        # self.train_files = files
-        # self.val_files = files[0:16]
         self.train_files = [self.hparams.train_file]
         self.val_files = [self.hparams.train_file]
 

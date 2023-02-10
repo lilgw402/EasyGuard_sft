@@ -879,7 +879,7 @@ class DebertaModel(DebertaBare, ModelBase):
 
     def load_pretrained_weights(self, weight_file_path, **kwargs):
         load_pretrained_model_weights(
-            self, weight_file_path, rm_deberta_prefix=True, **kwargs
+            self, weight_file_path, rm_prefix="deberta.", **kwargs
         )
         ...
 

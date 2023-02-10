@@ -85,5 +85,5 @@ class ModelBase(AutoHubClass):
         super().__init__()
 
     def load_pretrained_weights(self, weight_file_path, **kwargs):
-        # TODO (junwei.Dong): 这里的权重载入目前是比较固定的方式, 后续还需要进一步开发, 自己开发的模型可以在继承该基类的前提下重载这个函数
+        # the default weights load function, we can overload this function in a specific model class and the `AutoModel.from_pretrained` function will call it after loading the architecture of the model
         load_pretrained_model_weights(self, weight_file_path, **kwargs)

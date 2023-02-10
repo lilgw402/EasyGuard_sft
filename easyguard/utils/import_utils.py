@@ -31,9 +31,9 @@ from packaging import version
 
 from transformers.utils.versions import importlib_metadata
 
-from . import logging
+from .logging import get_logger
 
-logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+logger = get_logger(__name__)  # pylint: disable=invalid-name
 
 ENV_VARS_TRUE_VALUES = {"1", "ON", "YES", "TRUE"}
 ENV_VARS_TRUE_AND_AUTO_VALUES = ENV_VARS_TRUE_VALUES.union({"AUTO"})

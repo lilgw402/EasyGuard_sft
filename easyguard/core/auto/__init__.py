@@ -20,6 +20,10 @@ TOKENIZER_CONFIG = "tokenizer_config"
 TOKENIZER_CONFIG_NAMES = set(
     [f"{TOKENIZER_CONFIG}.yaml", f"{TOKENIZER_CONFIG}.json"]
 )
+IMAGE_PROCESSOR_CONFIG = "preprossor_config"
+IMAGE_PROCESSOR_CONFIG_NAMES = set(
+    [f"{IMAGE_PROCESSOR_CONFIG}.json", f"{IMAGE_PROCESSOR_CONFIG}.yaml"]
+)
 PROCESSOR_CONFIG = "preprocessor_config"
 PROCESSOR_CONFIG_NAMES = set(
     [f"{PROCESSOR_CONFIG}.yaml", f"{PROCESSOR_CONFIG}.json"]

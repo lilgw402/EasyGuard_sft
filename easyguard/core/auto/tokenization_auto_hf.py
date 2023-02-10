@@ -38,7 +38,6 @@ from .configuration_auto_hf import (
     HFAutoConfig,
     config_class_to_model_type,
     model_type_to_module_name,
-    replace_list_option_in_docstrings,
 )
 from .tokenization_auto import (
     CONFIG_TO_TYPE,

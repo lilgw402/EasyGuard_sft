@@ -15,7 +15,7 @@
 """ Auto Config class."""
 
 from collections import OrderedDict
-from typing import List, Union
+from typing import List, Optional, Union
 
 from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
@@ -56,11 +56,17 @@ class AutoConfig:
         )
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: str, **kwargs):
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        config_name: Optional[str] = "config",
+        **kwargs,
+    ):
         backend = kwargs.pop("backend", None)
         model_type = kwargs.pop("model_type", None)
         model_url = kwargs.pop("remote_url", None)
         backend_default_flag = False
+        is_local = kwargs.pop("is_local", None)
         if backend == "default":
             backend_default_flag = True
         elif backend == "titan":
@@ -72,18 +78,22 @@ class AutoConfig:
         else:
             from .configuration_auto_hf import HFAutoConfig
 
-            pretrained_model_name_or_path_ = hf_name_or_path_check(
-                pretrained_model_name_or_path,
-                model_url,
-                MODEL_CONFIG_NAMES,
-                model_type,
+            pretrained_model_name_or_path_ = (
+                hf_name_or_path_check(
+                    pretrained_model_name_or_path,
+                    model_url,
+                    model_type,
+                )
+                if not is_local
+                else pretrained_model_name_or_path
             )
+
             return HFAutoConfig.from_pretrained(
                 pretrained_model_name_or_path_, **kwargs
             )
 
         if backend_default_flag:
-            model_config_name_tuple = MODELZOO_CONFIG[model_type]["config"]
+            model_config_name_tuple = MODELZOO_CONFIG[model_type][config_name]
             (
                 model_config_module_package,
                 model_config_module_name,
@@ -97,8 +107,14 @@ class AutoConfig:
                 "remote_url": model_url,
             }
             # obtain model config file path
-            model_config_file_path = cache_file(
-                pretrained_model_name_or_path, MODEL_CONFIG_NAMES, **extra_dict
+            model_config_file_path = (
+                cache_file(
+                    pretrained_model_name_or_path,
+                    MODEL_CONFIG_NAMES,
+                    **extra_dict,
+                )
+                if not is_local
+                else kwargs["config_path"]
             )
 
             model_config = file_read(model_config_file_path)
