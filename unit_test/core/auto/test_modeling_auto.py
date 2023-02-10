@@ -2,7 +2,7 @@ import unittest
 
 from unit_test import TEST_FLAGS
 
-TEST_FLAGS = ["local_defult_model"]
+TEST_FLAGS = ["default_model"]
 
 
 class TestModelAuto(unittest.TestCase):
