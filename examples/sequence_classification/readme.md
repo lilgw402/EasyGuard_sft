@@ -27,3 +27,11 @@ python3 run_model.py --config config/config_xlmr_base.yaml
 | FashionXLM     | 0.928125  |
 | FashionXLM-MOE | 0.9296875 |
 | XLM-RoBERTa    | 0.875     |
+
+## Feature Extract:
+
+```
+cd Easyguard
+
+python3 ./examples/sequence_classification/run_feature_extractor.py
+```
