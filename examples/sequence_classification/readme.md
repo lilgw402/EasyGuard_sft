@@ -1,13 +1,29 @@
 # Sequence classification examples with FashionXLM and RoBERTa
 
-# Launch worker:
-# launch --gpu 1 --cpu 32 --memory 64 -- doas --krb5-username [EMAIL PREFIX] bash
+## Launch gpu worker:
 
-**FashionXLM:**
-- `python3 run_model.py --config config_fashionxlm.yaml`
+```shell
+launch --gpu 1 --cpu 32 --memory 64 -- doas --krb5-username [EMAIL PREFIX] bash
+```
+## Finetune:
 
-**FashionXLM_MOE:**
-- `python3 run_model.py --config config_fashionxlm_moe.yaml`
+``` shell
+cd EasyGuard/examples/sequence_classification/
 
-**XLM-RoBERTa:**
-- `python3 run_model.py --config config_xlm_roberta.yaml`
+# FashionXLM
+python3 run_model.py --config config/config_fashionxlm_base.yaml
+
+# FashionXLM-MOE
+python3 run_model.py --config config/config_fashionxlm_moe_base.yaml
+
+# XLM-RoBERTa
+python3 run_model.py --config config/config_xlmr_base.yaml
+```
+
+## Results[ASNA]
+
+| Model          | f1 score  |
+| -------------- | --------- |
+| FashionXLM     | 0.928125  |
+| FashionXLM-MOE | 0.9296875 |
+| XLM-RoBERTa    | 0.875     |

@@ -318,6 +318,16 @@ class _BaseAutoModelClass:
 
         backend = model_config.get("backend", None)
         assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
+        extra_dict.update(
+            {
+                "server_name": server_name,
+                "archive_name": pretrained_model_name_or_path,
+                "model_type": model_type,
+                "remote_url": model_url,
+                "backend": backend,
+                "region": region,
+            }
+        )
         backend_default_flag = False
         if backend == "hf":
             HFBaseAutoModelClass._model_mapping = cls._model_mapping
@@ -330,9 +340,11 @@ class _BaseAutoModelClass:
                 if not is_local
                 else pretrained_model_name_or_path
             )
-            return HFBaseAutoModelClass.from_pretrained(
+            hf_model = HFBaseAutoModelClass.from_pretrained(
                 pretrained_model_name_or_path_, *model_args, **kwargs
             )
+            setattr(hf_model, "extra_args", extra_dict)
+            return hf_model
         elif backend == "titan":
             # TODO (junwei.Dong): 支持特殊的titan模型
             raise NotImplementedError(backend)
@@ -351,17 +363,6 @@ class _BaseAutoModelClass:
             # obtain model class
             model_class = lazy_model_import(
                 model_module_package, model_module_name
-            )
-
-            extra_dict.update(
-                {
-                    "server_name": server_name,
-                    "archive_name": pretrained_model_name_or_path,
-                    "model_type": model_type,
-                    "remote_url": model_url,
-                    "backend": backend,
-                    "region": region,
-                }
             )
 
             AutoHubClass.kwargs = extra_dict
@@ -388,8 +389,10 @@ class _BaseAutoModelClass:
             config_dict.update({"config": model_config_class_})
             # instantiate model
             model_: ModelBase = model_class(**config_dict)
+            setattr(model_, "extra_args", extra_dict)
             # load weights
-            model_.load_pretrained_weights(model_weight_file_path, **kwargs)
+            if model_weight_file_path:
+                model_.load_pretrained_weights(model_weight_file_path, **kwargs)
 
             return model_
 

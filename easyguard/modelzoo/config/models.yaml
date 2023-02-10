@@ -53,13 +53,13 @@ models:
     tokenization_deberta:
       tokenizer: DeBERTaTokenizer
   fashionxlm:
-    name: FashionXLM
+    name: Fashionxlm
     backend: hf
     configuration_fashionxlm:
       config: FashionxlmConfig
     modeling_fashionxlm:
       model: FashionxlmForMaskedLM
-      sequence_model: DebertaV2ForSequenceClassification
+      sequence_model: FashionxlmForSequenceClassification
     tokenization_fashionxlm:
       tokenizer: FashionxlmTokenizer
   fashionxlm_moe:
@@ -69,7 +69,7 @@ models:
       config: FashionxlmMoEConfig
     modeling_fashionxlm_moe:
       model: FashionxlmMoEForMaskedLMMoE
-      sequence_model: FashionxlmForSequencelCassificationMoE
+      sequence_model: FashionxlmMoEForSequencelCassificationMoE
     tokenization_fashionxlm_moe:
       tokenizer: FashionxlmMoETokenizer
   xlmr:
@@ -79,10 +79,11 @@ models:
       config: XLMRobertaConfig
     modeling_xlm_roberta:
       model: XLMRobertaForMaskedLM
+      sequence_model: XLMRobertaForSequenceClassification
     tokenization_xlm_roberta:
       tokenizer: XLMRobertaTokenizer
   vit:
-    name: Vit
+    name: ViT
     backend: hf
     configuration_vit:
       config: ViTConfig
@@ -91,7 +92,7 @@ models:
     modeling_vit:
       model: ViTModel
   clip:
-    name: Clip
+    name: CLIP
     backend: hf
     configuration_clip:
       config: CLIPConfig

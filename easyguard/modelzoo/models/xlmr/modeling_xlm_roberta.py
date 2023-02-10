@@ -64,7 +64,7 @@ XLM_ROBERTA_START_DOCSTRING = r"""
     "The bare XLM-RoBERTa Model transformer outputting raw hidden-states without any specific head on top.",
     XLM_ROBERTA_START_DOCSTRING,
 )
-class XLMRobertaModel(RobertaModel):
+class XLMRobertaModel(RobertaModel, ModelBase):
     """
     This class overrides [`RobertaModel`]. Please check the superclass for the appropriate documentation alongside
     usage examples.

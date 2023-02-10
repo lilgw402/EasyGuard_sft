@@ -77,8 +77,8 @@ model:
   load_pretrain: null
   all_gather_limit: -1
   warmup_ratio: 0.1
-  weight_decay: 0.05
-  base_lr: 0.0005
+  weight_decay: 0.01
+  base_lr: 0.00001
   warmup_lr: 5.0e-07
   min_lr: 5.0e-06
   lr_scheduler: cosine
@@ -91,17 +91,17 @@ model:
   - 0.999
   momentum: 0.9
 data:
-  train_batch_size: 48
-  val_batch_size: 48
+  train_batch_size: 64
+  val_batch_size: 64
   train_file: hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/ansa_train.json
   val_file: hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xtreme_ecom/leaderboard/ansa_test.json
-  data_size: 100000
-  val_step: 500
+  data_size: 16220
+  val_step: 10
   num_workers: 1
   tokenizer: fashionxlm-base
   x_key: text
   y_key: label
   region_key: country
   pre_tokenize: false
-  max_len: 256
+  max_len: 128
 log_level: INFO

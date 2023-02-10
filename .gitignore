@@ -154,3 +154,6 @@ events.out*
 
 # model
 *.model
+
+# cruise
+*cruise_logs/

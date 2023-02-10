@@ -1513,7 +1513,7 @@ class DebertaV2OnlyMLMHead(nn.Module):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
-class DebertaV2ForSequenceClassification(DebertaV2PreTrainedModel):
+class FashionxlmForSequenceClassification(DebertaV2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
