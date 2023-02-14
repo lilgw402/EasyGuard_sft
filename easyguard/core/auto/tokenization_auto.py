@@ -84,6 +84,7 @@ class AutoTokenizer:
         *inputs,
         **kwargs,
     ):
+        # TODO (junwei.Dong): refactor code just like AutoModel
         """
 
         Parameters
@@ -97,7 +98,6 @@ class AutoTokenizer:
         config_path = None
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
-            # TODO (junwei.Dong): instantiate a pretrained tokenizer class from local path
             if os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
                 pretrained_model_name_or_path
             ):

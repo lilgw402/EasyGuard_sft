@@ -16,12 +16,13 @@
 import importlib
 import os
 from collections import OrderedDict
+from distutils.command.config import config
+from http import server
 from typing import Optional
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
 
-from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
 from ...modelzoo.hub import AutoHubClass
 from ...modelzoo.modeling_utils import ModelBase
@@ -224,7 +225,7 @@ class _BaseAutoModelClass:
         ...
 
     @classmethod
-    def from_pretrained(
+    def from_pretrained_(
         cls,
         pretrained_model_name_or_path: str,
         region: Optional[str] = "CN",
@@ -395,6 +396,229 @@ class _BaseAutoModelClass:
                 model_.load_pretrained_weights(model_weight_file_path, **kwargs)
 
             return model_
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        region: Optional[str] = "CN",
+        model_cls: Optional[str] = "model",
+        *model_args,
+        **kwargs,
+    ):
+        """instatiate a model class from a pretrained model name
+
+        Parameters
+        ----------
+        pretrained_model_name_or_path : str
+            the pretrained model name or local path
+        region : Optional[str], optional
+            avaiable region, CN (China), VA (oversea), CN/VA (both), by default "CN"
+        model_cls : Optional[str], optional
+            different categories of models, such as "model", "sequence_model", which can be found in unique_key of models.yaml, by default "model"
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        KeyError
+            _description_
+        NotImplementedError
+            _description_
+        NotImplementedError
+            _description_
+        """
+
+        """ >> initialize vars <<"""
+
+        model_archive = None
+        remote_url = None
+        backend = None
+        model_type = None
+        model_config = None
+        server_name = None
+        region = region
+        is_local = False
+        model_config_path = None
+        backend_default_flag = False
+        model_weight_file_path = None
+
+        extra_dict = OrderedDict()
+        config_dict = OrderedDict()
+
+        # which is used to find the category of the target model for default models
+        cls._model_key = model_cls
+        # a model mapping for hf models, which is merely used to find the category of the target model
+        cls._model_mapping = _LazyAutoMapping(
+            CONFIG_MAPPING_NAMES, MODELZOO_CONFIG.get_mapping(model_cls)
+        )
+
+        """ >> get model infomation <<"""
+
+        if pretrained_model_name_or_path in MODEL_ARCHIVE_CONFIG:
+            # parse model for integrating the url of targe server into model arhive config
+            model_archive = pretrained_model_archive_parse(
+                pretrained_model_name_or_path,
+                MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
+                region,
+            )
+            model_type = model_archive.get("type", None)
+            remote_url = model_archive.get("url_or_path", None)
+            server_name = model_archive.get("server", None)
+
+            is_local = False
+        elif os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
+            pretrained_model_name_or_path
+        ):
+            model_config_path = file_exist(
+                pretrained_model_name_or_path, MODEL_CONFIG_NAMES
+            )
+            assert (
+                model_config_path is not None
+            ), f"please make sure the config file exist in f{pretrained_model_name_or_path}"
+
+            config_dict_ = file_read(model_config_path)
+
+            model_type = config_dict_.get("model_type", None)
+
+            model_weight_file_path = file_exist(
+                pretrained_model_name_or_path, MODEL_SAVE_NAMES
+            )
+
+            is_local = True
+        else:
+            logger.warning(
+                "can not found model location, load from huggingface..."
+            )
+        # else:
+        #     raise ValueError(
+        #         f"`{pretrained_model_name_or_path}` should be a name from archive.yaml or a directory which contains some files about your model"
+        #     )
+
+        """ >> preprocessing: download files << """
+
+        if model_type and not is_local:
+            if not model_config_path:
+                model_config_path = cache_file(
+                    pretrained_model_name_or_path,
+                    MODEL_CONFIG_NAMES,
+                    remote_url,
+                    model_type,
+                    **kwargs,
+                )
+
+            if not model_weight_file_path:
+                # obtain model weight file path
+                model_weight_file_path = cache_file(
+                    pretrained_model_name_or_path,
+                    MODEL_SAVE_NAMES,
+                    remote_url,
+                    model_type,
+                    **kwargs,
+                )
+
+        """ >> load model config class and model class <<"""
+
+        model = None
+
+        extra_dict.update(
+            {
+                "server_name": server_name,
+                "archive_name": pretrained_model_name_or_path,
+                "model_type": model_type,
+                "remote_url": remote_url,
+                "region": region,
+            }
+        )
+
+        config_dict.update(
+            {"is_local": is_local, "config_path": model_config_path}
+        )
+
+        if not model_type:
+            logger.info(f"try to use transformers to load model~")
+            try:
+                from transformers import AutoModel
+
+                model = AutoModel.from_pretrained(
+                    pretrained_model_name_or_path, **kwargs
+                )
+            except:
+                raise KeyError(pretrained_model_name_or_path)
+        else:
+            model_config = MODELZOO_CONFIG.get(model_type, None)
+            assert (
+                model_config is not None
+            ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
+            backend = model_config.get("backend", None)
+            assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
+
+            extra_dict["backend"] = backend
+
+            if backend == "hf":
+                HFBaseAutoModelClass._model_mapping = cls._model_mapping
+                pretrained_model_name_or_path_hf = (
+                    hf_name_or_path_check(
+                        pretrained_model_name_or_path,
+                        remote_url,
+                        model_type,
+                    )
+                    if not is_local
+                    else pretrained_model_name_or_path
+                )
+                model = HFBaseAutoModelClass.from_pretrained(
+                    pretrained_model_name_or_path_hf, *model_args, **kwargs
+                )
+            elif backend == "titan":
+                # TODO (junwei.Dong): 支持特殊的titan模型
+                raise NotImplementedError(backend)
+            elif backend == "fex":
+                # TODO (junwei.Dong): 支持特殊的fex模型
+                raise NotImplementedError(backend)
+            else:
+                backend_default_flag = True
+
+            if backend_default_flag:
+                model_name_tuple = MODELZOO_CONFIG[model_type][cls._model_key]
+                (
+                    model_module_package,
+                    model_module_name,
+                ) = MODELZOO_CONFIG.to_module(model_name_tuple)
+                # obtain model class
+                model_class = lazy_model_import(
+                    model_module_package, model_module_name
+                )
+
+                AutoHubClass.kwargs = extra_dict
+
+                model_config_class_: ConfigBase = AutoConfig.from_pretrained(
+                    pretrained_model_name_or_path,
+                    **extra_dict,
+                    **config_dict,
+                    **kwargs,
+                )
+                model_config_class_.config_update_for_pretrained(**kwargs)
+                # config merge
+                model_config_class_.update(kwargs)
+                config_dict = model_config_class_.asdict()
+                config_dict.update({"config": model_config_class_})
+                # instantiate model
+                model: ModelBase = model_class(**config_dict)
+
+        """ >> model post processing <<"""
+
+        # set extra args
+        if model:
+            setattr(model, "extra_args", extra_dict)
+
+        # load weights
+        if model_weight_file_path and backend != "hf":
+            model.load_pretrained_weights(model_weight_file_path, **kwargs)
+
+        return model
 
 
 def auto_class_update(cls):
