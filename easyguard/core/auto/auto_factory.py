@@ -500,7 +500,7 @@ class _BaseAutoModelClass:
 
         """ >> preprocessing: download files << """
 
-        if model_type and not is_local:
+        if server_name:
             if not model_config_path:
                 model_config_path = cache_file(
                     pretrained_model_name_or_path,

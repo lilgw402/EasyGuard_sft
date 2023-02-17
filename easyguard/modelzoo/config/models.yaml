@@ -111,6 +111,15 @@ models:
     backend: default
     modeling_falbert:
       model: FrameALBert
+  fashion_swin:
+    name: FashionSwin
+    backend: default
+    configuration_fashion_swin:
+      config: FashionSwinConfig
+    image_processing_fashion_swin:
+      image_processor: FashionSwinProcessor
+    modeling_fashion_swin:
+      model: FashionSwinModel
     
 
     

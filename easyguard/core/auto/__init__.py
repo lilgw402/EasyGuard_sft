@@ -12,6 +12,7 @@ MODEL_SAVE_NAMES = set(
         f"{PYTORCH_MODLE}.bin",
         f"{PYTORCH_MODLE}.pt",
         f"{PYTORCH_MODLE}.th",
+        f"{PYTORCH_MODLE}.pth",
     ]
 )
 VOCAB_NAME = "vocab.txt"
@@ -20,7 +21,7 @@ TOKENIZER_CONFIG = "tokenizer_config"
 TOKENIZER_CONFIG_NAMES = set(
     [f"{TOKENIZER_CONFIG}.yaml", f"{TOKENIZER_CONFIG}.json"]
 )
-IMAGE_PROCESSOR_CONFIG = "preprossor_config"
+IMAGE_PROCESSOR_CONFIG = "preprocessor_config"
 IMAGE_PROCESSOR_CONFIG_NAMES = set(
     [f"{IMAGE_PROCESSOR_CONFIG}.json", f"{IMAGE_PROCESSOR_CONFIG}.yaml"]
 )
