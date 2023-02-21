@@ -2,14 +2,14 @@ import unittest
 
 from unit_test import TEST_FLAGS
 
-TEST_FLAGS = ["fashionxlm_moe_local"]
+TEST_FLAGS = ["all"]
 
 
 class TestFashionSwin(unittest.TestCase):
     @unittest.skipUnless(
-        "all" in TEST_FLAGS or "fashionxlm_swin" in TEST_FLAGS, "just do it"
+        "all" in TEST_FLAGS or "fashion_swin" in TEST_FLAGS, "just do it"
     )
-    def test_fashionxlm_moe(self):
+    def test_fashion_swin(self):
         import torch
         from easyguard import AutoImageProcessor, AutoModel
 
@@ -23,10 +23,10 @@ class TestFashionSwin(unittest.TestCase):
         print(ouputs)
 
     @unittest.skipUnless(
-        "all" in TEST_FLAGS or "fashionxlm_moe_local" in TEST_FLAGS,
+        "all" in TEST_FLAGS or "fashion_swin_local" in TEST_FLAGS,
         "just do it",
     )
-    def test_fashionxlm_moe_local(self):
+    def test_fashion_swin_local(self):
         import torch
         from easyguard import AutoImageProcessor, AutoModel
 

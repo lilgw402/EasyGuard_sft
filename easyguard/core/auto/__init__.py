@@ -25,7 +25,7 @@ IMAGE_PROCESSOR_CONFIG = "preprocessor_config"
 IMAGE_PROCESSOR_CONFIG_NAMES = set(
     [f"{IMAGE_PROCESSOR_CONFIG}.json", f"{IMAGE_PROCESSOR_CONFIG}.yaml"]
 )
-PROCESSOR_CONFIG = "preprocessor_config"
+PROCESSOR_CONFIG = "processor_config"
 PROCESSOR_CONFIG_NAMES = set(
     [f"{PROCESSOR_CONFIG}.yaml", f"{PROCESSOR_CONFIG}.json"]
 )

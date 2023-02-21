@@ -1,23 +1,13 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import Any, Dict, List, Union
 
 import numpy as np
 import PIL
 import torch
 
 from .. import __version__
-from ..utils import hexists, hopen, logging
+from ..utils import logging
 from .hub import AutoHubClass
 
 logger = logging.get_logger(__name__)
@@ -41,8 +31,12 @@ CENTER_IMAGE = 224
 
 # for image preprocess
 class ProcessorImageBase(ABC, AutoHubClass):
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
+        if not getattr(self, "mean", None):
+            self.mean = MEAN_IMAGE
+        if not getattr(self, "std", None):
+            self.std = STD_IMAGE
 
     def __call__(self, image, **kwds: Any) -> Any:
         return self.preprocess(image, **kwds)
@@ -53,31 +47,43 @@ class ProcessorImageBase(ABC, AutoHubClass):
 
 
 # for auto preprocess
-class ProcessorBase(ABC, AutoHubClass):
-    def __init__(self) -> None:
+class ProcessorBase(AutoHubClass):
+    def __init__(self, **kwargs) -> None:
         super().__init__()
+        if not getattr(self, "mean", None):
+            self.mean = MEAN_IMAGE
+        if not getattr(self, "std", None):
+            self.std = STD_IMAGE
 
     def __call__(self, text=None, image=None, **kwds: Any) -> Any:
         return self.preprocess(text=text, image=image, **kwds)
+
+    def text_process(self, text, **kwargs) -> Dict[str, Any]:
+        """preprocess for text"""
+        return self.tokenizer(text)
+
+    def image_process(self, image, **kwargs):
+        """preprocess for image"""
+        return self.image_processor(image)
 
     def preprocess(self, text=None, image=None, **kwds):
         """for image and text data processing"""
 
         if not text and not image:
-            raise ValueError(f"text and image are all None, please check~")
-        data_pre = OrderedDict(text_pre=None, image_pre=None)
-        if hasattr(self, "text_processor"):
-            data_pre["text_pre"] = (
-                self.text_processor(text, **kwds) if text else None
+            raise ValueError(
+                f"You have to specify either text or images. Both cannot be none."
             )
-        else:
-            logger.warning(f"text processor not exist, please check")
 
-        if hasattr(self, "image_processor"):
-            data_pre["image_pre"] = (
-                self.image_processor(image, **kwds) if image else None
-            )
-        else:
-            logger.warning(f"image processor not exist, please check")
+        if text:
+            encoding = self.text_process(text)
+        if image:
+            image_feature = self.image_process(image)
 
-        return data_pre
+        if text and image:
+            assert isinstance(encoding, dict), f"`encoding` should be a {dict}"
+            encoding["pixel_values"] = image_feature
+            return encoding
+        elif text:
+            return encoding
+        else:
+            return OrderedDict(pixel_values=image_feature)

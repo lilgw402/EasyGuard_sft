@@ -1,6 +1,6 @@
 {
   "trainer": {
-    "default_root_dir": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/save_model/v1_train1k_videoclip_synbn_false",
+    "default_root_dir": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/examples/framealbert/save_model/v1_train1k_videoclip_synbn_false",
     "default_hdfs_dir": null,
     "logger": true,
     "log_every_n_steps": 50,
@@ -78,9 +78,9 @@
     "grad_norm_layers": []
   },
   "model": {
-    "config_backbone": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_backbone.yaml",
-    "config_fusion": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_fusion.yaml",
-    "config_optim": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_optim.yaml",
+    "config_backbone": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/examples/framealbert/config/config_backbone.yaml",
+    "config_fusion": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/examples/framealbert/config/config_fusion.yaml",
+    "config_optim": "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/examples/framealbert/config/config_optim.yaml",
     "load_pretrained": null
   },
   "data": {

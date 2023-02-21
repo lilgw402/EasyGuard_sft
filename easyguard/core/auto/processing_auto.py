@@ -18,6 +18,7 @@ from . import (
     MODEL_CONFIG_NAMES,
     MODELZOO_CONFIG,
     PROCESSOR_CONFIG_NAMES,
+    VOCAB_NAME,
 )
 
 logger = logging.get_logger(__name__)
@@ -36,88 +37,6 @@ class AutoProcessor:
     def from_config(cls, config_path: Union[str, Any], *inputs, **kwargs):
         # TODO (junwei.Dong): instantiate a processor class from local path or config instance
         ...
-
-    @classmethod
-    def from_pretrained_(
-        cls,
-        pretrained_model_name_or_path: str,
-        region: Optional[str] = "CN",
-        *inputs,
-        **kwargs,
-    ):
-        """
-
-        Parameters
-        ----------
-        pretrained_model_name_or_path : str
-            _description_
-        """
-        if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
-            # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
-            # TODO (junwei.Dong): instantiate a pretrained processor class from local path
-            raise KeyError(pretrained_model_name_or_path)
-        else:
-            model_archive = pretrained_model_archive_parse(
-                pretrained_model_name_or_path,
-                MODEL_ARCHIVE_CONFIG[pretrained_model_name_or_path],
-                region,
-            )
-            model_type = model_archive.get("type", None)
-            model_url = model_archive.get("url_or_path", None)
-            server_name = model_archive.get("server", None)
-            model_config = MODELZOO_CONFIG.get(model_type, None)
-            assert (
-                model_config is not None
-            ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
-
-            backend = model_config.get("backend", None)
-            assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
-            backend_default_flag = False
-
-            if backend == "hf":
-                from .processing_auto_hf import HFAutoProcessor
-
-                pretrained_model_name_or_path_ = hf_name_or_path_check(
-                    pretrained_model_name_or_path,
-                    model_url,
-                    model_type,
-                )
-                return HFAutoProcessor.from_pretrained(
-                    pretrained_model_name_or_path_, *inputs, **kwargs
-                )
-            elif backend == "titan":
-                # TODO (junwei.Dong): support titan models
-                raise NotImplementedError(backend)
-            elif backend == "fex":
-                # TODO (junwei.Dong): support fex models
-                raise NotImplementedError(backend)
-            else:
-                backend_default_flag = True
-
-            if backend_default_flag:
-                if not model_config.get("processor"):
-                    raise ModuleNotFoundError(
-                        f"the model {model_type} does not implement a processor class, please check ~"
-                    )
-                extra_dict = {
-                    "server_name": server_name,
-                    "archive_name": pretrained_model_name_or_path,
-                    "model_type": model_type,
-                    "remote_url": model_url,
-                    "region": region,
-                }
-
-                AutoHubClass.kwargs = extra_dict
-                processor_name_tuple = MODELZOO_CONFIG[model_type]["processor"]
-                (
-                    processor_module_package,
-                    processor_module_name,
-                ) = MODELZOO_CONFIG.to_module(processor_name_tuple)
-                processor_class = lazy_model_import(
-                    processor_module_package, processor_module_name
-                )
-
-                # support the huggingface-like models
 
     @classmethod
     def from_pretrained(
@@ -147,9 +66,11 @@ class AutoProcessor:
         region = region
         is_local = False
         processor_config_path = None
+        vocab_path = None
         backend_default_flag = False
 
         extra_dict = OrderedDict()
+        processor_dict = OrderedDict()
 
         """ >> get processor infomation <<"""
         if pretrained_model_name_or_path in MODEL_ARCHIVE_CONFIG:
@@ -182,6 +103,8 @@ class AutoProcessor:
                 pretrained_model_name_or_path, PROCESSOR_CONFIG_NAMES
             )
 
+            vocab_path = file_exist(pretrained_model_name_or_path, VOCAB_NAME)
+
             is_local = True
         else:
             logger.warning(
@@ -198,11 +121,22 @@ class AutoProcessor:
                     model_type,
                     **kwargs,
                 )
+            if not vocab_path:
+                vocab_path = cache_file(
+                    pretrained_model_name_or_path,
+                    VOCAB_NAME,
+                    remote_url,
+                    model_type,
+                    **kwargs,
+                )
 
         """ >> load processor config class and model class <<"""
 
         processor = None
 
+        # processor arguments that will be passed to processor class
+        processor_dict.update({"vocab_path": vocab_path})
+        # extra arguments will be set as processor extra argus
         extra_dict.update(
             {
                 "server_name": server_name,
@@ -269,7 +203,7 @@ class AutoProcessor:
                 processor_config = file_read(processor_config_path)
 
                 processor = processor_class(
-                    **processor_config, **extra_dict, **kwargs
+                    **processor_config, **processor_dict, **extra_dict, **kwargs
                 )
         """ >> processor post processing <<"""
 

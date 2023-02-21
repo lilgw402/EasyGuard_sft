@@ -36,10 +36,11 @@ xlmr-base:
   server: hdfs
   type: xlmr
   region: CN
-falbert-hq-live:
+falbert-no-weights:
   server: hdfs
   type: falbert
   region: CN
+  description: no pretrained weights
 bert-base-uncased:
   server: hdfs
   type: bert

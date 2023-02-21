@@ -1,5 +1,5 @@
 trainer:
-  default_root_dir: examples/framealbert/save_model/v1_train1k_videoclip_synbn_false
+  default_root_dir: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/save_model/v1_train1k_videoclip_synbn_false
   default_hdfs_dir: null
   logger: true
   log_every_n_steps: 50
@@ -37,9 +37,9 @@ trainer:
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
 model:
-  config_backbone: examples/framealbert/config/config_backbone.yaml
-  config_optim: examples/framealbert/config/config_optim.yaml
-  config_fusion: examples/framealbert/config/config_fusion.yaml
+  config_backbone: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_backbone.yaml
+  config_optim: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_optim.yaml
+  config_fusion: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_fusion.yaml
 data:
   train_files: /mnt/bn/ecom-govern-maxiangqian/liuzeyu/hq_live/packed_data/20221001_20221102/v1_1/train_balance_1k
   val_files: /mnt/bn/ecom-govern-maxiangqian/liuzeyu/hq_live/packed_data/20221103_20221106/v1_test/test2w

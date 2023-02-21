@@ -2,6 +2,7 @@ import hashlib
 import os
 import sys
 from typing import Any, Dict, List, Optional, OrderedDict, Union
+from xml.parsers.expat import model
 
 import torch
 
@@ -279,11 +280,18 @@ def list_pretrained_models() -> None:
     filed_names = list()
     for key_, value_ in model_archive.items():
         filed_names += list(value_.keys())
-    filed_names = list(set(filed_names))
+    filed_names = list(sorted(set(filed_names)))
     model_archive_table.field_names = ["model_name"] + filed_names
+    model_info_list = []
     for key_, value_ in model_archive.items():
         temp_ = [key_] + [value_.get(_, None) for _ in filed_names]
-        model_archive_table.add_row(temp_)
+        model_info_list.append(temp_)
+    # model_info_list = sorted(model_info_list, key=lambda x: x[0])
+    model_archive_table.add_rows(model_info_list)
+    # setting
+    model_archive_table.sortby = "model_name"
+    model_archive_table.align["model_name"] = "l"
+    model_archive_table.align["description"] = "l"
     logger.info("\n" + str(model_archive_table))
 
 

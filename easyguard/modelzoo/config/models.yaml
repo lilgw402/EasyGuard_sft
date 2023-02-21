@@ -120,6 +120,19 @@ models:
       image_processor: FashionSwinProcessor
     modeling_fashion_swin:
       model: FashionSwinModel
+  falbert:
+    name: FalBert
+    backend: default
+    configuration_falbert:
+      config: FalBertConfig
+    image_processing_falbert:
+      image_processor: FalBertImageProcessor
+    modeling_falbert:
+      model: FalBertModel
+    processing_falbert:
+      processor: FalBertProcessor
+    tokenization_falbert:
+      tokenizer: FalBertTokenizer
     
 
     

@@ -188,13 +188,19 @@ class AutoTokenizer:
             }
             AutoHubClass.kwargs = extra_dict
             # obtain vocab file path
-            vocab_file_path = (
-                cache_file(
-                    pretrained_model_name_or_path, VOCAB_NAME, **extra_dict
+            try:
+                vocab_file_path = (
+                    cache_file(
+                        pretrained_model_name_or_path, VOCAB_NAME, **extra_dict
+                    )
+                    if not is_local
+                    else file_exist(pretrained_model_name_or_path, VOCAB_NAME)
                 )
-                if not is_local
-                else file_exist(pretrained_model_name_or_path, VOCAB_NAME)
-            )
+            except:
+                logger.info(
+                    f"can not find vocab file, please generate tokenizer class based on tokenizer config file~"
+                )
+                vocab_file_path = None
 
             # obtain tokenizer config file path
             tokenizer_config_file_path = (

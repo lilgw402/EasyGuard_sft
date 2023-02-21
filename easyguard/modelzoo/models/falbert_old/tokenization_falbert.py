@@ -1,7 +1,35 @@
 import collections
+import io
 import unicodedata
 
-from ...tokenization_utils_base import TokenizerBase
+
+def load_vocab(vocab_file):
+    """Loads a vocabulary file into a dictionary."""
+    vocab = collections.OrderedDict()
+    index = 0
+    if vocab_file.startswith("hdfs://"):
+        with hopen(vocab_file, "r") as reader:
+            accessor = io.BytesIO(reader.read())
+            while True:
+                token = accessor.readline()
+                token = token.decode("utf-8")  # 要解码使得数据接口类型一致
+                if not token:
+                    break
+                token = token.strip()
+                vocab[token] = index
+                index += 1
+            del accessor
+            return vocab
+    else:
+        with open(vocab_file, "r", encoding="utf-8") as reader:
+            while True:
+                token = reader.readline()
+                if not token:
+                    break
+                token = token.strip()
+                vocab[token] = index
+                index += 1
+            return vocab
 
 
 def whitespace_tokenize(text):
@@ -297,7 +325,7 @@ class WordpieceTokenizer(object):
         return output_tokens
 
 
-class FalBertTokenizer(TokenizerBase):
+class BertTokenizer(object):
     """Runs end-to-end tokenization: punctuation splitting + wordpiece"""
 
     def __init__(
@@ -318,7 +346,7 @@ class FalBertTokenizer(TokenizerBase):
             默认google的tokenizer是greedy_sharp=False 的形式。
             如果greedy_sharp 是true，则会先看 "##x" 是在词表里，如果不在，会看 "x" 是否在词表里。
         """
-        self.vocab = self.load_vocab(vocab_file)
+        self.vocab = load_vocab(vocab_file)
         self.ids_to_tokens = collections.OrderedDict(
             [(ids, tok) for tok, ids in self.vocab.items()]
         )
@@ -376,3 +404,37 @@ class FalBertTokenizer(TokenizerBase):
         for i in ids:
             tokens.append(self.ids_to_tokens[i])
         return tokens
+
+
+class TextProcessor:
+    def __init__(
+        self,
+        vocab_file="zh_old_cut_145607.vocab",
+        do_lower_case=True,
+        tokenize_emoji=False,
+        greedy_sharp=False,
+        max_len={"text_ocr": 256, "text_asr": 256},
+        text_types=["text_ocr", "text_asr"],
+    ):
+        self.tokenizer = BertTokenizer(
+            vocab_file, do_lower_case, tokenize_emoji, greedy_sharp
+        )
+        self.max_len = {
+            "text_ocr": max_len["text_ocr"],
+            "text_asr": max_len["text_asr"],
+        }
+        self.CLS = self.tokenizer.vocab["[CLS]"]
+        self.PAD = self.tokenizer.vocab["[PAD]"]
+        self.SEP = self.tokenizer.vocab["[SEP]"]
+        self.MASK = self.tokenizer.vocab["[MASK]"]
+        self.text_types = text_types
+
+    def __call__(self, texts):
+        tokens = ["[CLS]"]
+        for text_type in self.text_types:
+            text = texts[text_type]
+            tokens += self.tokenizer.tokenize(text)[
+                : self.max_len[text_type] - 2
+            ] + ["[SEP]"]
+        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
+        return token_ids
