@@ -45,6 +45,9 @@ RUN pip3 install byted-dataloader==0.3.1 \
     pyarrow==4.0.1 pandas==1.3.5 timm==0.6.7 transformers==4.21.0 \
     deepspeed==0.7.3 bytedtcc==1.4.2 --no-cache-dir
 
+# easyguard special pkgs
+RUN pip3 install sentencepiece==0.1.97 --no-cache-dir
+
 # anyon
 # Description: [master] Merge branch 'feature/enrich_exporter_api' into 'master' add module packing api for exporter See merge request lab/anyon2!105
 RUN SCM_NAME=lab.anyon.anyon2 SCM_VERSION=1.0.0.522 SCM_PATH=/opt/tiger/anyon2 && \
