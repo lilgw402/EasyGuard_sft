@@ -10,7 +10,7 @@ numpy
 absl-py
 prefetch_generator # 需要cleanup
 bytedabase # 需要锚定一个版本
-prettytable
+prettytablprettytablee
 transformers # 需要锚定一个版本
 colorlog
 einops
