@@ -3,7 +3,9 @@ import json
 
 import numpy as np
 import torch
+import torchvision.transforms as transforms
 from easyguard import AutoProcessor
+from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
 from PIL import Image
 
 from cruise.data_module import (
@@ -11,11 +13,10 @@ from cruise.data_module import (
     create_cruise_loader,
     customized_processor,
 )
+from cruise.data_module.preprocess.decode import save_args
 
-# from cruise.data_module.preprocess.decode import save_args
 
-
-# @save_args
+@save_args
 class HighQualityLiveDataDecode:
     def __init__(self, key_mapping=None):
         self.key_mapping = key_mapping
@@ -31,6 +32,86 @@ class HighQualityLiveDataDecode:
             return data_dict
 
 
+# @customized_processor()
+class TextProcessor:
+    def __init__(
+        self,
+        vocab_file="zh_old_cut_145607.vocab",
+        do_lower_case=True,
+        tokenize_emoji=False,
+        greedy_sharp=False,
+        max_len={"text_ocr": 256, "text_asr": 256},
+        text_types=["text_ocr", "text_asr"],
+    ):
+        self.tokenizer = BertTokenizer(
+            vocab_file, do_lower_case, tokenize_emoji, greedy_sharp
+        )
+        self.max_len = {
+            "text_ocr": max_len["text_ocr"],
+            "text_asr": max_len["text_asr"],
+        }
+        self.CLS = self.tokenizer.vocab["[CLS]"]
+        self.PAD = self.tokenizer.vocab["[PAD]"]
+        self.SEP = self.tokenizer.vocab["[SEP]"]
+        self.MASK = self.tokenizer.vocab["[MASK]"]
+        self.text_types = text_types
+
+    def __call__(self, texts):
+        tokens = ["[CLS]"]
+        for text_type in self.text_types:
+            text = texts[text_type]
+            tokens += self.tokenizer.tokenize(text)[
+                : self.max_len[text_type] - 2
+            ] + ["[SEP]"]
+        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
+        return token_ids
+
+
+# @customized_processor()
+class VideoFrameProcess:
+    def __init__(self, test_mode=False, frame_len=8):
+        self.transform = self.get_transform(test_mode)
+        self.frame_len = frame_len
+        self.test_mode = test_mode
+
+    def get_transform(self, test_mode: bool = False):
+        normalize = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        )
+        if not test_mode:
+            com_transforms = transforms.Compose(
+                [
+                    transforms.RandomResizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize,
+                ]
+            )
+        else:
+            com_transforms = transforms.Compose(
+                [
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    normalize,
+                ]
+            )
+        return com_transforms
+
+    def __call__(self, image_paths):
+        frames = []
+        frames_raw = image_paths[: self.frame_len]
+        for frame_path in frames_raw:
+            try:
+                image = Image.open(frame_path).convert("RGB")
+            except:
+                image = Image.new("RGB", (256, 256), (255, 255, 255))
+            image = self.transform(image)
+            frames.append(image)
+        return frames
+
+
+# @customized_processor(verbose=True)
 class HighQualityLiveProcessor:
     def __init__(
         self,
@@ -43,41 +124,38 @@ class HighQualityLiveProcessor:
         frame_key="frame_file_paths",
         label_keys=("label",),
     ):
-        self.processor = AutoProcessor.from_pretrained(
-            "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/easyguard/modelzoo/models/falbert_new/config"
+        self.text_process = TextProcessor(
+            vocab_file=vocab_file,
+            max_len={"text_ocr": ocr_max_len, "text_asr": asr_max_len},
         )
+        self.frame_process = VideoFrameProcess(test_mode, frame_len=frame_len)
         self.text_keys = text_keys
         self.frame_key = frame_key
         self.label_keys = label_keys
-        self.black_frame = self.processor(
-            image=Image.new("RGB", (256, 256), (255, 255, 255))
-        )["pixel_values"]
-        self.PAD = self.processor.PAD
+        self.black_frame = self.frame_process.transform(
+            Image.new("RGB", (256, 256), (255, 255, 255))
+        )
+        self.PAD = self.text_process.PAD
         self.frame_len = frame_len
 
     def transform(self, data_dict: dict):
+        # parse text input
+        token_ids = self.text_process(
+            {
+                "text_ocr": data_dict["ocr_text"],
+                "text_asr": data_dict["asr_text"],
+            }
+        )
         # parse frame input
         frame_paths = data_dict[self.frame_key]
-
         try:
             item_id = frame_paths[0].split("/")[-2]
         except:
             item_id = None
-        results = self.processor(
-            text={
-                "text_ocr": data_dict["ocr_text"],
-                "text_asr": data_dict["asr_text"],
-            },
-            image=frame_paths,
-        )
-
-        ret = {
-            "token_ids": results["token_ids"],
-            "frames": results["pixel_values"]
-            if "pixel_values" in results
-            else [],
-            "item_id": item_id,
-        }
+        frames = self.frame_process(frame_paths)
+        # print('data shape: token_ids({})'.format(len(token_ids)))
+        # print('data shape: token_ids({}), frames({})'.format(len(token_ids), frames.shape))
+        ret = {"token_ids": token_ids, "frames": frames, "item_id": item_id}
         # parse label
         labels = {}
         for lk in self.label_keys:

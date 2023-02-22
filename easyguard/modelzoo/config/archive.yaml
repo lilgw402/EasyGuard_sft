@@ -36,10 +36,11 @@ xlmr-base:
   server: hdfs
   type: xlmr
   region: CN
-falbert-hq-live:
+falbert-no-weights:
   server: hdfs
   type: falbert
   region: CN
+  description: no pretrained weights
 bert-base-uncased:
   server: hdfs
   type: bert
@@ -50,3 +51,8 @@ google/vit-base-patch16-224:
   type: vit
 openai/clip-vit-base-patch32:
   type: clip
+fashion-swin-base-224-fashionvtp:
+  type: fashion_swin
+  server: hdfs
+  region: CN
+  description: fashionvtp的多模态视觉backbone

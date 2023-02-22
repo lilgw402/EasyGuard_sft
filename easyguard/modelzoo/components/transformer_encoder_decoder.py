@@ -1,5 +1,4 @@
 """Transformer encoder/decoder implementations from ptx"""
-import logging
 import math
 import os
 from collections import namedtuple
@@ -11,13 +10,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ...utils import logging
 from .activation import Activation
 from .layernorm import LayerNormTypes
 
+logger = logging.get_logger(__name__)
 try:
     from torch.fx import wrap as fx_wrap
 except:
-    logging.warning("Failed to import torch.fx.wrap")
+    logger.warning("Failed to import torch.fx.wrap")
 
     def fx_wrap(func):
         return func
@@ -55,8 +56,6 @@ FTAttention = None
 FTFusedAttention = None
 FTSoftmax = None
 FTLayerNorm = None
-
-logger = logging.getLogger(__name__)
 
 
 MHAOutput = namedtuple(

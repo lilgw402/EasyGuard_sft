@@ -20,17 +20,17 @@ except ImportError:
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 
-from cruise import CruiseModule
-from cruise.utilities.cloud_io import load
-from cruise.utilities.distributed import DIST_ENV
-from cruise.utilities.hdfs_io import hexists, hopen
-from sklearn.metrics import roc_auc_score
-
+from easyguard import AutoModel
 from easyguard.appzoo.authentic_modeling.utils import (
     CosineAnnealingWarmupRestarts,
     accuracy,
 )
-from easyguard.modelzoo.models.falbert import FrameALBert
+from sklearn.metrics import roc_auc_score
+
+from cruise import CruiseModule
+from cruise.utilities.cloud_io import load
+from cruise.utilities.distributed import DIST_ENV
+from cruise.utilities.hdfs_io import hexists, hopen
 
 from ...utils.losses import (
     LearnableNTXentLoss,
@@ -79,7 +79,10 @@ class HighQualityLiveVideoCLIP(CruiseModule):
         """
         Initialize modules
         """
-        self.falbert = FrameALBert(self.config_backbone)
+        # self.falbert = FrameALBert(self.config_backbone)
+        self.falbert = AutoModel.from_pretrained(
+            "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/easyguard/modelzoo/models/falbert_new/config"
+        )
         if self.config_fusion.name == "two_stream":
             self.t_projector, self.v_projector = self.init_projector(
                 input_size=self.config_fusion.input_dim,

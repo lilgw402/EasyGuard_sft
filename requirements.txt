@@ -16,3 +16,4 @@ colorlog
 einops
 torch #  # 需要锚定一个版本
 huggingface-hub>=0.10.0
+byted-cruise==0.3.4
