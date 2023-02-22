@@ -46,7 +46,7 @@ RUN pip3 install byted-dataloader==0.3.1 \
     deepspeed==0.7.3 bytedtcc==1.4.2 --no-cache-dir
 
 # easyguard special pkgs
-RUN pip3 install sentencepiece==0.1.97 --no-cache-dir
+RUN pip3 install sentencepiece==0.1.97 opencv-python yacs==0.1.8 absl-py bytedabase prettytable huggingface-hub>=0.10.0 decord --no-cache-dir
 
 # anyon
 # Description: [master] Merge branch 'feature/enrich_exporter_api' into 'master' add module packing api for exporter See merge request lab/anyon2!105
