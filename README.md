@@ -52,5 +52,11 @@ from easyguard.utils import list_pretrained_models
 list_pretrained_models()
 ```
 
+## 问题反馈
+
+* 直接提[issues](https://code.byted.org/ecom_govern/EasyGuard/issues)
+
+* 记录到文档里：[EasyGuard问题反馈](https://bytedance.feishu.cn/docx/Hk8NdiLkWofEzUxJGn4cot9KnwP)
+
 ## CopyRight
 2021 ByteDance Inc. All Rights Reserved.

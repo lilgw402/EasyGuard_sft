@@ -1,6 +1,8 @@
 import hashlib
 import os
+import sys
 from typing import Any, Dict, List, Optional, OrderedDict, Union
+from xml.parsers.expat import model
 
 import torch
 
@@ -17,7 +19,31 @@ from .logging import get_logger
 from .type_utils import typecheck
 from .yaml_utils import file_read
 
+PRINT_HELP = []
+
 logger = get_logger(__name__)
+
+
+class HiddenPrints:
+    def __init__(self, activated=True):
+        self.activated = activated
+        self.original_stdout = None
+
+    def open(self):
+        sys.stdout.close()
+        sys.stdout = self.original_stdout
+
+    def close(self):
+        self.original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __enter__(self):
+        if self.activated:
+            self.close()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.activated:
+            self.open()
 
 
 def file_exist(prefix: str, choices: Union[str, set]) -> Optional[str]:
@@ -96,7 +122,9 @@ def cache_file(
         )
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
-            logger.info(f"obtain the local file `{model_file_local}`")
+            if model_file_local not in PRINT_HELP:
+                logger.info(f"obtain the local file `{model_file_local}`")
+            PRINT_HELP.append(model_file_local)
             return model_file_local
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
@@ -125,9 +153,10 @@ def cache_file(
                         model_file_path_remote = remote_path_
                         break
                 if model_file_path_remote:
-                    logger.info(
-                        f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
-                    )
+                    if model_file_path_remote not in PRINT_HELP:
+                        logger.info(
+                            f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                        )
                     hmget([model_file_path_remote], model_path_local)
                     # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
                     model_file_path_local = os.path.join(
@@ -139,6 +168,8 @@ def cache_file(
                         logger.warning(
                             f"fail to download `{model_file_path_remote}`, please check the network or the remote file path"
                         )
+                    else:
+                        PRINT_HELP.append(model_file_path_remote)
                 else:
                     raise FileNotFoundError(
                         f"`{model_file_remote_list}` can not be found in remote server"
@@ -249,11 +280,18 @@ def list_pretrained_models() -> None:
     filed_names = list()
     for key_, value_ in model_archive.items():
         filed_names += list(value_.keys())
-    filed_names = list(set(filed_names))
+    filed_names = list(sorted(set(filed_names)))
     model_archive_table.field_names = ["model_name"] + filed_names
+    model_info_list = []
     for key_, value_ in model_archive.items():
         temp_ = [key_] + [value_.get(_, None) for _ in filed_names]
-        model_archive_table.add_row(temp_)
+        model_info_list.append(temp_)
+    # model_info_list = sorted(model_info_list, key=lambda x: x[0])
+    model_archive_table.add_rows(model_info_list)
+    # setting
+    model_archive_table.sortby = "model_name"
+    model_archive_table.align["model_name"] = "l"
+    model_archive_table.align["description"] = "l"
     logger.info("\n" + str(model_archive_table))
 
 
@@ -427,7 +465,8 @@ def load_pretrained_model_weights(
                 key_new = key_.replace(rm_prefix, "", 1)
                 state_dict[key_new] = state_dict.pop(key_)
 
-    keys = model.load_state_dict(state_dict, strict=strict)
+    with HiddenPrints():
+        keys = model.load_state_dict(state_dict, strict=strict)
 
     if len(keys.missing_keys) > 0:
         logger.warning(

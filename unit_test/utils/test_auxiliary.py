@@ -2,7 +2,7 @@ import unittest
 
 from unit_test import TEST_FLAGS
 
-TEST_FLAGS = ["all"]
+TEST_FLAGS = ["list_pretrained_models"]
 
 
 class TestAuxiliary(unittest.TestCase):

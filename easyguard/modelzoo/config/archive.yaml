@@ -36,10 +36,11 @@ xlmr-base:
   server: hdfs
   type: xlmr
   region: CN
-falbert-hq-live:
+falbert-no-weights:
   server: hdfs
   type: falbert
   region: CN
+  description: no pretrained weights
 bert-base-uncased:
   server: hdfs
   type: bert
@@ -55,3 +56,8 @@ fashion-deberta-ner:
   type: deberta_erlangshen
   description: 短视频+直播ASR,2亿,MLM(卖点词entity mask)
   region: CN
+fashion-swin-base-224-fashionvtp:
+  type: fashion_swin
+  server: hdfs
+  region: CN
+  description: fashionvtp的多模态视觉backbone
