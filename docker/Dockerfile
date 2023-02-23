@@ -68,7 +68,7 @@ ARG CUSTOM_CRUISE_SCM_DOWNLOAD_URL
 RUN if [ -n "$CUSTOM_CRUISE_SCM_DOWNLOAD_URL" ] ; then \
         pip3 install --no-cache-dir $CUSTOM_CRUISE_SCM_DOWNLOAD_URL; \
     else \
-        pip3 install --no-cache-dir byted-cruise==0.4.0-post1; \
+        pip3 install --no-cache-dir byted-cruise==0.3.4; \
     fi
 
 # pip3 install --no-cache-dir $LAB_PYTORCH_SCM_SITE/data.aml.cruise_$DATA_CRUISE_CRUISE_VERSION.tar.gz; \
