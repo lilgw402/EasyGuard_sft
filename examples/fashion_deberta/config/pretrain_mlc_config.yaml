@@ -63,7 +63,7 @@ data:
   val_batch_size: 8
   train_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/train_data/part*
   val_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/valid_data/part*
-  data_size: 1000
+  data_size: 180000
   val_step: 0
   classification_task_enable: true
   text_label_field: label
