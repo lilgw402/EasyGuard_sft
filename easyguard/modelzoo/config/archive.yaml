@@ -50,3 +50,8 @@ google/vit-base-patch16-224:
   type: vit
 openai/clip-vit-base-patch32:
   type: clip
+fashion-deberta-ner:
+  server: hdfs
+  type: deberta_erlangshen
+  description: 短视频+直播ASR,2亿,MLM(卖点词entity mask)
+  region: CN
