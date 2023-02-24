@@ -28,27 +28,11 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 # 电商场景预训练算法服务
 * 文档详见：[预训练算法服务](https://bytedance.feishu.cn/wiki/wikcnrmcpmz5RAB89yJhWd0jFZg)
 
-* FashionModel，详见[电商治理模型FashionModels使用文档](https://bytedance.feishu.cn/wiki/wikcnBlgTsEuyDo1ZtYXW38k4Gf)
+* FashionModel模型列表，详见[电商治理预训练模型库](https://bytedance.feishu.cn/sheets/shtcnJU6aAYhLP1wdYXFyPXH7mc)
 
-| Model | Parameters | Note |
-| --- | --- | --- |
-| **BERT** |
-| bert-small-uncased | L=6,H=768,A=12 |  |
-| bert-base-uncased | L=12,H=768,A=12 |  |
-| fashiondeberta-base-zh | L=12,H=768,A=12 | Pretrain w/ ASR & CCR datasets |
-| **Chinese BERT** |
-| hfl/chinese-roberta-wwm-ext | L=12,H=768,A=12 |  |
-| hfl/chinese-roberta-wwm-ext-large | L=24,H=768,A=12 |  |
-| langboat/mengzi-bert-base | L=12,H=768,A=12| Pretrain w/ Chinese datasets|
-| **Multilingual BERT**  |
-| fashionxlm-base-xl | L=12,H=768,A=12 | Pretrain w/ TTS datasets|
-| **Vision-Language BERT** |
-| fashionbert-base-zh | L=12,H=768,A=12 | Pretrain w/ Product datasets|
-| **Video-Text BERT** |
-| videoclip | L=12,H=768,A=12 |  |
-| framealbert | L=12,H=x,A=x |  |
+* 调用方式详见[电商治理模型FashionModels使用文档](https://bytedance.feishu.cn/wiki/wikcnBlgTsEuyDo1ZtYXW38k4Gf)
 
-* 调用方式
+* 调用示例
 
 调用模型：
 
@@ -67,6 +51,12 @@ from easyguard.utils import list_pretrained_models
 
 list_pretrained_models()
 ```
+
+## 问题反馈
+
+* 直接提[issues](https://code.byted.org/ecom_govern/EasyGuard/issues)
+
+* 记录到文档里：[EasyGuard问题反馈](https://bytedance.feishu.cn/docx/Hk8NdiLkWofEzUxJGn4cot9KnwP)
 
 ## CopyRight
 2021 ByteDance Inc. All Rights Reserved.
