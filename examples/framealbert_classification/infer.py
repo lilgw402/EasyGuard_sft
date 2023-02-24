@@ -19,11 +19,11 @@ from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassif
 
 from easyguard.appzoo.framealbert_classification.data import text_concat, get_transform
 
-
 max_len = 128
 preprocess = get_transform(mode='val')
-gec = np.load('./example/classify/GEC_cat.npy', allow_pickle=True).item()
-pipe = Pipeline.from_option(f'file:/opt/tiger/fex/example/classify/m_albert_h512a8l12')
+# gec = np.load('./example/classify/GEC_cat.npy', allow_pickle=True).item()
+# pipe = Pipeline.from_option(f'file:/opt/tiger/fex/example/classify/m_albert_h512a8l12')
+country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
 
 
 def image_preprocess(image_str):
@@ -44,44 +44,46 @@ def _load_image(buffer):
     return img
 
 
-def process(data_item: dict):
-    # cid = data_item['leaf_cid']
-    # label = gec[cid]['label']
-
-    if 'text' in data_item:
-        title = data_item['text']
-        desc = None
-    else:
-        title = data_item['title']
-        desc = data_item['desc']
-
-    text = text_concat(title, desc)
-
-    token_ids = pipe.preprocess([text])[0]
-    token_ids = token_ids.asnumpy()
-    token_ids = torch.from_numpy(token_ids)
-
-    token_mask = token_ids.clone()
-    token_mask[token_ids != 0] = 1
-
-    input_segment_ids = torch.zeros([1, max_len], dtype=torch.int64)
-
-    frames = []
-
-    if 'image' in data_item:
-        # get image by b64
-        try:
-            image_tensor = image_preprocess(data_item['image'])
-            frames.append(image_tensor)
-        except:
-            print(f"load image base64 failed -- {data_item['pid']}")
-            return None
-
-    frames = torch.stack(frames, dim=0)
-    frames = frames.reshape([1, 1, 3, 224, 224])
-    frames_mask = torch.tensor([[1]])
-
-    return token_ids, input_segment_ids, token_mask, frames, frames_mask
+# def process(data_item: dict):
+#     if 'text' in data_item:
+#         title = data_item['text']
+#         desc = None
+#         country = data_item['country']
+#         country_idx = country2idx[country]
+#     else:
+#         title = data_item['title']
+#         desc = data_item['desc']
+#         country = data_item['country']
+#         country_idx = country2idx[country]
+#
+#     text = text_concat(title, desc)
+#
+#     token_ids = pipe.preprocess([text])[0]
+#     token_ids = token_ids.asnumpy()
+#     token_ids = torch.from_numpy(token_ids)
+#
+#     token_mask = token_ids.clone()
+#     token_mask[token_ids != 0] = 1
+#
+#     input_segment_ids = torch.zeros([1, max_len], dtype=torch.int64)
+#
+#     head_mask = torch.zeros(1, 5, dtype=torch.long)
+#     head_mask[0, country_idx] = 1
+#
+#     frames = []
+#     if 'image' in data_item:
+#         try:
+#             image_tensor = image_preprocess(data_item['image'])
+#             frames.append(image_tensor.half())
+#         except:
+#             print(f"load image base64 failed -- {data_item['pid']}")
+#             return None
+#
+#     frames = torch.stack(frames, dim=0)
+#     frames = frames.reshape([1, 1, 3, 224, 224])
+#     frames_mask = torch.tensor([[1]])
+#
+#     return token_ids, input_segment_ids, token_mask, frames, frames_mask, head_mask
 
 
 if __name__ == "__main__":
@@ -103,6 +105,21 @@ if __name__ == "__main__":
 
     model.setup("val")
     datamodule.setup("val")
+
+    token_ids = torch.zeros([1, 128], dtype=torch.long)
+    input_segment_ids = torch.zeros([1, 128], dtype=torch.long)
+    token_mask = torch.zeros([1, 128], dtype=torch.long)
+    frames = torch.zeros([1, 1, 3, 224, 224], dtype=torch.float32)
+    frames_mask = torch.zeros([1, 1], dtype=torch.long)
+    head_mask = torch.zeros([1, 5], dtype=torch.long)
+
+    res = model.forward_step(input_ids=token_ids,
+                             input_segment_ids=input_segment_ids,
+                             input_mask=token_mask,
+                             frames=frames,
+                             frames_mask=frames_mask,
+                             head_mask=head_mask, )
+    print()
 
     # files = [
     #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/VN_1013.test.jsonl',
