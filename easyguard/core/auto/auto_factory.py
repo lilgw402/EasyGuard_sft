@@ -45,7 +45,7 @@ from . import (
     MODELZOO_CONFIG,
 )
 from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
-from .configuration_auto_hf import model_type_to_module_name
+from .configuration_auto_hf import HFAutoConfig, model_type_to_module_name
 
 # TODO (junwei.Dong): 需要简化一下工厂函数的逻辑
 
@@ -402,9 +402,10 @@ class _BaseAutoModelClass:
                     if not is_local
                     else pretrained_model_name_or_path
                 )
-                model = HFBaseAutoModelClass.from_pretrained(
-                    pretrained_model_name_or_path_hf, *model_args, **kwargs
+                model_config_class_: ConfigBase = HFAutoConfig.from_pretrained(
+                    pretrained_model_name_or_path_hf,
                 )
+                model = HFBaseAutoModelClass.from_config(model_config_class_)
             elif backend == "titan":
                 # TODO (junwei.Dong): 支持特殊的titan模型
                 raise NotImplementedError(backend)
@@ -448,7 +449,7 @@ class _BaseAutoModelClass:
             setattr(model, "extra_args", extra_dict)
 
         # load weights
-        if model_weight_file_path and backend != "hf":
+        if model_weight_file_path:
             model.load_pretrained_weights(model_weight_file_path, **kwargs)
 
         return model
@@ -538,12 +539,14 @@ class _LazyAutoMapping(OrderedDict):
     def _load_attr_from_module(self, model_type, attr):
         # easyguard: 为了不强制懒加载，加了try...except...
         # try:
+
         module_name = model_type_to_module_name(model_type)
         if module_name not in self._modules:
             self._modules[module_name] = importlib.import_module(
                 f".{module_name}", HF_PATH
             )
         return getattribute_from_module(self._modules[module_name], attr)
+
         # except:
         #     ...
 
