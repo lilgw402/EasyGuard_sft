@@ -768,6 +768,7 @@ class FashionSwinModel(nn.Module, ModelBase):
         **kwargs,
     ):
         super().__init__()
+        ModelBase.__init__(self)
 
         self.num_classes = num_classes
         self.num_layers = len(depths)

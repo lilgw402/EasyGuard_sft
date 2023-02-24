@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, OrderedDict, Union
 from xml.parsers.expat import model
 
 import torch
+from prettytable import PrettyTable
 
 from ..modelzoo.config import MODEL_ARCHIVE_PATH
 from . import (
@@ -273,8 +274,6 @@ def hf_name_or_path_check(
 
 def list_pretrained_models() -> None:
     """list all pretrained models from archive.yaml"""
-    from prettytable import PrettyTable
-
     model_archive = file_read(MODEL_ARCHIVE_PATH)
     model_archive_table = PrettyTable()
     filed_names = list()
@@ -427,6 +426,7 @@ def load_pretrained_model_weights(
     model_path: str,
     strict: Optional[bool] = False,
     rm_prefix: Optional[str] = None,
+    change_prefix: Optional[List[tuple]] = None,
     **kwargs,
 ):
     """load pretrained model weights
@@ -464,17 +464,45 @@ def load_pretrained_model_weights(
             if key_.startswith(rm_prefix):
                 key_new = key_.replace(rm_prefix, "", 1)
                 state_dict[key_new] = state_dict.pop(key_)
+    # if change_prefix:
 
     with HiddenPrints():
         keys = model.load_state_dict(state_dict, strict=strict)
 
+    @typecheck(list, list, dict)
+    def table_formatter(
+        field_names: List[str],
+        values: List[List[str]],
+        align: Dict[str, str],
+        sortby: Optional[int] = 0,
+    ):
+        table = PrettyTable()
+        table.field_names = field_names
+        table.add_rows(values)
+        for key_ in field_names:
+            if key_ in align:
+                table.align[key_] = align[key_]
+        table.sortby = field_names[sortby]
+        return str(table)
+
     if len(keys.missing_keys) > 0:
+        field_names = ["missing_keys"]
+        values = list(map(lambda x: [x], keys.missing_keys))
+        align = {"missing_keys": "l"}
+
         logger.warning(
-            f"=> Pretrained: missing_keys [{', '.join(keys.missing_keys)}]"
+            f"=> Pretrained: missing_keys: \n{table_formatter(field_names, values, align)}\n"
         )
+    else:
+        logger.info(f"Pretrained: no missing_keys.")
     if len(keys.unexpected_keys) > 0:
+        field_names = ["unexpected_keys"]
+        values = list(map(lambda x: [x], keys.unexpected_keys))
+        align = {"unexpected_keys": "l"}
         logger.warning(
-            f"=> Pretrained: unexpected_keys ["
-            f"{', '.join(keys.unexpected_keys)}]"
+            f"=> Pretrained: unexpected_keys: \n{table_formatter(field_names, values, align)}\n"
         )
+    else:
+        logger.info(f"Pretrained: no unexpected_keys.")
+
     logger.info(f"=> Pretrained: load pretrained model with strict={strict}")
