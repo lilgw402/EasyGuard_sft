@@ -90,9 +90,11 @@ class FrameAlbertClassify(CruiseModule):
         #     fuse_emb_size, self.config_fusion.class_num
         # )
         feat_emb_size = self.config_fusion.feat_emb_size
-        self.classifier_concat = torch.nn.Linear(feat_emb_size, self.config_fusion.class_num)
+        # self.classifier_concat = torch.nn.Linear(feat_emb_size, self.config_fusion.class_num)
+        self.multi_heads = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.head_num * self.config_fusion.class_num)
         # self.softmax = nn.Softmax(dim=1)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion = torch.nn.CrossEntropyLoss()
+        self.ce = torch.nn.CrossEntropyLoss()
         """
         Initialize some fixed parameters.
         """
@@ -125,6 +127,17 @@ class FrameAlbertClassify(CruiseModule):
                 if name.startswith(prefix):
                     param.requires_grad = False
 
+    def criterion(self, logits, label, use_gather=False):
+        if use_gather:
+            # gather_logits = allgather(logits.contiguous(), self.trainer.rank, self.trainer.world_size)
+            # gather_label = allgather(label.contiguous(), self.trainer.rank, self.trainer.world_size)
+            # loss = self.ce(gather_logits, gather_label)
+            loss = self.ce(logits, label)
+            return loss
+        else:
+            loss = self.ce(logits, label)
+            return loss
+
     def maxpooling_with_mask(self, hidden_state, attention_mask):
         mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_state.size()).half()
         mask_expanded = 1e4 * (mask_expanded - 1)
@@ -132,6 +145,14 @@ class FrameAlbertClassify(CruiseModule):
         max_pooling = torch.max(hidden_masked, dim=1)[0]
 
         return max_pooling
+
+    def multi_heads_with_mask(self, hidden_state, head_mask):
+        x = self.multi_heads(hidden_state).reshape(-1, self.head_num, self.class_num)
+        head_mask = head_mask.unsqueeze(-1).expand(x.size()).half()
+        head_mask = 1e4 * (head_mask - 1)
+        x = head_mask + x
+        x = torch.max(x, dim=1)[0]
+        return x
 
     def forward_step(
             self,
@@ -141,6 +162,7 @@ class FrameAlbertClassify(CruiseModule):
             frames=None,
             frames_mask=None,
             visual_embeds=None,
+            head_mask=None,
     ):
         mmout = self.encode_multimodal(
             input_ids=input_ids,
@@ -150,8 +172,6 @@ class FrameAlbertClassify(CruiseModule):
             images_mask=frames_mask,
             visual_embeds=visual_embeds,
         )
-        # cls_emb = mmout["pooled_output"]
-        # logits = self.classifier(cls_emb)
         cls_emb = mmout['pooled_output']
         last_hidden_state = mmout['encoded_layers'][-1]
         attention_mask = torch.cat(
@@ -159,7 +179,8 @@ class FrameAlbertClassify(CruiseModule):
         max_pooling = self.maxpooling_with_mask(hidden_state=last_hidden_state, attention_mask=attention_mask)
 
         concat_feat = torch.cat([cls_emb, max_pooling], dim=1)
-        logits = self.classifier_concat(concat_feat)
+
+        logits = self.multi_heads_with_mask(concat_feat, head_mask)
 
         return {"feat": concat_feat, "logits": logits}
 
@@ -196,21 +217,14 @@ class FrameAlbertClassify(CruiseModule):
         )
         return mmout
 
-    # def cal_cls_loss(self, **kwargs):
-    #     for key in ["logits", "label"]:
-    #         if key in kwargs:
-    #             kwargs[key] = self.all_gather(kwargs[key].contiguous())
-    #             kwargs[key] = kwargs[key].flatten(0, 1)
-    #     loss = cross_entropy(kwargs["logits"], kwargs["label"])
-    #     return {"loss": loss}
-
     def training_step(self, batch, idx):
-        token_ids, segment_ids, attn_mask, image, image_mask = (
+        token_ids, segment_ids, attn_mask, image, image_mask, head_mask = (
             batch["input_ids"],
             batch["input_segment_ids"],
             batch["input_mask"],
             batch["frames"],
             batch["frames_mask"],
+            batch["head_mask"]
         )
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -218,9 +232,10 @@ class FrameAlbertClassify(CruiseModule):
             input_mask=attn_mask,
             frames=image,
             frames_mask=image_mask,
+            head_mask=head_mask,
         )
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=False)
         res = {
             "loss": loss,
             "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
@@ -232,12 +247,13 @@ class FrameAlbertClassify(CruiseModule):
         return res
 
     def validation_step(self, batch, idx):
-        token_ids, segment_ids, attn_mask, image, image_mask = (
+        token_ids, segment_ids, attn_mask, image, image_mask, head_mask = (
             batch["input_ids"],
             batch["input_segment_ids"],
             batch["input_mask"],
             batch["frames"],
             batch["frames_mask"],
+            batch["head_mask"]
         )
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -245,10 +261,12 @@ class FrameAlbertClassify(CruiseModule):
             input_mask=attn_mask,
             frames=image,
             frames_mask=image_mask,
+            head_mask=head_mask,
         )
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=False)
         res = {"val_loss": loss}
+
         acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
         for k, v in acc_dict.items():
             res.update({f'val_{k}': v})
@@ -283,6 +301,34 @@ class FrameAlbertClassify(CruiseModule):
         self.log("val_loss", val_loss, console=True)
         self.log("val_top1_acc", top1_acc, console=True)
         self.log("val_top5_acc", top1_acc, console=True)
+
+    def trace_before_step(self, batch):
+        token_ids, segment_ids, attn_mask, image, image_mask, head_mask = (
+            batch["input_ids"],
+            batch["input_segment_ids"],
+            batch["input_mask"],
+            batch["frames"],
+            batch["frames_mask"],
+            batch["head_mask"]
+        )
+        return token_ids, segment_ids, attn_mask, image, image_mask, head_mask
+
+    def trace_step(self, token_ids, segment_ids, attn_mask, image, image_mask, head_mask):
+        rep_dict = self.forward_step(
+            input_ids=token_ids,
+            input_segment_ids=segment_ids,
+            input_mask=attn_mask,
+            frames=image,
+            frames_mask=image_mask,
+            head_mask=head_mask,
+        )
+
+        logits = rep_dict["logits"]
+
+        return logits
+
+    def trace_after_step(self, result):
+        pass
 
     def configure_optimizers(self):
         no_decay = ["bias", "bn", "norm"]
