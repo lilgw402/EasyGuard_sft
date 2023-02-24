@@ -16,6 +16,6 @@ if __name__ == "__main__":
     datamodule.setup("val")
 
     checkpoint_path = "hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/model_state_epoch_38000.th"
-    export_dir = "./traced_model"
-    trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode='jit',
+    export_dir = "/mlx_devbox/users/wangxian.137/repo/22/EasyGuard/traced_model"
+    trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode='anyon',
                   checkpoint_path=checkpoint_path, export_dir=export_dir)

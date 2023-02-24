@@ -112,16 +112,22 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if self.second_map is not None:
                     label = self.second_map[label]
                 # 文本
+                # text = data_item['title']
                 if 'translation' in data_item:
                     country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
+                    country_idx = self.country2idx[country]
                     title = data_item['translation'][country]
                     desc = None
                 elif 'text' in data_item:
                     title = data_item['text']
                     desc = None
+                    country = data_item['country']
+                    country_idx = self.country2idx[country]
                 else:
                     title = data_item['title']
                     desc = data_item['desc']
+                    country = data_item['country']
+                    country_idx = self.country2idx[country]
                 text = text_concat(title, desc)
 
                 token_ids = self.pipe.preprocess([text])[0]
@@ -137,7 +143,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                         image_tensor = self.image_preprocess(data_item['image'])
                         frames.append(image_tensor)
                     except:
-                        print(f"load image base64 failed -- {data_item['pid']}")
+                        print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
                         continue
                 elif 'images' in data_item:
                     # get image by url
@@ -151,21 +157,33 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                                     break
                                 except:
                                     continue
+                                # break
                             else:
+                                # print(f"Empty image: {url}")
                                 pass
+                        # if image_str == b'' or image is None:
+                        #     image = Image.open(io.BytesIO(default_image_str)).convert("RGB")
                     except:
                         pass
+                        # print(f"No images in data: {data_item['pid']}")
+                        # image = Image.open(io.BytesIO(default_image_str)).convert("RGB")
+
+                    # image = Image.open(io.BytesIO(image_str)).convert("RGB")
                     if image is not None:
                         image_tensor = self.preprocess(image)
                         frames.append(image_tensor)
                     else:
-                        print(f"No images in data {data_item['pid']} -- zero of {len(data_item['images'])}")
+                        print(f"No images in data {data_item.get('pid', 'None pid')} -- zero of {len(data_item['images'])}")
                 else:
                     raise Exception(f'cannot find image or images')
 
-                input_dict = {'frames': frames,
-                              'label': label,
-                              'input_ids': token_ids}
+                input_dict = {
+                    'frames': frames,
+                    'label': label,
+                    'country_idx': country_idx,
+                    'input_ids': token_ids,
+                    # 'weight': weight,
+                }
 
                 yield input_dict
 
@@ -176,18 +194,26 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         frames = []
         frames_mask = []
         labels = []
+        head_mask = []
         input_ids = []
         input_mask = []
         input_segment_ids = []
-        text_len = self.text_len
+        # weights = []
+        max_len = self.max_len
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
+            # country_idx.append(ibatch["country_idx"])
+            head = torch.zeros(self.head_num)
+            head[ibatch["country_idx"]] = 1
+            head_mask.append(head)
             input_ids.append(ibatch['input_ids'])
             input_mask_id = ibatch['input_ids'].clone()
             input_mask_id[input_mask_id != 0] = 1
             input_mask.append(input_mask_id)
-            input_segment_ids.append([0] * text_len)
+            input_segment_ids.append([0] * max_len)
+            # weights.append(ibatch['weight'])
+
             img_np = ibatch['frames']
             frames_mask_cur = []
             # 如果不够8帧，要补帧
@@ -214,14 +240,20 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         bsz, frame_num = frames_mask.shape
         frames = frames.reshape([bsz, frame_num, c, h, w])
         labels = torch.tensor(labels)
+        # country_idx = torch.tensor(country_idx)
+        head_mask = torch.stack(head_mask, dim=0)
         input_ids = torch.cat(input_ids, dim=0)
         input_mask = torch.cat(input_mask, dim=0)
+        # input_ids = torch.tensor(input_ids)
+        # input_mask = torch.tensor(input_mask)
         input_segment_ids = torch.tensor(input_segment_ids)
+        # weights = torch.tensor(weights)
 
         res = {"frames": frames, "frames_mask": frames_mask,
-               "label": labels,
+               "label": labels, "head_mask": head_mask,  # "country_idx": country_idx,
                "input_ids": input_ids, "input_mask": input_mask,
                "input_segment_ids": input_segment_ids,
+               # "weights": weights
                }
         return res
 
@@ -291,6 +323,7 @@ class FacDataModule(CruiseDataModule):
             for src, tar in to_download:
                 if not os.path.exists(tar):
                     os.makedirs(tar)
+                print(f'downloading {src} to {str}')
                 os.system(f"hdfs dfs -copyToLocal {src} {tar}")
 
     def setup(self) -> None:

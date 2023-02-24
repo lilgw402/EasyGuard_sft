@@ -45,46 +45,46 @@ def _load_image(buffer):
     return img
 
 
-# def process(data_item: dict):
-#     if 'text' in data_item:
-#         title = data_item['text']
-#         desc = None
-#         country = data_item['country']
-#         country_idx = country2idx[country]
-#     else:
-#         title = data_item['title']
-#         desc = data_item['desc']
-#         country = data_item['country']
-#         country_idx = country2idx[country]
-#
-#     text = text_concat(title, desc)
-#
-#     token_ids = pipe.preprocess([text])[0]
-#     token_ids = token_ids.asnumpy()
-#     token_ids = torch.from_numpy(token_ids)
-#
-#     token_mask = token_ids.clone()
-#     token_mask[token_ids != 0] = 1
-#
-#     input_segment_ids = torch.zeros([1, max_len], dtype=torch.int64)
-#
-#     head_mask = torch.zeros(1, 5, dtype=torch.long)
-#     head_mask[0, country_idx] = 1
-#
-#     frames = []
-#     if 'image' in data_item:
-#         try:
-#             image_tensor = image_preprocess(data_item['image'])
-#             frames.append(image_tensor.half())
-#         except:
-#             print(f"load image base64 failed -- {data_item['pid']}")
-#             return None
-#
-#     frames = torch.stack(frames, dim=0)
-#     frames = frames.reshape([1, 1, 3, 224, 224])
-#     frames_mask = torch.tensor([[1]])
-#
-#     return token_ids, input_segment_ids, token_mask, frames, frames_mask, head_mask
+def process(data_item: dict):
+    if 'text' in data_item:
+        title = data_item['text']
+        desc = None
+        country = data_item['country']
+        country_idx = country2idx[country]
+    else:
+        title = data_item['title']
+        desc = data_item['desc']
+        country = data_item['country']
+        country_idx = country2idx[country]
+
+    text = text_concat(title, desc)
+
+    token_ids = pipe.preprocess([text])[0]
+    token_ids = token_ids.asnumpy()
+    token_ids = torch.from_numpy(token_ids)
+
+    token_mask = token_ids.clone()
+    token_mask[token_ids != 0] = 1
+
+    input_segment_ids = torch.zeros([1, max_len], dtype=torch.int64)
+
+    head_mask = torch.zeros(1, 5, dtype=torch.long)
+    head_mask[0, country_idx] = 1
+
+    frames = []
+    if 'image' in data_item:
+        try:
+            image_tensor = image_preprocess(data_item['image'])
+            frames.append(image_tensor.half())
+        except:
+            print(f"load image base64 failed -- {data_item['pid']}")
+            return None
+
+    frames = torch.stack(frames, dim=0)
+    frames = frames.reshape([1, 1, 3, 224, 224])
+    frames_mask = torch.tensor([[1]])
+
+    return token_ids, input_segment_ids, token_mask, frames, frames_mask, head_mask
 
 
 if __name__ == "__main__":
@@ -110,6 +110,13 @@ if __name__ == "__main__":
     # datamodule.setup("val")
 
     print(f'generate random input demo')
+    file = 'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/GB_1013.test.jsonl'
+    with hopen(file, 'r') as f:
+        lines = f.readlines()
+
+    sample = json.loads(lines[0])
+    data = process(sample)
+    input_ids, input_segment_ids, input_mask, frames, frames_mask, head_mask = data
     token_ids = torch.zeros([1, 128], dtype=torch.long)
     input_segment_ids = torch.zeros([1, 128], dtype=torch.long)
     token_mask = torch.zeros([1, 128], dtype=torch.long)
