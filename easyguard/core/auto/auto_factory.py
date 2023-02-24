@@ -45,7 +45,7 @@ from . import (
     MODELZOO_CONFIG,
 )
 from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
-from .configuration_auto_hf import model_type_to_module_name
+from .configuration_auto_hf import HFAutoConfig, model_type_to_module_name
 
 # TODO (junwei.Dong): 需要简化一下工厂函数的逻辑
 
@@ -402,9 +402,10 @@ class _BaseAutoModelClass:
                     if not is_local
                     else pretrained_model_name_or_path
                 )
-                model = HFBaseAutoModelClass.from_pretrained(
-                    pretrained_model_name_or_path_hf, *model_args, **kwargs
+                model_config_class_: ConfigBase = HFAutoConfig.from_pretrained(
+                    pretrained_model_name_or_path_hf,
                 )
+                model = HFBaseAutoModelClass.from_config(model_config_class_)
             elif backend == "titan":
                 # TODO (junwei.Dong): 支持特殊的titan模型
                 raise NotImplementedError(backend)

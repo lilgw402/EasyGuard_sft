@@ -106,23 +106,6 @@ models:
       processor: CLIPProcessor
     tokenization_clip:
       tokenizer: CLIPTokenizer
-<<<<<<< HEAD
-=======
-  falbert:
-    name: FalBert
-    backend: default
-    modeling_falbert:
-      model: FrameALBert
-  deberta_erlangshen:
-    name: DeBERTaErlangshen
-    backend: hf
-    configuration_deberta_v2:
-      config: DebertaV2Config
-    modeling_deberta_v2:
-      model: DebertaV2ForMaskedLM
-    tokenization_deberta_v2:
-      tokenizer: DebertaV2Tokenizer
->>>>>>> master
   fashion_swin:
     name: FashionSwin
     backend: default
@@ -132,6 +115,15 @@ models:
       image_processor: FashionSwinProcessor
     modeling_fashion_swin:
       model: FashionSwinModel
+  deberta_erlangshen:
+    name: DeBERTaErlangshen
+    backend: hf
+    configuration_deberta_v2:
+      config: DebertaV2Config
+    modeling_deberta_v2:
+      model: DebertaV2ForMaskedLM
+    tokenization_deberta_v2:
+      tokenizer: DebertaV2Tokenizer
   falbert:
     name: FalBert
     backend: default
