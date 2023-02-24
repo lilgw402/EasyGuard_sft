@@ -43,7 +43,7 @@ model:
   # config_backbone: config/config_backbone.yaml
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/model_state_epoch_38000.th
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0205_raw_prop_from_trans_multihead_1e-5/batch_inference_multihead_4626.th
   low_lr_prefix: [ ]
   prefix_changes:
     - backbone.vision.->falbert.visual.

@@ -21,23 +21,23 @@ except ImportError:
     )
 
 from cruise import CruiseModule
-from cruise.utilities.cloud_io import load
+# from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
-from cruise.utilities.hdfs_io import hexists, hopen
-from sklearn.metrics import roc_auc_score
+# from cruise.utilities.hdfs_io import hexists, hopen
+# from sklearn.metrics import roc_auc_score
 
-from easyguard.appzoo.authentic_modeling.utils import (
-    CosineAnnealingWarmupRestarts,
-    accuracy,
-)
+# from easyguard.appzoo.authentic_modeling.utils import (
+#     CosineAnnealingWarmupRestarts,
+#     accuracy,
+# )
 from easyguard.modelzoo.models.falbert import FrameALBert
 
-from ...utils.losses import (
-    LearnableNTXentLoss,
-    LearnablePCLLoss,
-    SCELoss,
-    cross_entropy,
-)
+# from ...utils.losses import (
+#     LearnableNTXentLoss,
+#     LearnablePCLLoss,
+#     SCELoss,
+#     cross_entropy,
+# )
 from .optimization import *
 from .optimization import AdamW
 
@@ -147,7 +147,7 @@ class FrameAlbertClassify(CruiseModule):
         return max_pooling
 
     def multi_heads_with_mask(self, hidden_state, head_mask):
-        x = self.multi_heads(hidden_state).reshape(-1, self.head_num, self.class_num)
+        x = self.multi_heads(hidden_state).reshape(-1, self.config_fusion.head_num, self.config_fusion.class_num)
         head_mask = head_mask.unsqueeze(-1).expand(x.size()).half()
         head_mask = 1e4 * (head_mask - 1)
         x = head_mask + x

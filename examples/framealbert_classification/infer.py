@@ -8,7 +8,8 @@ import base64
 import numpy as np
 from tqdm import tqdm
 from PIL import ImageFile, Image
-from ptx.matx.pipeline import Pipeline
+
+# from ptx.matx.pipeline import Pipeline
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -93,33 +94,37 @@ if __name__ == "__main__":
                     trainer_defaults={
                     })
     cfg, trainer, model, datamodule = cli.parse_args()
+    print(f'finished model config init!')
 
     # load ckpt
+    model.setup("val")
     config_path = './example/classify/config.yaml'
-    ckpt = ''
+    ckpt = 'hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0205_raw_prop_from_trans_multihead_1e-5/batch_inference_multihead_4626.th'
+    print(f'loading ckpt')
     model.partial_load_from_checkpoints(
         checkpoints=ckpt,
         rename_params=None,
         map_location='cpu',
     )
+    print(f'finished weight load')
+    # datamodule.setup("val")
 
-    model.setup("val")
-    datamodule.setup("val")
-
+    print(f'generate random input demo')
     token_ids = torch.zeros([1, 128], dtype=torch.long)
     input_segment_ids = torch.zeros([1, 128], dtype=torch.long)
     token_mask = torch.zeros([1, 128], dtype=torch.long)
     frames = torch.zeros([1, 1, 3, 224, 224], dtype=torch.float32)
     frames_mask = torch.zeros([1, 1], dtype=torch.long)
-    head_mask = torch.zeros([1, 5], dtype=torch.long)
+    head_mask = torch.ones([1, 5], dtype=torch.long)
 
+    print(f'inferencing')
     res = model.forward_step(input_ids=token_ids,
                              input_segment_ids=input_segment_ids,
                              input_mask=token_mask,
                              frames=frames,
                              frames_mask=frames_mask,
                              head_mask=head_mask, )
-    print()
+    print(res)
 
     # files = [
     #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/VN_1013.test.jsonl',

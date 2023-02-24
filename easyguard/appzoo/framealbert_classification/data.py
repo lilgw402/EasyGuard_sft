@@ -14,10 +14,9 @@ from cruise.data_module import (
     customized_processor,
 )
 from ptx.matx.pipeline import Pipeline
-from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
+# from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
 
 from cruise.utilities.hdfs_io import hopen
-from cruise.data_module.preprocess.decode import save_args
 from .dist_dataset import DistLineReadingDataset
 from .download import get_real_url, get_original_url, download_url_with_exception
 from PIL import ImageFile, Image
