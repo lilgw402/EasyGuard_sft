@@ -3,11 +3,11 @@ disable_existing_loggers: False
 
 formatters:
   standard:
-    format: "%(asctime)s -%(name)s -%(levelname)s - %(message)s"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   error:
     format: "%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s"
   file:
-    format: "%(asctime)s - %(filename)s -%(name)s -%(levelname)s - %(message)s"
+    format: "%(asctime)s - %(filename)s - %(name)s - %(levelname)s - %(message)s"
 handlers:
   console:
     class: logging.StreamHandler
@@ -51,3 +51,4 @@ loggers:
 root:
   level: NOTSET
   handlers: [console, info_file_handler, warning_file_handler, error_file_handler]
+  propagate: false
