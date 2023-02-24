@@ -18,7 +18,7 @@ try:
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
     
-from easyguard import AutoModel
+from easyguard import AutoModel, AutoImageProcessor
 
 model = AutoModel.from_pretrained("fashion-swin-base-224-fashionvtp")
 print(model)
@@ -30,15 +30,17 @@ print(dummy_output.size())
 
 # infer image 
 image = Image.open("examples/image_classification/ptms.png").convert("RGB")
+image_processor = AutoImageProcessor.from_pretrained("fashion-swin-base-224-fashionvtp")
 
-transform_funcs = transforms.Compose([transforms.Resize(256),
-                                      transforms.CenterCrop(224),
-                                      transforms.ToTensor(),
-                                      transforms.Normalize(
-                                          mean=[0.485, 0.456, 0.406],
-                                          std=[0.229, 0.224, 0.225])
-                                     ])
-input = transform_funcs(image)
-input_tensor = input.unsqueeze(0)
+# transform_funcs = transforms.Compose([transforms.Resize(256),
+#                                       transforms.CenterCrop(224),
+#                                       transforms.ToTensor(),
+#                                       transforms.Normalize(
+#                                           mean=[0.485, 0.456, 0.406],
+#                                           std=[0.229, 0.224, 0.225])
+#                                      ])
+# input = transform_funcs(image)
+# input_tensor = input.unsqueeze(0)
+input_tensor = image_processor(image).unsqueeze(0)
 output = model(input_tensor)
 print(output.size())

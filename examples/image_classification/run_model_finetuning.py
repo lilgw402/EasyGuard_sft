@@ -90,7 +90,7 @@ class SimpleModel(CruiseModule):
         for n, p in self.named_parameters():
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
-            elif n.startswith('head'):
+            elif n.startswith('model.head'):
                 normal_params_dict["params"].append(p)
             else:
                 low_lr_params_dict["params"].append(p)

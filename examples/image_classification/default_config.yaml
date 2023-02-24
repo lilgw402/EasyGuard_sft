@@ -24,7 +24,7 @@ trainer:
   accumulate_grad_batches: null
   gradient_clip_val: null
   seed: null
-  summarize_model_depth: 2
+  summarize_model_depth: 4
   resume_ckpt_path: null
   resume_loader_state: false
   callbacks: null
