@@ -7,9 +7,7 @@ from torchvision.transforms import transforms
 
 from ...processor_utils import (
     CENTER_IMAGE,
-    MEAN_IMAGE,
     RESIZE_IMAGE,
-    STD_IMAGE,
     ImageInput,
     ProcessorImageBase,
 )

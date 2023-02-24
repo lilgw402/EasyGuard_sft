@@ -448,7 +448,7 @@ class _BaseAutoModelClass:
             setattr(model, "extra_args", extra_dict)
 
         # load weights
-        if model_weight_file_path and backend != "hf":
+        if model_weight_file_path:
             model.load_pretrained_weights(model_weight_file_path, **kwargs)
 
         return model
@@ -537,15 +537,17 @@ class _LazyAutoMapping(OrderedDict):
 
     def _load_attr_from_module(self, model_type, attr):
         # easyguard: 为了不强制懒加载，加了try...except...
-        try:
-            module_name = model_type_to_module_name(model_type)
-            if module_name not in self._modules:
-                self._modules[module_name] = importlib.import_module(
-                    f".{module_name}", HF_PATH
-                )
-            return getattribute_from_module(self._modules[module_name], attr)
-        except:
-            ...
+        # try:
+
+        module_name = model_type_to_module_name(model_type)
+        if module_name not in self._modules:
+            self._modules[module_name] = importlib.import_module(
+                f".{module_name}", HF_PATH
+            )
+        return getattribute_from_module(self._modules[module_name], attr)
+
+        # except:
+        #     ...
 
     def keys(self):
         mapping_keys = [

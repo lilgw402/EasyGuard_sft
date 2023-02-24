@@ -106,11 +106,6 @@ models:
       processor: CLIPProcessor
     tokenization_clip:
       tokenizer: CLIPTokenizer
-  falbert:
-    name: FalBert
-    backend: default
-    modeling_falbert:
-      model: FrameALBert
   fashion_swin:
     name: FashionSwin
     backend: default

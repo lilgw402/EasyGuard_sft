@@ -7,11 +7,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import yaml
 
+from ...modeling_utils import ModelBase
 from . import albert
 from .swin import SwinTransformer
 
 
-class FalBertModel(nn.Module):
+class FalBertModel(nn.Module, ModelBase):
     """Frame + ALBert"""
 
     def __init__(self, config, **kwargs):
@@ -33,6 +34,7 @@ class FalBertModel(nn.Module):
 
         """
         super().__init__()
+        ModelBase.__init__(self)
         self.config = config
         self.visual_type = config.visual_type
         if self.visual_type == "SwinB224":
