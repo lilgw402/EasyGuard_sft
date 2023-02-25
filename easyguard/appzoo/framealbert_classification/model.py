@@ -91,7 +91,8 @@ class FrameAlbertClassify(CruiseModule):
         # )
         feat_emb_size = self.config_fusion.feat_emb_size
         # self.classifier_concat = torch.nn.Linear(feat_emb_size, self.config_fusion.class_num)
-        self.multi_heads = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.head_num * self.config_fusion.class_num)
+        self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
+                                           self.config_fusion.head_num * self.config_fusion.class_num)
         # self.softmax = nn.Softmax(dim=1)
         # self.criterion = torch.nn.CrossEntropyLoss()
         self.ce = torch.nn.CrossEntropyLoss()
@@ -288,7 +289,7 @@ class FrameAlbertClassify(CruiseModule):
         val_loss_all = [out["val_loss"] for out in all_results]
         top1_acc_all = [out["val_top1_acc"] for out in all_results]
         top5_acc_all = [out["val_top5_acc"] for out in all_results]
- 
+
         val_loss = sum(val_loss_all) / len(val_loss_all)
         top1_acc = sum(top1_acc_all) / len(top1_acc_all)
         top5_acc = sum(top5_acc_all) / len(top5_acc_all)
@@ -413,7 +414,7 @@ class FrameAlbertClassify(CruiseModule):
 
         return {"optimizer": optm, "lr_scheduler": lr_scheduler}
 
-    def lr_scheduler_step(self, schedulers, **kwargs,) -> None:
+    def lr_scheduler_step(self, schedulers, **kwargs, ) -> None:
         """
         默认是per epoch的lr schedule, 改成per step的
         """

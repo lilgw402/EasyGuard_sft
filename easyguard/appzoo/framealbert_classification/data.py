@@ -178,7 +178,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                         image_tensor = self.preprocess(image)
                         frames.append(image_tensor)
                     else:
-                        print(f"No images in data {data_item.get('pid', 'None pid')} -- zero of {len(data_item['images'])}")
+                        print(
+                            f"No images in data {data_item.get('pid', 'None pid')} -- zero of {len(data_item['images'])}")
                 else:
                     raise Exception(f'cannot find image or images')
 

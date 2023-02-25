@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import io
+import cv2
 import json
 import time
 import torch
@@ -25,6 +26,8 @@ preprocess = get_transform(mode='val')
 gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
 pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
+default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
+default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
 
 def image_preprocess(image_str):
@@ -43,6 +46,27 @@ def _load_image(buffer):
     img = Image.open(io.BytesIO(buffer))
     img = img.convert('RGB')
     return img
+
+
+def load_image(image_str):
+    imgString = base64.b64decode(image_str)
+    image_data = np.fromstring(imgString, np.uint8)
+    image_byte = np.frombuffer(image_data, np.int8)
+    img_cv2 = cv2.imdecode(image_byte, cv2.IMREAD_COLOR)
+
+    return img_cv2
+
+
+def cv2transform(img_cv2):
+    img_cv2resize = cv2.resize(img_cv2, (256, 256), interpolation=cv2.INTER_AREA)
+    img_crop = img_cv2resize[16:240, 16:240]
+    img_cv22np = np.asarray(img_crop)[np.newaxis, :, :, ::-1]
+    img_cv22np = (img_cv22np / 255.0 - default_mean) / default_std
+    img_cv22np_transpose = img_cv22np.transpose(0, 3, 1, 2)
+    # img_half = img_cv22np_transpose.astype(np.float16)
+    img_array = img_cv22np_transpose.astype(np.float32)
+
+    return img_array
 
 
 def process(data_item: dict):
@@ -66,18 +90,21 @@ def process(data_item: dict):
     token_mask = token_ids.clone()
     token_mask[token_ids != 0] = 1
 
-    input_segment_ids = torch.zeros([1, max_len], dtype=torch.int64)
+    input_segment_ids = torch.zeros([1, max_len], dtype=torch.long)
 
-    head_mask = torch.zeros(1, 5, dtype=torch.long)
+    head_mask = torch.zeros([1, 5], dtype=torch.long)
     head_mask[0, country_idx] = 1
 
     frames = []
     if 'image' in data_item:
         try:
-            image_tensor = image_preprocess(data_item['image'])
-            frames.append(image_tensor.half())
+            # image_tensor = image_preprocess(data_item['image'])
+            image_array = cv2transform(load_image(data_item['image']))
+            image_tensor = torch.tensor(image_array)
+            # image_tensor = image_tensor.half()
+            frames.append(image_tensor)
         except:
-            print(f"load image base64 failed -- {data_item['pid']}")
+            print(f"load image base64 failed -- {data_item.get('pid', 'no pid')}")
             return None
 
     frames = torch.stack(frames, dim=0)
@@ -98,88 +125,43 @@ if __name__ == "__main__":
 
     # load ckpt
     model.setup("val")
-    # datamodule.setup("val")
+    model.cuda()
 
-    print(f'generate random input demo')
-    file = 'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/ID_high_risk_1013.jsonl'
-    with hopen(file, 'r') as f:
-        lines = f.readlines()
+    # countries = ['GB', 'TH', 'ID', 'VN', 'MY']
+    countries = ['TH', 'ID', 'MY']
+    for country in countries:
+        file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl'
+        with hopen(file, 'r') as f:
+            lines = f.readlines()
 
-    num_ac = 0
-    num_all = 0
-    for line in lines[:1]:
-        sample = json.loads(line)
-        data = process(sample)
-        input_ids, input_segment_ids, input_mask, frames, frames_mask, head_mask = data
-        # token_ids = torch.zeros([1, 128], dtype=torch.long)
-        # input_segment_ids = torch.zeros([1, 128], dtype=torch.long)
-        # token_mask = torch.zeros([1, 128], dtype=torch.long)
-        # frames = torch.zeros([1, 1, 3, 224, 224], dtype=torch.float32)
-        # frames_mask = torch.zeros([1, 1], dtype=torch.long)
-        # head_mask = torch.ones([1, 5], dtype=torch.long)
+        num_all = 0
+        num_top1 = 0
+        num_top5 = 0
+        for line in tqdm(lines):
+            sample = json.loads(line)
+            data = process(sample)
+            if data is None:
+                continue
+            input_ids, input_segment_ids, input_mask, frames, frames_mask, head_mask = data
 
-        print(f'inferencing')
-        res = model.forward_step(input_ids=input_ids,
-                                 input_segment_ids=input_segment_ids,
-                                 input_mask=input_mask,
-                                 frames=frames,
-                                 frames_mask=frames_mask,
-                                 head_mask=head_mask, )
-        logits = res['logits']
-        label, pred = logits.topk(1, 1, True, True)
-        num_all += 1
-        if gec[sample['leaf_cid']]['label'] == label:
-            num_ac += 1
+            res = model.forward_step(input_ids=input_ids.cuda(),
+                                     input_segment_ids=input_segment_ids.cuda(),
+                                     input_mask=input_mask.cuda(),
+                                     frames=frames.cuda(),
+                                     frames_mask=frames_mask.cuda(),
+                                     head_mask=head_mask.cuda(), )
+            logits = res['logits']
+            prob, pred = logits.topk(5, 1, True, True)
+            labels = [int(p) for p in pred[0]]
 
-    print(f'top1 acc is {num_ac/num_all}')
+            num_all += 1
+            if gec[sample['leaf_cid']]['label'] == labels[0]:
+                num_top1 += 1
+                num_top5 += 1
+            elif gec[sample['leaf_cid']]['label'] in labels:
+                num_top5 += 1
+            else:
+                # print(gec[sample['leaf_cid']]['label'], labels)
+                pass
 
-    # files = [
-    #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/VN_1013.test.jsonl',
-    #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/ID_1013.test.jsonl',
-    #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/MY_1013.test.jsonl',
-    #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/TH_1013.test.jsonl',
-    #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/GB_1013.test.jsonl'
-    # ]
-    #
-    # for file in files:
-    #     print(f'testing on {file}')
-    #     filename = file.split('/')[-1]
-    #     with hopen(file, 'r') as f:
-    #         lines = f.readlines()
-    #
-    #     #
-    #     allres = []
-    #
-    #     for line in tqdm(lines):
-    #         sample = json.loads(line)
-    #         data = process(sample)
-    #
-    #         if data is not None:
-    #             input_ids, input_segment_ids, input_mask, frames, frames_mask = data
-    #             # print(input_ids.shape, input_segment_ids.shape, input_mask.shape,
-    #             # frames.shape, frames_mask.shape)
-    #             # print(input_ids.dtype, input_segment_ids.dtype, input_mask.dtype,
-    #             # frames.dtype, frames_mask.dtype)
-    #             input_ids = input_ids.cuda()
-    #             input_segment_ids = input_segment_ids.cuda()
-    #             input_mask = input_mask.cuda()
-    #             frames = frames.cuda()
-    #             frames_mask = frames_mask.cuda()
-    #         else:
-    #             continue
-    #
-    #         logits = model.infer_step(
-    #             input_ids=input_ids, input_segment_ids=input_segment_ids, input_mask=input_mask,
-    #             frames=frames, frames_mask=frames_mask
-    #         )
-    #
-    #         # print(logits)
-    #         _, pred = logits.topk(1, 1, True, True)
-    #         pred = int(pred.cpu().detach().data.numpy()[0][0])
-    #
-    #         sample['pred'] = pred
-    #         sample['image'] = ''
-    #         allres.append(json.dumps(sample))
-    #
-    #     with open(f'./example/classify/infer_res/{filename}', 'w') as f:
-    #         f.writelines('\n'.join(allres))
+        print(f'{country} top1 acc is {num_top1 / num_all}, top5 acc is {num_top5 / num_all}')

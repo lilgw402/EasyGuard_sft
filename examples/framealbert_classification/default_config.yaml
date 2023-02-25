@@ -5,11 +5,11 @@ trainer:
   log_every_n_steps: 10
   benchmark: false
   enable_speedmonitor: true
-  enable_versions: true
+  enable_versions: false
   detect_anomaly: false
   deterministic: false
   accelerator: gpu
-  accelerator_kwargs: {}
+  accelerator_kwargs: { }
   precision: fp16
   max_epochs: 2
   max_steps: -1
@@ -18,7 +18,7 @@ trainer:
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: [50, 1.0]
+  val_check_interval: [ 50, 1.0 ]
   accumulate_grad_batches: null
   gradient_clip_val: 1.0
   seed: 42
@@ -43,7 +43,7 @@ model:
   # config_backbone: config/config_backbone.yaml
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0205_raw_prop_from_trans_multihead_1e-5/batch_inference_multihead_4626.th
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/model_state_epoch_6640.th
   low_lr_prefix: [ ]
   prefix_changes:
     - backbone.vision.->falbert.visual.
