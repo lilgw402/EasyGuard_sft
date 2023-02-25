@@ -313,7 +313,8 @@ class FrameAlbertClassify(CruiseModule):
         )
         return token_ids, segment_ids, attn_mask, image, image_mask, head_mask
 
-    def trace_step(self, token_ids, segment_ids, attn_mask, image, image_mask, head_mask):
+    def trace_step(self, batch):
+        token_ids, segment_ids, attn_mask, image, image_mask, head_mask = batch
         rep_dict = self.forward_step(
             input_ids=token_ids,
             input_segment_ids=segment_ids,

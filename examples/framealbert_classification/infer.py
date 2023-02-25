@@ -9,7 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from PIL import ImageFile, Image
 
-# from ptx.matx.pipeline import Pipeline
+from ptx.matx.pipeline import Pipeline
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -22,8 +22,8 @@ from easyguard.appzoo.framealbert_classification.data import text_concat, get_tr
 
 max_len = 128
 preprocess = get_transform(mode='val')
-# gec = np.load('./example/classify/GEC_cat.npy', allow_pickle=True).item()
-# pipe = Pipeline.from_option(f'file:/opt/tiger/fex/example/classify/m_albert_h512a8l12')
+gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
+pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
 
 
@@ -98,40 +98,40 @@ if __name__ == "__main__":
 
     # load ckpt
     model.setup("val")
-    config_path = './example/classify/config.yaml'
-    ckpt = 'hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0205_raw_prop_from_trans_multihead_1e-5/batch_inference_multihead_4626.th'
-    print(f'loading ckpt')
-    model.partial_load_from_checkpoints(
-        checkpoints=ckpt,
-        rename_params=None,
-        map_location='cpu',
-    )
-    print(f'finished weight load')
     # datamodule.setup("val")
 
     print(f'generate random input demo')
-    file = 'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/GB_1013.test.jsonl'
+    file = 'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/ID_high_risk_1013.jsonl'
     with hopen(file, 'r') as f:
         lines = f.readlines()
 
-    sample = json.loads(lines[0])
-    data = process(sample)
-    input_ids, input_segment_ids, input_mask, frames, frames_mask, head_mask = data
-    token_ids = torch.zeros([1, 128], dtype=torch.long)
-    input_segment_ids = torch.zeros([1, 128], dtype=torch.long)
-    token_mask = torch.zeros([1, 128], dtype=torch.long)
-    frames = torch.zeros([1, 1, 3, 224, 224], dtype=torch.float32)
-    frames_mask = torch.zeros([1, 1], dtype=torch.long)
-    head_mask = torch.ones([1, 5], dtype=torch.long)
+    num_ac = 0
+    num_all = 0
+    for line in lines[:1]:
+        sample = json.loads(line)
+        data = process(sample)
+        input_ids, input_segment_ids, input_mask, frames, frames_mask, head_mask = data
+        # token_ids = torch.zeros([1, 128], dtype=torch.long)
+        # input_segment_ids = torch.zeros([1, 128], dtype=torch.long)
+        # token_mask = torch.zeros([1, 128], dtype=torch.long)
+        # frames = torch.zeros([1, 1, 3, 224, 224], dtype=torch.float32)
+        # frames_mask = torch.zeros([1, 1], dtype=torch.long)
+        # head_mask = torch.ones([1, 5], dtype=torch.long)
 
-    print(f'inferencing')
-    res = model.forward_step(input_ids=token_ids,
-                             input_segment_ids=input_segment_ids,
-                             input_mask=token_mask,
-                             frames=frames,
-                             frames_mask=frames_mask,
-                             head_mask=head_mask, )
-    print(res)
+        print(f'inferencing')
+        res = model.forward_step(input_ids=input_ids,
+                                 input_segment_ids=input_segment_ids,
+                                 input_mask=input_mask,
+                                 frames=frames,
+                                 frames_mask=frames_mask,
+                                 head_mask=head_mask, )
+        logits = res['logits']
+        label, pred = logits.topk(1, 1, True, True)
+        num_all += 1
+        if gec[sample['leaf_cid']]['label'] == label:
+            num_ac += 1
+
+    print(f'top1 acc is {num_ac/num_all}')
 
     # files = [
     #     'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013/VN_1013.test.jsonl',

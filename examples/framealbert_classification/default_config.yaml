@@ -58,6 +58,7 @@ data:
   num_workers: 4
   text_len: 128
   frame_len: 1
+  head_num: 5
   exp: cruise_raw_prop_from_trans_5e-6
   download_files:
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/GEC_cat.npy->/opt/tiger/easyguard

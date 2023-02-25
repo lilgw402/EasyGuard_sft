@@ -12,10 +12,18 @@ if __name__ == "__main__":
                     trainer_defaults={},
                     )
     cfg, trainer, model, datamodule = cli.parse_args()
-    model.setup("val")
-    datamodule.setup("val")
+    model.setup(stage="val")
+    datamodule.setup(stage="val")
 
-    checkpoint_path = "hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/model_state_epoch_38000.th"
-    export_dir = "/mlx_devbox/users/wangxian.137/repo/22/EasyGuard/traced_model"
-    trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode='anyon',
-                  checkpoint_path=checkpoint_path, export_dir=export_dir)
+    trace_loader = datamodule.val_dataloader()
+
+    checkpoint_path = ''
+    export_dir = "./traced_model"
+    print(f'exporting model')
+    trainer.trace(
+        model_deploy=model,
+        trace_dataloader=trace_loader,
+        mode='anyon',
+        checkpoint_path=checkpoint_path,
+        export_dir=export_dir
+        )

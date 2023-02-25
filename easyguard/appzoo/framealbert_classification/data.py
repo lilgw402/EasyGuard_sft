@@ -82,6 +82,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.is_training = is_training
         self.text_len = config.text_len
         self.frame_len = config.frame_len
+        self.head_num = config.head_num
         if 'maplabel' in config.exp:
             self.second_map = np.load('/opt/tiger/easyguard/second_map.npy', allow_pickle=True).item()
             print(f'=============== apply label map to finetune on high risk map ===============')
@@ -90,11 +91,15 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
 
         self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
-        self.PAD = self.pipe.special_tokens['pad']
+        # self.PAD = self.pipe.special_tokens['pad']
         self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
             self.black_frame = self.preprocess(self._load_image(f.read()))
+
+        self.country2idx = {
+            'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4,
+        }
 
     def __len__(self):
         # world_size = os.environ.get('WORLD_SIZE') if os.environ.get('WORLD_SIZE') is not None else 1
@@ -188,7 +193,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 yield input_dict
 
             except Exception as e:
-                pass
+                print(f'error in dataset: {e}')
 
     def collect_fn(self, data):
         frames = []
@@ -199,12 +204,12 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_mask = []
         input_segment_ids = []
         # weights = []
-        max_len = self.max_len
+        max_len = self.text_len
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
             # country_idx.append(ibatch["country_idx"])
-            head = torch.zeros(self.head_num)
+            head = torch.zeros(self.head_num, dtype=torch.long)
             head[ibatch["country_idx"]] = 1
             head_mask.append(head)
             input_ids.append(ibatch['input_ids'])
@@ -246,7 +251,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_mask = torch.cat(input_mask, dim=0)
         # input_ids = torch.tensor(input_ids)
         # input_mask = torch.tensor(input_mask)
-        input_segment_ids = torch.tensor(input_segment_ids)
+        input_segment_ids = torch.tensor(input_segment_ids, dtype=torch.long)
         # weights = torch.tensor(weights)
 
         res = {"frames": frames, "frames_mask": frames_mask,
@@ -310,6 +315,7 @@ class FacDataModule(CruiseDataModule):
             num_workers: int = 8,
             text_len: int = 128,
             frame_len: int = 1,
+            head_num: int = 5,
             exp: str = 'default',
             download_files: list = []
     ):
@@ -326,7 +332,7 @@ class FacDataModule(CruiseDataModule):
                 print(f'downloading {src} to {str}')
                 os.system(f"hdfs dfs -copyToLocal {src} {tar}")
 
-    def setup(self) -> None:
+    def setup(self, stage) -> None:
         self.train_dataset = TorchvisionLabelDataset(
             self.hparams,
             data_path=self.hparams.train_files,
