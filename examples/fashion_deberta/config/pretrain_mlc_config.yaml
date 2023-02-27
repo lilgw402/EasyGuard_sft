@@ -11,7 +11,7 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: {}
   precision: fp16
-  max_epochs: 20
+  max_epochs: 10
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: null
