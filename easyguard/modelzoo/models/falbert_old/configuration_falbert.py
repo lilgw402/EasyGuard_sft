@@ -1,14 +1,27 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List, Optional
 
+from ....utils import typecheck
 from ...configuration_utils import ConfigBase
 
 
 class FalBertConfig(ConfigBase):
-    def __init__(self, **kwargs) -> None:
+    @typecheck(object, dict, dict)
+    def __init__(
+        self,
+        model_type: str,
+        text_config: Dict[str, Any],
+        vision_config: Dict[str, Any],
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
-        text_config = kwargs.pop("text_config", None)
-        vision_config = kwargs.pop("vision_config", None)
+        self.model_type = model_type
+        self.text_config_dict = text_config
+        self.vision_config_dict = vision_config
+        self.text_processor_config = FalBertTextConfig(**self.text_config_dict)
+        self.image_processor_config = FalBertVisionConfig(
+            **self.vision_config_dict
+        )
 
     def config_update_for_pretrained(self, **kwargs):
         ...
@@ -23,16 +36,9 @@ class FalBertVisionConfig(ConfigBase):
     depths: List[int]
     num_heads: List[int]
 
-    def __post_init__(self):
-        super().__init__(**self.__dict__)
-
-    def config_update_for_pretrained(self, **kwargs):
-        ...
-
 
 @dataclass
 class FalBertTextConfig(ConfigBase):
-    model_name: str
     vocab_size: int
     embedding_size: int
     num_hidden_layers: int
@@ -51,9 +57,3 @@ class FalBertTextConfig(ConfigBase):
     visual_dim: int
     layernorm_eps: float
     freeze_prefix: list
-
-    def __post_init__(self):
-        super().__init__(**self.__dict__)
-
-    def config_update_for_pretrained(self, **kwargs):
-        ...

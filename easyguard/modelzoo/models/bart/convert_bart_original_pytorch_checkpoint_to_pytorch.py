@@ -23,6 +23,7 @@ import fairseq
 import torch
 from packaging import version
 from torch import nn
+
 from transformers import (
     BartConfig,
     BartForConditionalGeneration,
@@ -30,7 +31,8 @@ from transformers import (
     BartModel,
     BartTokenizer,
 )
-from transformers.utils import logging
+
+from ...utils import logging
 
 FAIRSEQ_MODELS = [
     "bart.large",
@@ -45,8 +47,6 @@ extra_arch = {
 if version.parse(fairseq.__version__) < version.parse("0.9.0"):
     raise Exception("requires fairseq >= 0.9.0")
 
-
-logging.set_verbosity_info()
 logger = logging.get_logger(__name__)
 
 SAMPLE_TEXT = " Hello world! cécé herlolip"

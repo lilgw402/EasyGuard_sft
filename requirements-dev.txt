@@ -8,3 +8,4 @@ byted-wandb -i https://bytedpypi.byted.org/simple
 sentencepiece==0.1.97
 pre-commit==2.21.0
 prettytable
+byted-cruise==0.3.4

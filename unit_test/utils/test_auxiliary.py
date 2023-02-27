@@ -2,7 +2,7 @@ import unittest
 
 from unit_test import TEST_FLAGS
 
-TEST_FLAGS = ["all"]
+TEST_FLAGS = ["convert_model_weight"]
 
 
 class TestAuxiliary(unittest.TestCase):
@@ -60,8 +60,8 @@ class TestAuxiliary(unittest.TestCase):
     def test_convert_model_weight(self):
         from easyguard.utils.auxiliary_utils import convert_model_weights
 
-        path = "/root/.cache/easyguard/models/fashionxlm_moe/6c2f5988fb7ea932b4914cf0fc6c1acb2460de2ee93f2a31370fa9d45f070f37/pytorch_model_old.bin"
-        # convert_model_weights(path, "backbone.", remove_old=False)
+        path = "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/cache/epoch=9-step=970000-val_loss=0.749.ckpt"
+        convert_model_weights(path, "backbone.", remove_old=False)
 
 
 if __name__ == "__main__":

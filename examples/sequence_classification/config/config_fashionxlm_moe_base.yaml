@@ -98,7 +98,7 @@ data:
   data_size: 16220
   val_step: 10
   num_workers: 1
-  tokenizer: fashionxlm-base
+  tokenizer: fashionxlm-moe-base
   x_key: text
   y_key: label
   region_key: country
