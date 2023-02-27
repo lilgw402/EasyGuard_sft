@@ -10,18 +10,20 @@ if __name__ == "__main__":
                     trainer_defaults={},
                     )
     cfg, trainer, model, datamodule = cli.parse_args()
-    model.setup(stage="val")
+    model.setup(stage="val")        # 初始化模型
 
-    datamodule.setup(stage="val")
-    trace_loader = datamodule.val_dataloader()
+    datamodule.setup(stage="val")   # 初始化datamodule
+    trace_loader = datamodule.val_dataloader()  # 取dataloader用于生成模型输入
 
-    checkpoint_path = ''
-    export_dir = "./traced_model"
+    checkpoint_path = ''            # 若path为空，则导出当前模型的权重，否则加载path的权重文件后再导出
+    export_dir = "./traced_model"   # 指定导出路径，文件夹会自动创建
 
     trainer.trace(
         model_deploy=model,
         trace_dataloader=trace_loader,
-        mode='anyon',
+        mode='anyon',               # 在此使用anyon模式导出
         checkpoint_path=checkpoint_path,
         export_dir=export_dir
     )
+
+# python3 examples/xxx/trace.py --config examples/default_config.yaml

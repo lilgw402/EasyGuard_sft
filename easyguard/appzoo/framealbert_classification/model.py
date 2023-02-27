@@ -304,6 +304,8 @@ class FrameAlbertClassify(CruiseModule):
         self.log("val_top5_acc", top1_acc, console=True)
 
     def trace_before_step(self, batch):
+        # batch为dataloader的输出，一般为dict形式
+        # 在trace_before_step中需要将dict形式的batch拆成list或tuple，再传入trace_step
         token_ids, segment_ids, attn_mask, image, image_mask, head_mask = (
             batch["input_ids"],
             batch["input_segment_ids"],
@@ -315,6 +317,8 @@ class FrameAlbertClassify(CruiseModule):
         return token_ids, segment_ids, attn_mask, image, image_mask, head_mask
 
     def trace_step(self, batch):
+        # batch为list或tuple
+        # 在本方法中实现推理，并输出希望得到的推理结果，如logits
         token_ids, segment_ids, attn_mask, image, image_mask, head_mask = batch
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -324,12 +328,11 @@ class FrameAlbertClassify(CruiseModule):
             frames_mask=image_mask,
             head_mask=head_mask,
         )
-
         logits = rep_dict["logits"]
-
         return logits
 
     def trace_after_step(self, result):
+        # 按照本文档导出无需实现该方法，留空即可
         pass
 
     def configure_optimizers(self):
