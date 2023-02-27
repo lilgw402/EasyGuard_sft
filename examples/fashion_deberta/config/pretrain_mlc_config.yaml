@@ -1,5 +1,5 @@
 trainer:
-  default_root_dir: /mnt/bd/wanli.0815/cruise/cruise_logs
+  default_root_dir: wanli.0815/easy_guard/easy_guard_logs
   default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/outputs
   logger: true
   log_every_n_steps: 100
