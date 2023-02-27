@@ -212,8 +212,7 @@ class FashionDebertaModel(CruiseModule):
             self.val_return_loss_dict["mlm_acc"] = mlm_acc
             if self.hparams.multi_label_enable:
                 # micro-f1, macro-f1
-                cpu_pred = (
-                        classification_pred_logits > self.hparams.multi_label_threshold).clone().detach().int().cpu().tolist()
+                cpu_pred = (classification_pred_logits > self.hparams.multi_label_threshold).clone().detach().int().cpu().tolist()
                 cpu_labels = classification_labels.cpu().tolist()
                 micro_f1, macro_f1, _ = calc_micro_macro(cpu_pred, cpu_labels)
                 self.val_return_loss_dict["cpu_pred"] = cpu_pred
