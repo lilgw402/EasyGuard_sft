@@ -1,6 +1,7 @@
 import hashlib
 import os
 import sys
+import time
 from typing import Any, Dict, List, Optional, OrderedDict, Union
 from xml.parsers.expat import model
 
@@ -21,6 +22,10 @@ from .type_utils import typecheck
 from .yaml_utils import file_read
 
 PRINT_HELP = []
+# hdfs may fail to download target file, wo we use this variable to control the number of download
+RETYR_TIMES = 3
+FILE_TEMP = ".temp_{}"
+
 
 logger = get_logger(__name__)
 
@@ -83,6 +88,7 @@ def cache_file(
     file_name: Optional[Union[str, set]] = None,
     remote_url: Optional[str] = None,
     model_type: Optional[str] = None,
+    download_retry_number: Optional[int] = RETYR_TIMES,
     *args,
     **kwargs,
 ) -> str:
@@ -118,9 +124,20 @@ def cache_file(
         return model_name_path
     elif model_type is not None:
         hash_ = sha256(model_name_path)
+        file_temp_ = FILE_TEMP.format(hash_)
         model_path_local = os.path.join(
             EASYGUARD_MODEL_CACHE, model_type, hash_
         )
+        # a temp file to indicate whether the download is in progress
+        file_temp_path = os.path.join(model_path_local, file_temp_)
+
+        if os.path.exists(file_temp_path):
+            logger.info(
+                f"there is a another process which is downloading the target file {file_name}"
+            )
+            while os.path.exists(file_temp_path):
+                time.sleep(2)
+
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
             if model_file_local not in PRINT_HELP:
@@ -148,6 +165,9 @@ def cache_file(
                 )
             # diffent servers, different processes
             if model_path_remote.startswith("hdfs://"):
+                # if start to download, create a temp file to indicate
+                file_temp_f = open(file_temp_path, "w")
+                file_temp_f.close()
                 model_file_path_remote = None
                 for remote_path_ in model_file_remote_list:
                     if hexists(remote_path_):
@@ -158,19 +178,32 @@ def cache_file(
                         logger.info(
                             f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
                         )
-                    hmget([model_file_path_remote], model_path_local)
-                    # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
-                    model_file_path_local = os.path.join(
-                        model_path_local,
-                        model_file_path_remote.split(REMOTE_PATH_SEP)[-1],
-                    )
-                    if os.path.getsize(model_file_path_local) == 0:
-                        os.remove(model_file_path_local)
-                        logger.warning(
-                            f"fail to download `{model_file_path_remote}`, please check the network or the remote file path"
-                        )
-                    else:
-                        PRINT_HELP.append(model_file_path_remote)
+                    try:
+                        retry_number = 2
+                        while download_retry_number > 0:
+                            hmget([model_file_path_remote], model_path_local)
+                            # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
+                            model_file_path_local = os.path.join(
+                                model_path_local,
+                                model_file_path_remote.split(REMOTE_PATH_SEP)[
+                                    -1
+                                ],
+                            )
+                            if os.path.getsize(model_file_path_local) == 0:
+                                os.remove(model_file_path_local)
+                                logger.warning(
+                                    f"fail to download `{model_file_path_remote}`, please check the network or the remote file path, we are trying to download the {retry_number}th time"
+                                )
+                                download_retry_number -= 1
+                                retry_number += 1
+                            else:
+                                PRINT_HELP.append(model_file_path_remote)
+                                break
+                    finally:
+                        # just delete the temp file whether the download is successful or not
+                        if os.path.exists(file_temp_path):
+                            os.remove(file_temp_path)
+
                 else:
                     raise FileNotFoundError(
                         f"`{model_file_remote_list}` can not be found in remote server"
