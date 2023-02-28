@@ -38,6 +38,7 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 
+from ...modeling_utils import ModelBase
 from .configuration_fashionxlm import FashionxlmConfig
 
 logger = logging.get_logger(__name__)
@@ -1513,7 +1514,7 @@ class DebertaV2OnlyMLMHead(nn.Module):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
-class FashionxlmForSequenceClassification(DebertaV2PreTrainedModel):
+class FashionxlmForSequenceClassification(DebertaV2PreTrainedModel, ModelBase):
     def __init__(self, config):
         super().__init__(config)
 
