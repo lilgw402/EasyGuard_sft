@@ -23,7 +23,7 @@ SPIECE_UNDERLINE = SENTENCEPIECE_UNDERLINE  # Kept for backward compatibility
 
 # for pretrained model parse
 HDFS_HUB_CN = "hdfs://haruna/home/byte_ecom_govern/easyguard"
-HDFS_HUB_VA = "hdfs://haruna/home/byte_ecom_govern/easyguard"
+HDFS_HUB_VA = "hdfs://harunava/home/byte_magellan_va/easyguard"
 SERVER_MAPPING = OrderedDict([["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)]])
 REGION_MAPPING = OrderedDict([["CN", 0], ["VA", 1]])
 _import_structure = {
