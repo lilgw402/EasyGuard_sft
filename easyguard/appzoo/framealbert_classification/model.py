@@ -42,19 +42,6 @@ from .optimization import *
 from .optimization import AdamW
 
 
-# def p_fix_r(output, labels, fix_r):
-#     output_sort = output[(-output).argsort()]
-#     labels_sort = labels[(-output).argsort()]
-#     num_pos = np.sum(labels == 1)
-#     recall_sort = np.cumsum(labels_sort) / float(num_pos)
-#     index = np.abs(recall_sort - fix_r).argmin()
-#     thr = output_sort[index]
-#     precision = np.sum(((output >= thr) == labels) * labels) / np.sum(
-#         output >= thr
-#     )
-#     return precision, recall_sort[index], thr
-
-
 class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
@@ -63,6 +50,7 @@ class FrameAlbertClassify(CruiseModule):
             config_optim,
             low_lr_prefix: list = [],
             use_multihead: bool = True,
+            all_gather: bool = False,
             load_pretrained: str = None,
             prefix_changes: list = [],
     ):
@@ -131,8 +119,8 @@ class FrameAlbertClassify(CruiseModule):
 
     def criterion(self, logits, label, use_gather=False):
         if use_gather:
-            # gather_logits = allgather(logits.contiguous(), self.trainer.rank, self.trainer.world_size)
-            # gather_label = allgather(label.contiguous(), self.trainer.rank, self.trainer.world_size)
+            # gather_logits = self.all_gather(logits.contiguous(), self.trainer.rank, self.trainer.world_size)
+            # gather_label = self.all_gather(label.contiguous(), self.trainer.rank, self.trainer.world_size)
             # loss = self.ce(gather_logits, gather_label)
             loss = self.ce(logits, label)
             return loss
@@ -240,7 +228,7 @@ class FrameAlbertClassify(CruiseModule):
             head_mask=head_mask,
         )
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=False)
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=self.hparams.all_gather)
         res = {
             "loss": loss,
             "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
@@ -269,7 +257,7 @@ class FrameAlbertClassify(CruiseModule):
             head_mask=head_mask,
         )
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=False)
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=self.hparams.all_gather)
         res = {"val_loss": loss}
 
         acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))

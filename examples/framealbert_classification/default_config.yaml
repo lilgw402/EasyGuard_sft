@@ -46,6 +46,7 @@ model:
   low_lr_prefix:
     - falbert.visual.
   use_multihead: false
+  all_gather: false
   load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th
   prefix_changes:
