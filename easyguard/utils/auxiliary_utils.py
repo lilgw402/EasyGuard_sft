@@ -124,7 +124,13 @@ def cache_file(
         return model_name_path
     elif model_type is not None:
         hash_ = sha256(model_name_path)
-        file_temp_ = FILE_TEMP.format(hash_)
+        hash_file = (
+            sha256(file_name)
+            if isinstance(file_name, str)
+            else sha256("-".join(sorted(file_name)))
+        )
+
+        file_temp_ = FILE_TEMP.format(hash_file)
         model_path_local = os.path.join(
             EASYGUARD_MODEL_CACHE, model_type, hash_
         )

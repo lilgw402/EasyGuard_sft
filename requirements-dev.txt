@@ -1,11 +1,31 @@
 # Use --index-url=https://bytedpypi.byted.org/simple/
 # See https://python.byted.org/pip-setup.html
 
-protobuf==3.17.3
 byted-dataloader==0.3.1
-bytedtitan==0.0.4
-byted-wandb -i https://bytedpypi.byted.org/simple
-sentencepiece==0.1.97
-pre-commit==2.21.0
-prettytable
+jsonargparse[signatures]==4.14 
+fsspec 
+dill 
+tqdm 
+pyyaml==5.4.1
+protobuf==3.20 
+tensorflow-cpu==2.8 
+tensorboard==2.8 
+py-spy 
+tensorflow-io==0.25.0
+pyarrow==4.0.1 
+pandas==1.3.5 
+timm==0.6.7
+transformers>=4.21.0
+deepspeed==0.7.3 
+bytedtcc==1.4.2
+sentencepiece==0.1.97 
+opencv-python
+yacs==0.1.8
+absl-py 
+bytedabase 
+prettytable 
+huggingface-hub>=0.10.0
 byted-cruise==0.3.4
+matplotlib
+byted-wandb -i https://bytedpypi.byted.org/simple
+pre-commit==2.21.0

@@ -157,3 +157,7 @@ events.out*
 
 # cruise
 *cruise_logs/
+
+# output
+*.stderr
+*.stdout
