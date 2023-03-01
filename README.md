@@ -12,10 +12,9 @@ EasyGuard是基于AML的Cruise框架扩展的业务算法的代码库，旨在�
 [Warning:代码处于快速迭代期，核心代码需要UT保护，不然可能会被破坏!]()
 
 ## Job
+推荐用Merlin
 * Merlin中国区（MLX-Lab）: https://ml.bytedance.net/development/repos/207/detail?sid=3c70c89545eb65c3
 * Merlin海外：https://ml.byteintl.net/development/repos/22/detail?sid=fbed5f4d85cdce20
-* 海外jobs：https://arnold-i18n.byted.org/job/3807
-* 中国jobs：https://arnold.byted.org/job/27576
 
 ## 依赖
 

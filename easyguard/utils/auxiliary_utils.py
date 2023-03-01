@@ -23,7 +23,7 @@ from .yaml_utils import file_read
 
 PRINT_HELP = []
 # hdfs may fail to download target file, wo we use this variable to control the number of download
-RETYR_TIMES = 3
+RETYR_TIMES = 5
 FILE_TEMP = ".temp_{}"
 
 
@@ -124,7 +124,13 @@ def cache_file(
         return model_name_path
     elif model_type is not None:
         hash_ = sha256(model_name_path)
-        file_temp_ = FILE_TEMP.format(hash_)
+        hash_file = (
+            sha256(file_name)
+            if isinstance(file_name, str)
+            else sha256("-".join(sorted(file_name)))
+        )
+
+        file_temp_ = FILE_TEMP.format(hash_file)
         model_path_local = os.path.join(
             EASYGUARD_MODEL_CACHE, model_type, hash_
         )
@@ -189,16 +195,17 @@ def cache_file(
                                     -1
                                 ],
                             )
-                            if os.path.getsize(model_file_path_local) == 0:
-                                os.remove(model_file_path_local)
-                                logger.warning(
-                                    f"fail to download `{model_file_path_remote}`, please check the network or the remote file path, we are trying to download the {retry_number}th time"
-                                )
-                                download_retry_number -= 1
-                                retry_number += 1
-                            else:
-                                PRINT_HELP.append(model_file_path_remote)
-                                break
+                            if os.path.exists(model_file_path_local):
+                                if os.path.getsize(model_file_path_local) == 0:
+                                    os.remove(model_file_path_local)
+                                    logger.warning(
+                                        f"fail to download `{model_file_path_remote}`, please check the network or the remote file path, we are trying to download the {retry_number}th time"
+                                    )
+                                    download_retry_number -= 1
+                                    retry_number += 1
+                                else:
+                                    PRINT_HELP.append(model_file_path_remote)
+                                    break
                     finally:
                         # just delete the temp file whether the download is successful or not
                         if os.path.exists(file_temp_path):

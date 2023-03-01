@@ -44,6 +44,7 @@ class HubBase(ABC):
 # TODO: 实现本地数据中心
 class AutoHubClass:
     kwargs = None
+    hub_class = None
 
     def __init__(self) -> None:
         """a factory, just used for instantiate a hub class and take over all properties and methods of the template object
@@ -62,7 +63,6 @@ class AutoHubClass:
         _type_
             _description_
         """
-        super().__init__()
         server_name: str = self.kwargs.pop("server_name", None)
         archive_name: str = self.kwargs.pop("archive_name", None)
         model_type: str = self.kwargs.pop("model_type", None)
@@ -82,7 +82,7 @@ class AutoHubClass:
                     setattr(self, key_, getattr(class_instance, key_))
 
 
-# TODO (junwei.Dong): hub中心暂时能用了，但是__mro__的继承链问题仍然没有解决，不知道问题出在哪，在继承链里的类按照顺序没有正常初始化，很奇怪，该问题解决可以在多继承中不用显示进行父类的初始化
+# TODO (junwei.Dong): hub中心如何更加有效的给模型提供下载文件的功能，基于__mro__继承链的多继承很难实现，多继承最好的方式还是用来做功能组合
 class HdfsHub(HubBase):
     hub_urls = [HDFS_HUB_CN, HDFS_HUB_VA]
 
