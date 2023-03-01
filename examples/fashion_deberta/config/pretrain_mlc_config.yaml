@@ -1,6 +1,6 @@
 trainer:
-  default_root_dir: /mnt/bd/wanli-hl/mnt/bd/wanli-hl/experiments/lm_pretrain/ccr_item_model/logs
-  default_hdfs_dir: /mnt/bd/wanli-hl/mnt/bd/wanli-hl/experiments/lm_pretrain/ccr_item_model/outputs
+  default_root_dir: /mnt/bd/wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs/logs
+  default_hdfs_dir: /mnt/bd/wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs
   logger: true
   log_every_n_steps: 100
   benchmark: false
@@ -53,11 +53,11 @@ model:
   auc_score_enable: false
   partial_load_from_checkpoints_path: ''
   multi_label_enable: true
-  multi_label_map_file: /mnt/bd/wanli-hl/experiments/lm_pretrain/ccr_item_model/data/ccr_item_model_label2ids.json
+  multi_label_map_file: /mnt/bd/wanli.0815/experiments/lm_pretrain/item_ccr_model/data/ccr_item_model_label2ids.json
   multi_label_threshold: 0.5
   hidden_size: 768
   hf_enable: false
-  vocab_file_path: /mnt/bd/wanli-hl/resources/vocabulary/chinese_deberta_base_L6_vocab.txt
+  vocab_file_path: /mnt/bd/wanli.0815/resources/vocabulary/chinese_deberta_base_L6_vocab.txt
 data:
   train_batch_size: 64
   val_batch_size: 8
@@ -75,8 +75,8 @@ data:
   key_span_file_path: ''
   max_forward_search_step: 6
   multi_label_enable: true
-  multi_label_map_file: /mnt/bd/wanli-hl/experiments/lm_pretrain/ccr_item_model/data/ccr_item_model_label2ids.json
+  multi_label_map_file: /mnt/bd/wanli.0815/experiments/lm_pretrain/item_ccr_model/data/ccr_item_model_label2ids.json
   multi_label_split_token: ','
-  vocab_file_path: /mnt/bd/wanli-hl/resources/vocabulary/chinese_deberta_base_L6_vocab.txt
+  vocab_file_path: /mnt/bd/wanli.0815/resources/vocabulary/chinese_deberta_base_L6_vocab.txt
   pretrain_model_name: deberta_base_6l
 log_level: INFO
