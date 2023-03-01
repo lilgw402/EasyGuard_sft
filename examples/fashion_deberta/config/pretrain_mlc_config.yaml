@@ -1,5 +1,5 @@
 trainer:
-  default_root_dir: /mnt/bd/wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs/logs
+  default_root_dir: wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs/logs
   default_hdfs_dir: /mnt/bd/wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs
   logger: true
   log_every_n_steps: 100
@@ -59,7 +59,7 @@ model:
   hf_enable: false
   vocab_file_path: /mnt/bd/wanli.0815/resources/vocabulary/chinese_deberta_base_L6_vocab.txt
 data:
-  train_batch_size: 16
+  train_batch_size: 64
   val_batch_size: 8
   train_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/train_data/part*
   val_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/valid_data/part*
