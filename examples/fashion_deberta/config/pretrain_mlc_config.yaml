@@ -11,7 +11,7 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: {}
   precision: fp16
-  max_epochs: 10
+  max_epochs: 20
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: null
@@ -63,7 +63,7 @@ data:
   val_batch_size: 8
   train_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/train_data/part*
   val_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/valid_data/part*
-  data_size: 188492675
+  data_size: 38780876
   val_step: 0
   classification_task_enable: true
   text_label_field: label
