@@ -1,5 +1,6 @@
 import io
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
 import random
 import re
