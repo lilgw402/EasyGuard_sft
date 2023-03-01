@@ -19,10 +19,11 @@ from cruise.utilities.hdfs_io import hopen, hlist_files
 from easyguard.appzoo.framealbert_classification.data import FacDataModule
 from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassify
 
-from easyguard.appzoo.framealbert_classification.data import text_concat, get_transform
+from easyguard.appzoo.framealbert_classification.data import text_concat
+# from easyguard.appzoo.framealbert_classification.data import get_transform
 
 max_len = 128
-preprocess = get_transform(mode='val')
+# preprocess = get_transform(mode='val')
 gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
 # pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
 tokenizer = AutoTokenizer.from_pretrained('/opt/tiger/easyguard/xlm-roberta-base-torch')

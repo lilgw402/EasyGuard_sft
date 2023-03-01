@@ -1,11 +1,11 @@
 trainer:
-  default_root_dir: null
+  default_root_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0301_cruise_xlm_allcat
   default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0301_cruise_xlm_allcat
   logger: true
-  log_every_n_steps: 10
+  log_every_n_steps: 200
   benchmark: false
   enable_speedmonitor: true
-  enable_versions: false
+  enable_versions: true
   detect_anomaly: false
   deterministic: false
   accelerator: gpu
@@ -18,7 +18,7 @@ trainer:
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: [ 50, 1.0 ]
+  val_check_interval: [ 2000, 1.0 ]
   accumulate_grad_batches: null
   gradient_clip_val: 1.0
   seed: 42
@@ -69,4 +69,5 @@ data:
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
     - hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/backbone/xlm-roberta-base-torch->/opt/tiger/easyguard
+    - hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg->/opt/tiger/easyguard
 log_level: INFO

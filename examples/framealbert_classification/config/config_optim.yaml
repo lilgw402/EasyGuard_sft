@@ -3,5 +3,5 @@ optim: AdamW
 #weight_decay: 0.01
 learning_rate: 5.0e-6
 weight_decay: 1.e-4
-lr_schedule: linear
-warmup_steps_factor: 5
+lr_schedule: cosine
+warmup_steps_factor: 0.5
