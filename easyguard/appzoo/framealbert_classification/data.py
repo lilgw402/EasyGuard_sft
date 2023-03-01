@@ -90,17 +90,17 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         #     print(f'=============== apply label map to finetune on high risk map ===============')
         # else:
         #     self.second_map = None
-        self.gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
+        self.gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()
 
         # self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
-        self.tokenizer = AutoTokenizer.from_pretrained('/opt/tiger/easyguard/xlm-roberta-base-torch')
+        self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
         # self.preprocess = get_transform(mode='train' if is_training else 'val')
         self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
         self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
         # with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
         #     self.black_frame = self.preprocess(self._load_image(f.read()))
 
-        black_frame = cv2.imread('/opt/tiger/easyguard/black_image.jpeg')
+        black_frame = cv2.imread('./examples/framealbert_classification/black_image.jpeg')
         self.black_frame = self.cv2transform(black_frame, return_tensor=True)
 
         self.country2idx = {
@@ -369,12 +369,12 @@ class FacDataModule(CruiseDataModule):
             for src, tar in to_download:
                 if not os.path.exists(tar):
                     os.makedirs(tar)
-                print(f'downloading {src} to {str}')
                 fdname = src.split('/')[-1]
                 if os.path.exists(f'{tar}/{fdname}'):
                     print(f'{tar}/{fdname} already existed, pass!')
                 else:
-                    os.system(f"hdfs dfs -copyToLocal {src} {tar}")
+                    print(f'downloading {src} to {tar}')
+                    os.system(f"hdfs dfs -get {src} {tar}")
 
     def setup(self, stage) -> None:
         self.train_dataset = TorchvisionLabelDataset(
