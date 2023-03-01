@@ -61,8 +61,9 @@ class FrameAlbertClassify(CruiseModule):
             config_backbone,
             config_fusion,
             config_optim,
-            load_pretrained: str = None,
             low_lr_prefix: list = [],
+            use_multihead: bool = True,
+            load_pretrained: str = None,
             prefix_changes: list = [],
     ):
         super(FrameAlbertClassify, self).__init__()
@@ -90,7 +91,7 @@ class FrameAlbertClassify(CruiseModule):
         #     fuse_emb_size, self.config_fusion.class_num
         # )
         feat_emb_size = self.config_fusion.feat_emb_size
-        # self.classifier_concat = torch.nn.Linear(feat_emb_size, self.config_fusion.class_num)
+        self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.class_num)
         self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
                                            self.config_fusion.head_num * self.config_fusion.class_num)
         # self.softmax = nn.Softmax(dim=1)
@@ -181,7 +182,10 @@ class FrameAlbertClassify(CruiseModule):
 
         concat_feat = torch.cat([cls_emb, max_pooling], dim=1)
 
-        logits = self.multi_heads_with_mask(concat_feat, head_mask)
+        if self.hparams.use_multihead:
+            logits = self.multi_heads_with_mask(concat_feat, head_mask)
+        else:
+            logits = self.classifier_concat(concat_feat)
 
         return {"feat": concat_feat, "logits": logits}
 

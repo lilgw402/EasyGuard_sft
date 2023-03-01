@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/cruise_raw_prop_from_trans_5e-6
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0301_cruise_xlm_allcat
   logger: true
   log_every_n_steps: 10
   benchmark: false
@@ -43,14 +43,17 @@ model:
   # config_backbone: config/config_backbone.yaml
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/model_state_epoch_6640.th
-  low_lr_prefix: [ ]
+  low_lr_prefix:
+    - falbert.visual.
+  use_multihead: false
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
+  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th
   prefix_changes:
     - backbone.vision.->falbert.visual.
     - backbone.->falbert.
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
-  train_size: 1570000
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
+  train_size: 17380000
   val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_hr_1013_country_slices
   val_size: 16000
   train_batch_size: 64
@@ -62,6 +65,7 @@ data:
   exp: cruise_raw_prop_from_trans_5e-6
   download_files:
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/GEC_cat.npy->/opt/tiger/easyguard
-    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
-    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/backbone/xlm-roberta-base-torch->/opt/tiger/easyguard
 log_level: INFO

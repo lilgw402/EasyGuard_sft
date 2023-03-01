@@ -3,6 +3,7 @@ import os
 import json
 import random
 import re
+import cv2
 import base64
 import emoji
 import numpy as np
@@ -13,12 +14,12 @@ from cruise.data_module import (
     create_cruise_loader,
     customized_processor,
 )
-from ptx.matx.pipeline import Pipeline
-# from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
+# from ptx.matx.pipeline import Pipeline
+from transformers import AutoTokenizer
 
 from cruise.utilities.hdfs_io import hopen
 from .dist_dataset import DistLineReadingDataset
-from .download import get_real_url, get_original_url, download_url_with_exception
+from .download import get_original_url, download_image_to_base64, get_real_url, download_url_with_exception
 from PIL import ImageFile, Image
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -83,15 +84,15 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
         self.head_num = config.head_num
-        if 'maplabel' in config.exp:
-            self.second_map = np.load('/opt/tiger/easyguard/second_map.npy', allow_pickle=True).item()
-            print(f'=============== apply label map to finetune on high risk map ===============')
-        else:
-            self.second_map = None
+        # if 'maplabel' in config.exp:
+        #     self.second_map = np.load('/opt/tiger/easyguard/second_map.npy', allow_pickle=True).item()
+        #     print(f'=============== apply label map to finetune on high risk map ===============')
+        # else:
+        #     self.second_map = None
         self.gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
 
-        self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
-        # self.PAD = self.pipe.special_tokens['pad']
+        # self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
+        self.tokenizer = AutoTokenizer.from_pretrained('/opt/tiger/easyguard/xlm-roberta-base-torch')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
@@ -100,6 +101,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.country2idx = {
             'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4,
         }
+        self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
+        self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
     def __len__(self):
         # world_size = os.environ.get('WORLD_SIZE') if os.environ.get('WORLD_SIZE') is not None else 1
@@ -114,8 +117,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 data_item = json.loads(example)
                 cid = data_item['leaf_cid']
                 label = self.gec[cid]['label']
-                if self.second_map is not None:
-                    label = self.second_map[label]
+                # if self.second_map is not None:
+                #     label = self.second_map[label]
                 # 文本
                 # text = data_item['title']
                 if 'translation' in data_item:
@@ -135,9 +138,19 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     country_idx = self.country2idx[country]
                 text = text_concat(title, desc)
 
-                token_ids = self.pipe.preprocess([text])[0]
-                token_ids = token_ids.asnumpy()
-                token_ids = torch.from_numpy(token_ids)
+                # token_ids = self.pipe.preprocess([text])[0]
+                # token_ids = token_ids.asnumpy()
+                # token_ids = torch.from_numpy(token_ids)
+
+                tokens = self.tokenizer(
+                    [text],
+                    padding='max_length',
+                    max_length=self.text_len,
+                    truncation=True,
+                    return_tensors='pt'
+                )
+                token_ids = tokens['input_ids']
+                attention_mask = tokens['attention_mask']
 
                 # 图像
                 frames = []
@@ -145,7 +158,9 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if 'image' in data_item:
                     # get image by b64
                     try:
-                        image_tensor = self.image_preprocess(data_item['image'])
+                        # image_tensor = self.image_preprocess(data_item['image'])
+                        image_array = self.cv2transform(self.load_image(data_item['image']))
+                        image_tensor = torch.tensor(image_array)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
@@ -155,10 +170,12 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     image = None
                     try:
                         for url in data_item['images']:
-                            image_str = download_url_with_exception(get_original_url(url), timeout=3)
+                            # image_str = download_url_with_exception(get_original_url(url), timeout=3)
+                            image_str = download_image_to_base64(get_original_url(url), timeout=3)
                             if image_str != b'' and image_str != '':
                                 try:
-                                    image = Image.open(io.BytesIO(image_str)).convert("RGB")
+                                    # image = Image.open(io.BytesIO(image_str)).convert("RGB")
+                                    image = self.cv2transform(self.load_image(image_str))
                                     break
                                 except:
                                     continue
@@ -188,6 +205,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     'label': label,
                     'country_idx': country_idx,
                     'input_ids': token_ids,
+                    'attention_mask': attention_mask,
                     # 'weight': weight,
                 }
 
@@ -205,7 +223,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_mask = []
         input_segment_ids = []
         # weights = []
-        max_len = self.text_len
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
@@ -214,10 +231,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             head[ibatch["country_idx"]] = 1
             head_mask.append(head)
             input_ids.append(ibatch['input_ids'])
-            input_mask_id = ibatch['input_ids'].clone()
-            input_mask_id[input_mask_id != 0] = 1
-            input_mask.append(input_mask_id)
-            input_segment_ids.append([0] * max_len)
+            # input_mask_id = ibatch['input_ids'].clone()
+            # input_mask_id[input_mask_id != 0] = 1
+            # input_mask.append(input_mask_id)
+            input_mask.append(ibatch['attention_mask'])
+            input_segment_ids.append([0] * self.text_len)
             # weights.append(ibatch['weight'])
 
             img_np = ibatch['frames']
@@ -263,22 +281,41 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                }
         return res
 
-    def image_preprocess(self, image_str):
-        image = self._load_image(self.b64_decode(image_str))
-        image_tensor = self.preprocess(image)
-        return image_tensor
+    def load_image(self, image_str):
+        imgString = base64.b64decode(image_str)
+        image_data = np.fromstring(imgString, np.uint8)
+        image_byte = np.frombuffer(image_data, np.int8)
+        img_cv2 = cv2.imdecode(image_byte, cv2.IMREAD_COLOR)
 
-    @staticmethod
-    def b64_decode(string):
-        if isinstance(string, str):
-            string = string.encode()
-        return base64.decodebytes(string)
+        return img_cv2
 
-    @staticmethod
-    def _load_image(buffer):
-        img = Image.open(io.BytesIO(buffer))
-        img = img.convert('RGB')
-        return img
+    def cv2transform(self, img_cv2):
+        img_cv2resize = cv2.resize(img_cv2, (256, 256), interpolation=cv2.INTER_AREA)
+        img_crop = img_cv2resize[16:240, 16:240]
+        img_cv22np = np.asarray(img_crop)[np.newaxis, :, :, ::-1]
+        img_cv22np = (img_cv22np / 255.0 - self.default_mean) / self.default_std
+        img_cv22np_transpose = img_cv22np.transpose(0, 3, 1, 2)
+        # img_half = img_cv22np_transpose.astype(np.float16)
+        img_array = img_cv22np_transpose.astype(np.float32)
+
+        return img_array
+
+    # def image_preprocess(self, image_str):
+    #     image = self._load_image(self.b64_decode(image_str))
+    #     image_tensor = self.preprocess(image)
+    #     return image_tensor
+    #
+    # @staticmethod
+    # def b64_decode(string):
+    #     if isinstance(string, str):
+    #         string = string.encode()
+    #     return base64.decodebytes(string)
+    #
+    # @staticmethod
+    # def _load_image(buffer):
+    #     img = Image.open(io.BytesIO(buffer))
+    #     img = img.convert('RGB')
+    #     return img
 
 
 def get_transform(mode: str = "train"):
@@ -331,7 +368,11 @@ class FacDataModule(CruiseDataModule):
                 if not os.path.exists(tar):
                     os.makedirs(tar)
                 print(f'downloading {src} to {str}')
-                os.system(f"hdfs dfs -copyToLocal {src} {tar}")
+                fdname = src.split('/')[-1]
+                if os.path.exists(f'{tar}/{fdname}'):
+                    print(f'{tar}/{fdname} already existed, pass!')
+                else:
+                    os.system(f"hdfs dfs -copyToLocal {src} {tar}")
 
     def setup(self, stage) -> None:
         self.train_dataset = TorchvisionLabelDataset(

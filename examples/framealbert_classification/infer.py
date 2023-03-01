@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-import io
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import cv2
 import json
 import time
@@ -8,11 +8,11 @@ import torch
 import base64
 import numpy as np
 from tqdm import tqdm
-from PIL import ImageFile, Image
+# from PIL import ImageFile, Image
+from transformers import AutoTokenizer
+# from ptx.matx.pipeline import Pipeline
 
-from ptx.matx.pipeline import Pipeline
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
+# ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
 from cruise.utilities.hdfs_io import hopen, hlist_files
@@ -24,28 +24,29 @@ from easyguard.appzoo.framealbert_classification.data import text_concat, get_tr
 max_len = 128
 preprocess = get_transform(mode='val')
 gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
-pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
+# pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
+tokenizer = AutoTokenizer.from_pretrained('/opt/tiger/easyguard/xlm-roberta-base-torch')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
 default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
 default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
 
-def image_preprocess(image_str):
-    image = _load_image(b64_decode(image_str))
-    image_tensor = preprocess(image)
-    return image_tensor
-
-
-def b64_decode(string):
-    if isinstance(string, str):
-        string = string.encode()
-    return base64.decodebytes(string)
-
-
-def _load_image(buffer):
-    img = Image.open(io.BytesIO(buffer))
-    img = img.convert('RGB')
-    return img
+# def image_preprocess(image_str):
+#     image = _load_image(b64_decode(image_str))
+#     image_tensor = preprocess(image)
+#     return image_tensor
+#
+#
+# def b64_decode(string):
+#     if isinstance(string, str):
+#         string = string.encode()
+#     return base64.decodebytes(string)
+#
+#
+# def _load_image(buffer):
+#     img = Image.open(io.BytesIO(buffer))
+#     img = img.convert('RGB')
+#     return img
 
 
 def load_image(image_str):
@@ -53,7 +54,8 @@ def load_image(image_str):
     image_data = np.fromstring(imgString, np.uint8)
     image_byte = np.frombuffer(image_data, np.int8)
     img_cv2 = cv2.imdecode(image_byte, cv2.IMREAD_COLOR)
-
+    # img_rgb = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB)
+    # return img_rgb
     return img_cv2
 
 
@@ -83,12 +85,16 @@ def process(data_item: dict):
 
     text = text_concat(title, desc)
 
-    token_ids = pipe.preprocess([text])[0]
-    token_ids = token_ids.asnumpy()
-    token_ids = torch.from_numpy(token_ids)
+    # token_ids = pipe.preprocess([text])[0]
+    # token_ids = token_ids.asnumpy()
+    # token_ids = torch.from_numpy(token_ids)
 
-    token_mask = token_ids.clone()
-    token_mask[token_ids != 0] = 1
+    tokens = tokenizer([text], padding='max_length', max_length=max_len, truncation=True, return_tensors='pt')
+    token_ids = tokens['input_ids']
+    token_mask = tokens['attention_mask']
+
+    # token_mask = token_ids.clone()
+    # token_mask[token_ids != 0] = 1
 
     input_segment_ids = torch.zeros([1, max_len], dtype=torch.long)
 
@@ -164,3 +170,5 @@ if __name__ == "__main__":
                 pass
 
         print(f'{country} top1 acc is {num_top1 / num_all}, top5 acc is {num_top5 / num_all}')
+
+# python3 examples/framealbert_classification/infer.py --config examples/framealbert_classification/default_config.yaml
