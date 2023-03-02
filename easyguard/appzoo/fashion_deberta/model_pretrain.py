@@ -208,8 +208,8 @@ class FashionDebertaModel(CruiseModule):
             self.val_return_loss_dict["val_cls_loss"] = cls_loss
             self.val_return_loss_dict["val_loss"] = cls_loss * self.hparams.cls_weight + mlm_loss
             # acc
-            mlm_acc, _, _ = accuracy(mlm_prediction_logits, mlm_labels)
-            self.val_return_loss_dict["mlm_acc"] = mlm_acc
+            # mlm_acc, _, _ = accuracy(mlm_prediction_logits, mlm_labels)
+            # self.val_return_loss_dict["mlm_acc"] = mlm_acc
             if self.hparams.multi_label_enable:
                 # micro-f1, macro-f1
                 cpu_pred = (classification_pred_logits > self.hparams.multi_label_threshold).clone().detach().int().cpu().tolist()
@@ -239,16 +239,16 @@ class FashionDebertaModel(CruiseModule):
             self.val_return_loss_dict["val_cl_loss"] = cl_loss
             self.val_return_loss_dict["val_mlm_loss"] = mlm_loss
             self.val_return_loss_dict["val_loss"] = cl_loss * self.hparams.cl_weight + mlm_loss
-            acc_result = accuracy(mlm_prediction_logits, mlm_labels)
-            mlm_acc, _, _ = acc_result
-            self.val_return_loss_dict["mlm_acc"] = mlm_acc
+            # acc_result = accuracy(mlm_prediction_logits, mlm_labels)
+            # mlm_acc, _, _ = acc_result
+            # self.val_return_loss_dict["mlm_acc"] = mlm_acc
         # only mlm loss   
         else:
             self.val_return_loss_dict["val_loss"] = mlm_loss
             self.val_return_loss_dict["val_mlm_loss"] = mlm_loss
-            acc_result = accuracy(mlm_prediction_logits, mlm_labels)
-            mlm_acc, _, _ = acc_result
-            self.val_return_loss_dict["mlm_acc"] = mlm_acc
+            # acc_result = accuracy(mlm_prediction_logits, mlm_labels)
+            # mlm_acc, _, _ = acc_result
+            # self.val_return_loss_dict["mlm_acc"] = mlm_acc
         self.val_return_loss_dict["cur_learning_rate"] = self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
         return self.val_return_loss_dict
 
