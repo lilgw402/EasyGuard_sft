@@ -257,10 +257,10 @@ class FashionDebertaModel(CruiseModule):
         all_results = []
         for item in gathered_results:
             all_results.extend(item)
-        acc_all = [out["mlm_acc"] for out in all_results]
-        total_acc = sum(acc_all) / len(acc_all)
-        self.log("total_mlm_acc", total_acc, console=True)
-        print("total_mlm_acc", total_acc)
+        # acc_all = [out["mlm_acc"] for out in all_results]
+        # total_acc = sum(acc_all) / len(acc_all)
+        # self.log("total_mlm_acc", total_acc, console=True)
+        # print("total_mlm_acc", total_acc)
         if self.hparams.classification_task_enable:
             if self.hparams.multi_label_enable:
                 # micro f1 , macro f1
