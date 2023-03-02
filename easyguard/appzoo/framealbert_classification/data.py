@@ -254,7 +254,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             frames_mask.append(frames_mask_cur)
 
         frames_mask = torch.tensor(frames_mask)  # [bsz, frame_num]
-        frames = torch.cat(frames, dim=0)  # [bsz * frame_num, c, h, w]
+        frames = torch.stack(frames, dim=0)  # [bsz * frame_num, c, h, w]
         _, c, h, w = frames.shape
         bsz, frame_num = frames_mask.shape
         frames = frames.reshape([bsz, frame_num, c, h, w])
