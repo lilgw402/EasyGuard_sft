@@ -1,7 +1,7 @@
 optim: AdamW
 #learning_rate: 0.00004
 #weight_decay: 0.01
-learning_rate: 2.0e-4
+learning_rate: 1.0e-4
 weight_decay: 1.e-4
 lr_schedule: cosine
-warmup_steps_factor: 0.5
+warmup_steps_factor: 1
