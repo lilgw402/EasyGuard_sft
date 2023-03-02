@@ -26,4 +26,4 @@ if __name__ == "__main__":
         export_dir=export_dir
     )
 
-# python3 examples/xxx/trace.py --config examples/default_config.yaml
+# python3 examples/framealbert_classification/trace.py --config examples/framealbert_classification/default_config.yaml

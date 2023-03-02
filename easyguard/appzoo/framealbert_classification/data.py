@@ -1,5 +1,6 @@
 import io
 import os
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
 import random
@@ -106,7 +107,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.country2idx = {
             'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4,
         }
-
 
     def __len__(self):
         # world_size = os.environ.get('WORLD_SIZE') if os.environ.get('WORLD_SIZE') is not None else 1

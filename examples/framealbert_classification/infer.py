@@ -24,9 +24,9 @@ from easyguard.appzoo.framealbert_classification.data import text_concat
 
 max_len = 128
 # preprocess = get_transform(mode='val')
-gec = np.load('/opt/tiger/easyguard/GEC_cat.npy', allow_pickle=True).item()
+gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()
 # pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
-tokenizer = AutoTokenizer.from_pretrained('/opt/tiger/easyguard/xlm-roberta-base-torch')
+tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
 default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
 default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
