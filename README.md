@@ -6,8 +6,15 @@
 [Contributors](https://code.byted.org/ecom_govern/EasyGuard/) |
 [Release Notes]()
 
-EasyGuard是基于AML的Cruise框架扩展的业务算法的代码库，旨在给平台治理提供NLP，CV，和多模态的基础算法和解决方案。
-接口设计说明详见：[EasyGuard的框架设计](https://bytedance.feishu.cn/docx/doxcnjT9CWaIH1PNDMg5TLUz7UN)
+EasyGuard是基于AML的Cruise框架扩展的业务算法的代码库，旨在给平台治理提供NLP，CV，和多模态的基础算法和解决方案。目前框架支持治理侧的预训练模型库FashionModdels，知识蒸馏，多任务学习，和模型推理加速等。
+
+EasyGuard的使用说明详见：
+
+* [EasyGuard的框架设计](https://bytedance.feishu.cn/docx/doxcnjT9CWaIH1PNDMg5TLUz7UN)
+* [内容理解基建开发部署流程入门](https://bytedance.feishu.cn/docx/doxcn87hZjRkmyC2lWjkcQiyghh)
+* [EasyGuard / CRUISE开发入门](https://bytedance.feishu.cn/wiki/wikcnFqJR5Y5dgswiuN4Vs5yy6e)
+* [电商治理预训练模型库](https://bytedance.feishu.cn/sheets/shtcnJU6aAYhLP1wdYXFyPXH7mc)
+
 
 [Warning:代码处于快速迭代期，核心代码需要UT保护，不然可能会被破坏!]()
 
