@@ -1,7 +1,8 @@
 import unittest
 
 import torch
-from unit_test import TEST_FLAGS
+
+# test module
 
 TEST_FLAGS = ["all"]
 

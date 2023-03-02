@@ -1358,7 +1358,7 @@ class DebertaV2Model(DebertaV2PreTrainedModel):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForMaskedLM with Deberta->DebertaV2
-class FashionxlmForMaskedLM(DebertaV2PreTrainedModel):
+class FashionxlmForMaskedLM(DebertaV2PreTrainedModel, ModelBase):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [
         r"position_ids",

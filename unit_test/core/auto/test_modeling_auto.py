@@ -1,8 +1,8 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
-TEST_FLAGS = ["hf_model"]
+TEST_FLAGS = ["all"]
 
 
 class TestModelAuto(unittest.TestCase):

@@ -1,8 +1,8 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
-TEST_FLAGS = ["cache_file"]
+TEST_FLAGS = ["all"]
 
 
 class TestAuxiliary(unittest.TestCase):

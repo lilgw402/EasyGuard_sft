@@ -36,6 +36,7 @@ from ....utils import (
     logging,
     replace_return_docstrings,
 )
+from ...modeling_utils import ModelBase
 from .configuration_clip import CLIPConfig, CLIPTextConfig, CLIPVisionConfig
 
 logger = logging.get_logger(__name__)
@@ -1076,7 +1077,7 @@ class CLIPVisionModel(CLIPPreTrainedModel):
 
 
 @add_start_docstrings(CLIP_START_DOCSTRING)
-class CLIPModel(CLIPPreTrainedModel):
+class CLIPModel(CLIPPreTrainedModel, ModelBase):
     config_class = CLIPConfig
 
     def __init__(self, config: CLIPConfig):

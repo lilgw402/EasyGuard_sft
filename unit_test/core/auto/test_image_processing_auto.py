@@ -1,6 +1,6 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
 TEST_FLAGS = ["all"]
 

@@ -356,9 +356,8 @@ class _BaseAutoModelClass:
                     model_weight_file_path = None
         else:
             # if local, check the model weight file path, if not exist, raise a error
-            if (
-                not os.path.exists(model_weight_file_path)
-                and model_weight_file_path is not None
+            if model_weight_file_path is not None and not os.path.exists(
+                model_weight_file_path
             ):
                 raise FileExistsError(
                     f"{model_weight_file_path} does not exist, please check the local path"

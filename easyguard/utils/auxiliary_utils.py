@@ -171,9 +171,6 @@ def cache_file(
                 )
             # diffent servers, different processes
             if model_path_remote.startswith("hdfs://"):
-                # if start to download, create a temp file to indicate
-                file_temp_f = open(file_temp_path, "w")
-                file_temp_f.close()
                 model_file_path_remote = None
                 for remote_path_ in model_file_remote_list:
                     if hexists(remote_path_):
@@ -185,6 +182,9 @@ def cache_file(
                             f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
                         )
                     try:
+                        # if start to download, create a temp file to indicate
+                        file_temp_f = open(file_temp_path, "w")
+                        file_temp_f.close()
                         retry_number = 2
                         while download_retry_number > 0:
                             hmget([model_file_path_remote], model_path_local)
