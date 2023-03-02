@@ -149,3 +149,4 @@ node_modules/
 # train weight
 *.ckpt
 events.out*
+xlm-roberta-base-torch/

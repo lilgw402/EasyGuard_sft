@@ -95,14 +95,15 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
         # self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
         self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
-        # self.preprocess = get_transform(mode='train' if is_training else 'val')
+        self.preprocess = get_transform(mode='train' if is_training else 'val')
         self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
         self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
-        # with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
-        #     self.black_frame = self.preprocess(self._load_image(f.read()))
 
-        black_frame = cv2.imread('./examples/framealbert_classification/black_image.jpeg')
-        self.black_frame = self.cv2transform(black_frame, return_tensor=True)
+        with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
+            self.black_frame = self.preprocess(self._load_image(f.read()))
+
+        # black_frame = cv2.imread('./examples/framealbert_classification/black_image.jpeg')
+        # self.black_frame = self.cv2transform(black_frame, return_tensor=True)
 
         self.country2idx = {
             'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4,
@@ -162,8 +163,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if 'image' in data_item:
                     # get image by b64
                     try:
-                        # image_tensor = self.image_preprocess(data_item['image'])
-                        image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
+                        image_tensor = self.image_preprocess(data_item['image'])
+                        # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
@@ -302,45 +303,45 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 img = img_cv22np_transpose.astype(np.float32)
             return img
 
-    # def image_preprocess(self, image_str):
-    #     image = self._load_image(self.b64_decode(image_str))
-    #     image_tensor = self.preprocess(image)
-    #     return image_tensor
-    #
-    # @staticmethod
-    # def b64_decode(string):
-    #     if isinstance(string, str):
-    #         string = string.encode()
-    #     return base64.decodebytes(string)
-    #
-    # @staticmethod
-    # def _load_image(buffer):
-    #     img = Image.open(io.BytesIO(buffer))
-    #     img = img.convert('RGB')
-    #     return img
+    def image_preprocess(self, image_str):
+        image = self._load_image(self.b64_decode(image_str))
+        image_tensor = self.preprocess(image)
+        return image_tensor
+
+    @staticmethod
+    def b64_decode(string):
+        if isinstance(string, str):
+            string = string.encode()
+        return base64.decodebytes(string)
+
+    @staticmethod
+    def _load_image(buffer):
+        img = Image.open(io.BytesIO(buffer))
+        img = img.convert('RGB')
+        return img
 
 
-# def get_transform(mode: str = "train"):
-#     """
-#     根据不同的data，返回不同的transform
-#     """
-#     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-#                                      std=[0.229, 0.224, 0.225])
-#     if mode == "train":
-#         com_transforms = transforms.Compose([
-#             transforms.RandomResizedCrop(224),
-#             transforms.RandomHorizontalFlip(),
-#             transforms.ToTensor(),
-#             normalize])
-#     elif mode == 'val':
-#         com_transforms = transforms.Compose([
-#             transforms.Resize(256),
-#             transforms.CenterCrop(224),
-#             transforms.ToTensor(),
-#             normalize])
-#     else:
-#         raise ValueError('mode [%s] is not in [train, val]' % mode)
-#     return com_transforms
+def get_transform(mode: str = "train"):
+    """
+    根据不同的data，返回不同的transform
+    """
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    if mode == "train":
+        com_transforms = transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize])
+    elif mode == 'val':
+        com_transforms = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize])
+    else:
+        raise ValueError('mode [%s] is not in [train, val]' % mode)
+    return com_transforms
 
 
 class FacDataModule(CruiseDataModule):
