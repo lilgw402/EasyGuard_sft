@@ -137,6 +137,7 @@ if __name__ == "__main__":
     countries = ['GB', 'TH', 'ID', 'VN', 'MY']
     for country in countries:
         file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl'
+        # file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country/{country}_1013.test.jsonl'
         with hopen(file, 'r') as f:
             lines = f.readlines()
 

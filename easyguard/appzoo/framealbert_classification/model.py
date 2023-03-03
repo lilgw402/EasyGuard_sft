@@ -112,13 +112,13 @@ class FrameAlbertClassify(CruiseModule):
         self.apply(init_weight_module)
 
     def freeze_params(self, freeze_prefix):
-        # for name, param in self.named_parameters():
-        #     for prefix in freeze_prefix:
-        #         if name.startswith(prefix):
-        #             param.requires_grad = False
         for name, param in self.named_parameters():
-            if 'token_embedder_tokens.weight' not in name:
-                param.requires_grad = False
+            for prefix in freeze_prefix:
+                if name.startswith(prefix):
+                    param.requires_grad = False
+        # for name, param in self.named_parameters():
+        #     if 'token_embedder_tokens.weight' not in name:
+        #         param.requires_grad = False
 
     def criterion(self, logits, label, use_gather=False):
         if use_gather:

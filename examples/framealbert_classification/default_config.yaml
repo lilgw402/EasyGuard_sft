@@ -1,8 +1,8 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0302_cruise_train_embedding
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0303_cruise_allcat
   logger: true
-  log_every_n_steps: 200
+  log_every_n_steps: 500
   benchmark: false
   enable_speedmonitor: true
   enable_versions: true
@@ -11,23 +11,23 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: { }
   precision: fp16
-  max_epochs: 15
+  max_epochs: 10
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: 2
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: [ 1000, 1.0 ]
+  val_check_interval: [ 2000, 1.0 ]
   accumulate_grad_batches: null
   gradient_clip_val: 1.0
   seed: 42
   summarize_model_depth: 3
   resume_ckpt_path: null
   callbacks: null
-  enable_checkpoint: true
-  checkpoint_monitor: step
-  checkpoint_mode: max
+  enable_checkpoint: 30
+  checkpoint_monitor: loss
+  checkpoint_mode: min
   dataloader_timeout: -1
   dataloader_retry_limit: 100
   dataloader_retry_persistent_limit: 5
@@ -43,17 +43,18 @@ model:
   # config_backbone: config/config_backbone.yaml
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
-  low_lr_prefix: [ ]
-#    - falbert.visual.
+  low_lr_prefix:
+    - falbert.visual.
   use_multihead: false
   all_gather: false
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0302_cruise_train_embedding/version_2345929/checkpoints/epoch=13-step=115000.ckpt
+  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th
   prefix_changes:
     - backbone.vision.->falbert.visual.
     - backbone.->falbert.
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
   train_size: 17380000
   val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_hr_1013_country_slices
   val_size: 16000
