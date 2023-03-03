@@ -26,7 +26,8 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
     
 from cruise import CruiseTrainer, CruiseModule, CruiseCLI
-from cruise.data_module.byted_data_factory.imagenet import BytedImageNetDataModule
+# from cruise.data_module.byted_data_factory.imagenet import BytedImageNetDataModule
+from examples.image_classification.data import MyDataModule
 
 from easyguard.core.lr_scheduler import build_scheduler
 from easyguard import AutoModel
@@ -51,7 +52,8 @@ class SimpleModel(CruiseModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        x, y = batch['image']['data'], batch['label']
+        # x, y = batch['image']['data'], batch['label']
+        x, y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
         y_pred = torch.argmax(torch.softmax(y_hat, dim=-1), dim=-1)
@@ -60,7 +62,8 @@ class SimpleModel(CruiseModule):
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch['image']['data'], batch['label']
+        x, y = batch
+        # x, y = batch['image']['data'], batch['label']
         y_hat = torch.argmax(torch.softmax(self(x), dim=-1), dim=-1)
         val_acc = torch.sum((y_hat.long()) == y.long()).float() / y.numel()
         self.log('val_acc', val_acc)
@@ -79,7 +82,8 @@ class SimpleModel(CruiseModule):
         low_lr_params_dict = {
             "params": [],
             "weight_decay": self.config_optim.weight_decay,
-            "lr": self.config_optim.base_lr * 0.1,
+            # "lr": self.config_optim.base_lr * 0.1, # here to set low lr parameters
+            "lr": self.config_optim.base_lr,
         }
         normal_params_dict = {
             "params": [],
@@ -125,7 +129,8 @@ class SimpleModel(CruiseModule):
 if __name__ == '__main__':
     cli = CruiseCLI(SimpleModel,
                     trainer_class=CruiseTrainer,
-                    datamodule_class=BytedImageNetDataModule,
+                    # datamodule_class=BytedImageNetDataModule,
+                    datamodule_class=MyDataModule,
                     trainer_defaults={
                         'max_epochs': 100,
                         'val_check_interval': [1000, 1.0],

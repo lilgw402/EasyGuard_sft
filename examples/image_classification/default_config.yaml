@@ -2,7 +2,7 @@ trainer:
   default_root_dir: null
   default_hdfs_dir: null
   logger: true
-  log_every_n_steps: 20
+  log_every_n_steps: 50
   benchmark: false
   enable_speedmonitor: true
   enable_versions: true
@@ -24,7 +24,7 @@ trainer:
   accumulate_grad_batches: null
   gradient_clip_val: null
   seed: null
-  summarize_model_depth: 4
+  summarize_model_depth: 5
   resume_ckpt_path: null
   resume_loader_state: false
   callbacks: null
@@ -77,207 +77,10 @@ model:
   model_arch: fashion-swin-base-224-fashionvtp
   config_optim: ./examples/image_classification/config_optim.yaml
 data:
-  train:
-    data_fetch:
-      paths:
-      - - hdfs://haruna/home/byte_arnold_hl_vc/arnold_dataset/imagenet1k/train
-      filename_pattern:
-      - null
-      regex_type:
-      - null
-      data_types:
-      - kv
-      batch_sizes:
-      - 32
-      keys_or_columns:
-      - null
-      num_workers: 8
-      num_readers:
-      - 16
-      step_length: null
-      shuffle: false
-      key_mapping: null
-      decode_fn:
-      - method: tf_sequence_example_no_tensor
-        context:
-          data: byte
-          label: int
-      print_task_id: false
-      remain_sample_idx: false
-      transform_output_many: false
-      drop_last: true
-      seed: 0
-      task_id_list:
-      - null
-      prefetch_to_gpu: false
-      enable_borrower: false
-      parquet_cache_on: false
-      no_sharding: false
-      fast_resume: false
-      use_arnold: true
-      dataset_split_num: 4
-      epochs_for_reader: 5
-      transform_replace_all: false
-      triplet_sampling: false
-      triplet_meta_dict_path: null
-      triplet_meta_dict_format: null
-      triplet_p: null
-      triplet_k: null
-      batch_shuffle: false
-    data_preprocess:
-      custom_modals:
-      - label
-      modal_keys:
-        image:
-        - data
-        label:
-        - label
-      custom_op_path: null
-      custom_op_modules:
-        label: cruise.data_module.examples.custom.imagenet.label_transform
-        image: cruise.data_module.preprocess.vision.image_transform
-      custom_transforms:
-        image:
-          remain_modal_key: true
-          skip_collate: true
-          transform:
-          - VisionProcessor:
-              ops:
-                ImageBytesToNdarray:
-                  method: tf
-                RandomResizedCrop:
-                  size:
-                  - 224
-                  - 224
-                RandomHorizontalFlip: {}
-                ToTensorInt8: {}
-                AutoAugment:
-                  policy: imagenet
-          batch_transform:
-          - VisionBatchProcessor:
-              ops:
-                Normalize:
-                  std:
-                  - 58.395
-                  - 57.12
-                  - 57.375
-                  mean:
-                  - 123.675
-                  - 116.28
-                  - 103.53
-        label:
-          remain_modal_key: true
-          transform:
-          - HaggsLabelTransform: {}
-          batch_transform:
-          - HaggsLabelBatchTransform: {}
-      post_process:
-        MixUpImage:
-          image_key: data
-          label_key: label
-          alpha: 0.2
-      skip_none: true
-    pin_memory: true
-  val:
-    data_fetch:
-      paths:
-      - - hdfs://haruna/home/byte_arnold_hl_vc/arnold_dataset/imagenet1k/val
-      filename_pattern:
-      - null
-      regex_type:
-      - null
-      data_types:
-      - kv
-      batch_sizes:
-      - 64
-      keys_or_columns:
-      - null
-      num_workers: 4
-      num_readers:
-      - 16
-      step_length: null
-      shuffle: false
-      key_mapping: null
-      decode_fn:
-      - method: tf_sequence_example_no_tensor
-        context:
-          data: byte
-          label: int
-      print_task_id: false
-      remain_sample_idx: false
-      transform_output_many: false
-      drop_last: true
-      seed: 0
-      task_id_list:
-      - null
-      prefetch_to_gpu: false
-      enable_borrower: false
-      parquet_cache_on: false
-      no_sharding: false
-      fast_resume: false
-      use_arnold: true
-      dataset_split_num: 4
-      epochs_for_reader: 5
-      transform_replace_all: false
-      triplet_sampling: false
-      triplet_meta_dict_path: null
-      triplet_meta_dict_format: null
-      triplet_p: null
-      triplet_k: null
-      batch_shuffle: false
-    data_preprocess:
-      custom_modals:
-      - label
-      modal_keys:
-        image:
-        - data
-        label:
-        - label
-      custom_op_path: null
-      custom_op_modules:
-        label: cruise.data_module.examples.custom.imagenet.label_transform
-        image: cruise.data_module.preprocess.vision.image_transform
-      custom_transforms:
-        image:
-          remain_modal_key: true
-          skip_collate: true
-          transform:
-          - VisionProcessor:
-              ops:
-                ImageBytesToNdarray:
-                  method: tf
-                Resize:
-                  size:
-                  - 256
-                  - 256
-                CenterCrop:
-                  size:
-                  - 224
-                  - 224
-                ToTensorInt8: {}
-          batch_transform:
-          - VisionBatchProcessor:
-              ops:
-                Normalize:
-                  std:
-                  - 58.395
-                  - 57.12
-                  - 57.375
-                  mean:
-                  - 123.675
-                  - 116.28
-                  - 103.53
-        label:
-          remain_modal_key: true
-          transform:
-          - HaggsLabelTransform: {}
-          batch_transform:
-          - HaggsLabelBatchTransform: {}
-      post_process: {}
-      skip_none: true
-    pin_memory: true
-  use_dummy_data: -1
-  dummy_data_size:
-  - 224
-  - 224
+  data_path: /mnt/bn/multimodel-pretrain/database/
+  train_split: /mnt/bn/multimodel-pretrain/database/train_list.txt
+  val_split: /mnt/bn/multimodel-pretrain/database/val_list.txt
+  train_batch_size: 64
+  val_batch_size: 64
+  num_workers: 8
 log_level: INFO
