@@ -6,6 +6,8 @@ vi examples/image_classification/default_config.yaml
 # if no config file found, can dump default configs as initial file (in your local machine)
 python3 examples/image_classification/run_model_finetuning.py  --print_config > examples/image_classification/default_config.yaml
 ```
+### Data prepare
+Refer to [`DATA.md`](data/DATA.md)
 
 ### Feature extraction demo:
 ```

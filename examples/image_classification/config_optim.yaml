@@ -1,8 +1,8 @@
-class_num: 1000
+class_num: 200
 
 weight_decay: 0.01
 lr_scheduler: cosine #cosine, linear, step
-base_lr: 1.0e-5
+base_lr: 1.0e-4
 warmup_lr: 1.0e-8
 min_lr: 1.0e-7
 warmup_epochs: 5
