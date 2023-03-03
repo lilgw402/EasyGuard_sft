@@ -1,12 +1,12 @@
 import os
 
-from easyguard import __version__
+# from easyguard import __version__
 from setuptools import find_packages, setup
 
 # meta information
 path = os.path.abspath(os.path.dirname(__file__))
 package_name = "byted-easyguard"
-version = __version__
+version = "0.0.2"
 author = ["xiaochen.qiu", "dongjunwei"]
 author_email = ["xiaochen.qiu@bytedance.com", "dongjunwei@bytedance.com"]
 maintainer = "jwdong"
