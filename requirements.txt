@@ -1,19 +1,25 @@
-# Use --index-url=https://bytedpypi.byted.org/simple/
-# Use --proxy=http://bj-rd-proxy.byted.org:3128
-# See https://python.byted.org/pip-setup.html
-yacs==0.1.8
-tensorboard==2.4.0
-opencv-python # 需要锚定一个版本
-Pillow
-tfrecord
-numpy
-absl-py
-prefetch_generator # 需要cleanup
-bytedabase # 需要锚定一个版本
-prettytable
-transformers # 需要锚定一个版本
-colorlog
-einops
-torch #  # 需要锚定一个版本
-huggingface-hub>=0.10.0
-byted-cruise==0.3.4
+byted-dataloader>=0.3.1,<=0.3.1
+jsonargparse>=4.8.0,<4.15.0
+fsspec>=2021.10,<2022.10
+dill>=0.3.6,<=0.3.6
+tqdm>=4.0,<6.0
+pyyaml>=6.0,<8.0
+protobuf>=3.17,<=3.20
+tensorflow-cpu>=2.2,<=2.8.1
+py-spy>=0.3.14,<=0.3.14
+tensorflow-io>=0.25.0, <=0.25.0
+pyarrow>=4.0.1,<7.0
+pandas>=1.3.5,<2.0
+timm>=0.6.7,<=0.6.7
+transformers>=4.21.0,<=4.26.1
+deepspeed>=0.7.3,<=0.7.3
+bytedtcc>=1.4.2,<=1.4.2
+sentencepiece>=0.1.97,<=0.1.97
+opencv-python>=4.7.0.72,<=4.7.0.72
+yacs>=0.1.8,<=0.1.8
+absl-py>=0.15.0,<=0.15.0
+bytedabase>=0.5.1,<=0.5.1
+prettytable>=3.6.0,<=3.6.0
+huggingface-hub>=0.10.0,<=0.10.0
+byted-cruise>=0.3.4,<=0.4.9
+matplotlib>=3.5.3,<=3.5.3

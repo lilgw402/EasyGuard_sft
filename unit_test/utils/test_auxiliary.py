@@ -1,8 +1,8 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
-TEST_FLAGS = ["convert_model_weight"]
+TEST_FLAGS = ["all"]
 
 
 class TestAuxiliary(unittest.TestCase):
@@ -25,9 +25,16 @@ class TestAuxiliary(unittest.TestCase):
         print(
             cache_file(
                 "test",
-                set(["vocab.txt", "vocab1.txt", "vocab2.txt"]),
+                set(
+                    [
+                        "pytorch_model.bin",
+                        "pytorch_model.ckpt",
+                        "pytorch_model.pt",
+                        "pytorch_model.th",
+                    ]
+                ),
                 model_type="deberta",
-                remote_url="hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/",
+                remote_url="hdfs://haruna/home/byte_ecom_govern/easyguard/models/bert_base_uncased",
             )
         )
 

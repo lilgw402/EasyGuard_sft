@@ -230,6 +230,7 @@ class _BaseAutoModelClass:
         pretrained_model_name_or_path: str,
         region: Optional[str] = "CN",
         model_cls: Optional[str] = "model",
+        model_weight_file_path: Optional[str] = None,
         *model_args,
         **kwargs,
     ):
@@ -271,7 +272,7 @@ class _BaseAutoModelClass:
         is_local = False
         model_config_path = None
         backend_default_flag = False
-        model_weight_file_path = None
+        # model_weight_file_path = None
 
         extra_dict = OrderedDict()
         config_dict = OrderedDict()
@@ -311,9 +312,10 @@ class _BaseAutoModelClass:
 
             model_type = config_dict_.get("model_type", None)
 
-            model_weight_file_path = file_exist(
-                pretrained_model_name_or_path, MODEL_SAVE_NAMES
-            )
+            if not model_weight_file_path:
+                model_weight_file_path = file_exist(
+                    pretrained_model_name_or_path, MODEL_SAVE_NAMES
+                )
 
             is_local = True
         else:
@@ -352,6 +354,14 @@ class _BaseAutoModelClass:
                         f"can not found the pretrained model in remote server, will only load model architecture !"
                     )
                     model_weight_file_path = None
+        else:
+            # if local, check the model weight file path, if not exist, raise a error
+            if model_weight_file_path is not None and not os.path.exists(
+                model_weight_file_path
+            ):
+                raise FileExistsError(
+                    f"{model_weight_file_path} does not exist, please check the local path"
+                )
 
         """ >> load model config class and model class <<"""
 

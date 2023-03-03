@@ -2,9 +2,10 @@ import unittest
 
 import requests
 from PIL import Image
-from unit_test import TEST_FLAGS
 
-TEST_FLAGS = ["clip"]
+# test module
+
+TEST_FLAGS = ["all"]
 
 
 class TestProcessingAuto(unittest.TestCase):
@@ -86,7 +87,7 @@ class TestProcessingAuto(unittest.TestCase):
     def test_falbert(self):
         from easyguard import AutoModel, AutoProcessor
 
-        archive = "falbert-hq-live"
+        archive = "falbert-no-weights"
         processor = AutoProcessor.from_pretrained(archive)
 
 

@@ -1,21 +1,37 @@
-# This is an example of language model pretrain demo.
+# Sequence classification examples with FashionXLM and RoBERTa
 
-```python
-# 1. modify the config file
-vi default_config.yaml
-# if no config file found, can dump default configs as initial file (in your local machine)
-python3 run_pretrain.py --print_config > default_config.yaml
-# 2. load the modified config back
-python3 run_pretrain.py --config default_config.yaml
-or
-python3 run_pretrain.py --config hdfs://path/to/your/default_config.yaml 
-# 3. customize extra configs manually
-python3 run_pretrain.py --config default_config.yaml --model.hidden_size=1024
+## Launch gpu worker:
+
+```shell
+launch --gpu 1 --cpu 32 --memory 64 -- doas --krb5-username [EMAIL PREFIX] bash
+```
+## Finetune:
+
+``` shell
+cd EasyGuard/examples/sequence_classification/
+
+# FashionXLM
+python3 run_model.py --config config/config_fashionxlm_base.yaml
+
+# FashionXLM-MOE
+python3 run_model.py --config config/config_fashionxlm_moe_base.yaml
+
+# XLM-RoBERTa
+python3 run_model.py --config config/config_xlmr_base.yaml
 ```
 
-**run on single cpu/gpu:**
-- `python3 run_pretrain.py`
+## Results[ASNA]
 
-**run on multi gpus:**
-- local machine: `/path/to/your/local/EasyGuard/tools/TORCHRUN run_pretrain.py`
-- arnold: `/opt/tiger/EasyGuard/tools/TORCHRUN run_pretrain.py`
+| Model          | f1 score  |
+| -------------- | --------- |
+| FashionXLM     | 0.928125  |
+| FashionXLM-MOE | 0.9296875 |
+| XLM-RoBERTa    | 0.875     |
+
+## Feature Extract:
+
+```
+cd Easyguard
+
+python3 ./examples/sequence_classification/run_feature_extractor.py
+```

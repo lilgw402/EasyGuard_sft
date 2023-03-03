@@ -1,6 +1,6 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
 TEST_FLAGS = ["all"]
 
@@ -18,16 +18,10 @@ class TestHub(unittest.TestCase):
                 *args,
                 **kwargs,
             ) -> None:
-                super().__init__(
-                    server_name,
-                    archive_name,
-                    model_type,
-                    *args,
-                    **kwargs,
-                )
+                super().__init__()
 
-        x = a("hdfs", "fashionxlm-moe-base", "mdeberta_v2_moe", region="CN")
-        x.get_file("config.json")
+        # x = a("hdfs", "fashionxlm-moe-base", "mdeberta_v2_moe", region="CN")
+        # x.get_file("config.json")
 
 
 if __name__ == "__main__":

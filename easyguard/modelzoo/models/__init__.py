@@ -4,7 +4,6 @@ from . import (
     clip,
     deberta,
     falbert,
-    falbert_new,
     fashionxlm,
     fashionxlm_moe,
     vit,
