@@ -120,28 +120,29 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         for example in self.generate():
             try:
                 data_item = json.loads(example)
-                cid = data_item['leaf_cid']
-                label = self.gec[cid]['label']
-                # if self.second_map is not None:
-                #     label = self.second_map[label]
+                # cid = data_item['leaf_cid']
+                # label = self.gec[cid]['label']
+                label = int(data_item['label'])
                 # 文本
-                # text = data_item['title']
-                if 'translation' in data_item:
-                    country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
-                    country_idx = self.country2idx[country]
-                    title = data_item['translation'][country]
-                    desc = None
-                elif 'text' in data_item:
-                    title = data_item['text']
-                    desc = None
-                    country = data_item['country']
-                    country_idx = self.country2idx[country]
-                else:
-                    title = data_item['title']
-                    desc = data_item['desc']
-                    country = data_item['country']
-                    country_idx = self.country2idx[country]
-                text = text_concat(title, desc)
+                texts = data_item['title']
+                text = texts[random.randint(1, len(texts) - 1)]
+                country_idx = 0
+                # if 'translation' in data_item:
+                #     country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
+                #     country_idx = self.country2idx[country]
+                #     title = data_item['translation'][country]
+                #     desc = None
+                # elif 'text' in data_item:
+                #     title = data_item['text']
+                #     desc = None
+                #     country = data_item['country']
+                #     country_idx = self.country2idx[country]
+                # else:
+                #     title = data_item['title']
+                #     desc = data_item['desc']
+                #     country = data_item['country']
+                #     country_idx = self.country2idx[country]
+                # text = text_concat(title, desc)
 
                 # token_ids = self.pipe.preprocess([text])[0]
                 # token_ids = token_ids.asnumpy()
@@ -160,10 +161,19 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 # 图像
                 frames = []
 
-                if 'image' in data_item:
+                # if 'image' in data_item:
+                #     # get image by b64
+                #     try:
+                #         image_tensor = self.image_preprocess(data_item['image'])
+                #         # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
+                #         frames.append(image_tensor)
+                #     except:
+                #         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
+                #         continue
+                if 'img_base64' in data_item:
                     # get image by b64
                     try:
-                        image_tensor = self.image_preprocess(data_item['image'])
+                        image_tensor = self.image_preprocess(data_item['img_base64'])
                         # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
