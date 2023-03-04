@@ -63,10 +63,12 @@ def text_concat(title, desc=None):
     if desc.startswith(title):
         return desc
 
-    if len(desc) > 5:
-        text = title + ". " + desc
-    else:
-        text = title
+    text = title + ". " + desc
+
+    # if len(desc) > 5:
+    #     text = title + ". " + desc
+    # else:
+    #     text = title
 
     return text
 
@@ -125,7 +127,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 label = int(data_item['label'])
                 # 文本
                 texts = data_item['title']
-                text = texts[random.randint(1, len(texts) - 1)]
+                title = texts[random.randint(1, len(texts) - 1)]
+                desc = None
                 country_idx = 0
                 # if 'translation' in data_item:
                 #     country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
@@ -142,7 +145,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 #     desc = data_item['desc']
                 #     country = data_item['country']
                 #     country_idx = self.country2idx[country]
-                # text = text_concat(title, desc)
+                text = text_concat(title, desc)
 
                 # token_ids = self.pipe.preprocess([text])[0]
                 # token_ids = token_ids.asnumpy()
@@ -173,8 +176,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if 'img_base64' in data_item:
                     # get image by b64
                     try:
-                        # image_tensor = self.image_preprocess(data_item['img_base64'])
-                        image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
+                        image_tensor = self.image_preprocess(data_item['img_base64'])
+                        # image_tensor = self.cv2transform(self.load_image(data_item['img_base64']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
