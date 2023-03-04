@@ -51,7 +51,7 @@ model:
   cls_class_num: 2
   sce_loss_enable: false
   auc_score_enable: false
-  partial_load_from_checkpoints_path: ''
+  partial_load_from_checkpoints_path: /mnt/bn/wanli/resources/pretrained_lm/chinese_deberta_ecom_L6/ccr_order_continual_pretrained_deberta.ckpt
   multi_label_enable: true
   multi_label_map_file: /mnt/bn/wanli/experiments/classification/ccr_item_model/data/ccr_item_model_label2ids.json
   multi_label_threshold: 0.5
