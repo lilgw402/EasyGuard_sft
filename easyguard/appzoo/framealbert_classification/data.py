@@ -189,8 +189,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     try:
                         for url in data_item['images']:
                             # image_str = download_url_with_exception(get_original_url(url), timeout=3)
-                            # image_str = download_image_to_base64(get_original_url(url), timeout=3)
-                            image_str = download_image_to_base64(get_real_url(url), timeout=2)
+                            image_str = download_image_to_base64(get_original_url(url), timeout=3)
+                            # image_str = download_image_to_base64(get_real_url(url), timeout=2)
                             if image_str != b'' and image_str != '':
                                 try:
                                     image_tensor = self.cv2transform(self.load_image(image_str), return_tensor=True)
