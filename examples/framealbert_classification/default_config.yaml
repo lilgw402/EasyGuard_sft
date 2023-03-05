@@ -11,7 +11,7 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: { }
   precision: fp16
-  max_epochs: 8
+  max_epochs: 2
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: 4
@@ -26,7 +26,7 @@ trainer:
   resume_ckpt_path: null
   callbacks: null
   enable_checkpoint: 30
-  checkpoint_monitor: loss
+  checkpoint_monitor: val_top1_acc
   checkpoint_mode: min
   dataloader_timeout: -1
   dataloader_retry_limit: 100
@@ -47,7 +47,7 @@ model:
 #    - falbert.visual.
   use_multihead: false
   all_gather: false
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=4-step=52000-loss=1.768.ckpt
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0305_cruise_tts/version_2352509/checkpoints/epoch=0-step=4000-loss=1.766.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=1-step=16000-loss=2.067.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th

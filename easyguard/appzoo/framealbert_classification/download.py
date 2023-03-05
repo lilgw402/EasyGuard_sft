@@ -8,7 +8,7 @@ from PIL import Image
 
 def get_real_url(url):
     url = url.strip()
-    real_url = f'https://p16-oec-va.ibyteimg.com/{url}~800x800.jpg'
+    real_url = f'https://p16-oec-va.ibyteimg.com/{url}~512x512.jpg'
 
     return real_url
 
