@@ -94,6 +94,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         # else:
         #     self.second_map = None
         self.gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()
+        self.cid2label = np.load('./examples/framealbert_classification/tags.npy', allow_pickle=True).item()['cid2label']
 
         # self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
         self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
@@ -101,11 +102,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
         self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
-        with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
-            self.black_frame = self.preprocess(self._load_image(f.read()))
+        # with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
+        #     self.black_frame = self.preprocess(self._load_image(f.read()))
 
-        # black_frame = cv2.imread('./examples/framealbert_classification/black_image.jpeg')
-        # self.black_frame = self.cv2transform(black_frame, return_tensor=True)
+        black_frame = cv2.imread('./examples/framealbert_classification/black_image.jpeg')
+        self.black_frame = self.cv2transform(black_frame, return_tensor=True)
 
         self.country2idx = {
             'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4,
@@ -122,13 +123,13 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         for example in self.generate():
             try:
                 data_item = json.loads(example)
-                # cid = data_item['leaf_cid']
+                cid = data_item['leaf_cid']
+                label = self.cid2label[cid]
                 # label = self.gec[cid]['label']
-                label = int(data_item['label'])
+                # label = int(data_item['label'])
                 # 文本
-                texts = data_item['title']
-                title = texts[random.randint(1, len(texts) - 1)]
-                desc = None
+                title = data_item['title']
+                desc = data_item['desc']
                 country_idx = 0
                 # if 'translation' in data_item:
                 #     country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
@@ -164,27 +165,27 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 # 图像
                 frames = []
 
-                # if 'image' in data_item:
-                #     # get image by b64
-                #     try:
-                #         image_tensor = self.image_preprocess(data_item['image'])
-                #         # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
-                #         frames.append(image_tensor)
-                #     except:
-                #         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
-                #         continue
-                if 'img_base64' in data_item:
+                if 'image' in data_item:
                     # get image by b64
                     try:
-                        image_tensor = self.image_preprocess(data_item['img_base64'])
-                        # image_tensor = self.cv2transform(self.load_image(data_item['img_base64']), return_tensor=True)
+                        image_tensor = self.image_preprocess(data_item['image'])
+                        # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
                         continue
+                # if 'img_base64' in data_item:
+                #     # get image by b64
+                #     try:
+                #         image_tensor = self.image_preprocess(data_item['img_base64'])
+                #         # image_tensor = self.cv2transform(self.load_image(data_item['img_base64']), return_tensor=True)
+                #         frames.append(image_tensor)
+                #     except:
+                #         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
+                #         continue
                 elif 'images' in data_item:
                     # get image by url
-                    image = None
+                    image_tensor = None
                     try:
                         for url in data_item['images']:
                             # image_str = download_url_with_exception(get_original_url(url), timeout=3)
@@ -200,7 +201,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     except:
                         pass
 
-                    if image is not None:
+                    if image_tensor is not None:
                         # image_tensor = self.preprocess(image)
                         frames.append(image_tensor)
                     else:

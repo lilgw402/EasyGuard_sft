@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0305_cruise_tts
   logger: true
   log_every_n_steps: 500
   benchmark: false
@@ -11,7 +11,7 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: { }
   precision: fp16
-  max_epochs: 20
+  max_epochs: 8
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: 4
@@ -43,11 +43,12 @@ model:
   # config_backbone: config/config_backbone.yaml
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
-  low_lr_prefix:
-    - falbert.visual.
+  low_lr_prefix: [ ]
+#    - falbert.visual.
   use_multihead: false
   all_gather: false
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=1-step=16000-loss=2.067.ckpt
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=4-step=52000-loss=1.768.ckpt
+  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=1-step=16000-loss=2.067.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th
   prefix_changes:
@@ -55,19 +56,21 @@ model:
 #    - backbone.->falbert.
     - visual.->falbert.visual.
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/train_translate_tmall_all_transform
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_desc_jsonl/train_jsonl
+  # hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/train_translate_tmall_all_transform
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
-  train_size: 43570836
-  val_files: hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/val_translate_tmall_all_transform
+  train_size: 103120000
+  val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_desc_jsonl/val_jsonl
+  # hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/val_translate_tmall_all_transform
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_hr_1013_country_slices
-  val_size: 6035008
+  val_size: 5060000
   train_batch_size: 64
   val_batch_size: 64
-  num_workers: 4
-  text_len: 48
+  num_workers: 8
+  text_len: 128
   frame_len: 1
   head_num: 5
-  exp: cruise_tmall
+  exp: cruise_tts_hive
   download_files:
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/GEC_cat.npy->/opt/tiger/easyguard
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
