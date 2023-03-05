@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs/logs
-  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/outputs
+  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/new_outputs
   logger: true
   log_every_n_steps: 100
   benchmark: false
