@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: wanli.0815/experiments/lm_pretrain/item_ccr_model/outputs/logs
-  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/new_outputs
+  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_raw_model/outputs
   logger: true
   log_every_n_steps: 100
   benchmark: false
@@ -11,7 +11,7 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: {}
   precision: fp16
-  max_epochs: 20
+  max_epochs: 5
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: null
@@ -25,11 +25,11 @@ trainer:
   gradient_clip_val: null
   seed: null
   summarize_model_depth: 2
-  resume_ckpt_path: auto
+  resume_ckpt_path: null
   callbacks: null
   enable_checkpoint: true
-  checkpoint_monitor: total_ccr_micro_f1
-  checkpoint_mode: max
+  checkpoint_monitor: val_loss
+  checkpoint_mode: min
   dataloader_timeout: -1
   dataloader_retry_limit: 100
   dataloader_retry_persistent_limit: 5
@@ -46,7 +46,7 @@ model:
   cl_weight: 10.0
   ntx_enable: true
   all_gather_limit: -1
-  classification_task_enable: true
+  classification_task_enable: false
   cls_weight: 1.0
   cls_class_num: 2
   sce_loss_enable: false
@@ -65,11 +65,11 @@ data:
   val_paths: hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/pretrain/ccr_item_model/data/valid_data_v1/part*
   data_size: 190000000
   val_step: 0
-  classification_task_enable: true
-  text_label_field: null
+  classification_task_enable: false
+  text_label_field: label
   text_field: text
   cl_enable: false
-  num_workers: 4
+  num_workers: 0
   context_length: 128
   mlm_probability: 0.15
   key_span_file_path: ''
