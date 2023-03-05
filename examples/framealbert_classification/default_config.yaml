@@ -54,7 +54,8 @@ model:
   prefix_changes:
 #    - backbone.vision.->falbert.visual.
 #    - backbone.->falbert.
-    - visual.->falbert.visual.
+    - classifier_concat->classifier_concat_banned
+    - multi_heads->multi_heads_banned
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_desc_jsonl/train_jsonl
   # hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/train_translate_tmall_all_transform
