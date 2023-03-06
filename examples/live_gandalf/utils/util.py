@@ -12,20 +12,23 @@ import random
 import logging
 import requests
 import numpy as np
-from driver import get_logger, HADOOP_BIN, DIST_CONTEXT, PROJECT_PATH
 from typing import Dict,List,Tuple
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from utils.driver import get_logger, HADOOP_BIN, DIST_CONTEXT, PROJECT_PATH
 
-def check_hdfs_exist(path):
-    cmd = "%s fs -test -e %s" % (HADOOP_BIN, path)
-    ret = os.system(cmd)
-    if ret != 0:
-        return False
-    return True
 
-def hmkdir(directory):
-    cmd = f"{HADOOP_BIN} fs -mkdir -p " + directory
-    get_logger().info(f"run command: {cmd}")
-    return os.system(cmd)
+def async_run(func, inputs, pool_size=16, use_thread=True, multi_args=False):
+    result = []
+    exe = ThreadPoolExecutor if use_thread else ProcessPoolExecutor
+    with exe(max_workers=pool_size) as executor:
+        if multi_args:
+            for args in inputs:
+                task = executor.submit(func, *args)
+                result.append(task.result())
+        else:
+            for res in executor.map(func, inputs):
+                result.append(res)
+    return result
 
 def count_params(model):
     num_params = 0
@@ -46,9 +49,13 @@ def load_conf(json_path):
     return config
 
 def load_from_yaml(yaml_path):
-    with open(yaml_path) as f:
-        config = yaml.load(f)
-    return config
+    with open(yaml_path, "r") as stream:
+        try:
+            config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+            config = {}
+        return config
 
 def load_from_tcc(tcc_key, tcc_psm="ecom.govern.live_gandalf"):
     import bytedtcc
@@ -80,7 +87,6 @@ def check_config(
                 "Have NOT specified resume checkpoint for test phase, "
                 "will automatically search best checkpoint"
             )
-
 
 def update_config(
         config: Dict, config_override: List[str], delimiter: str = "="

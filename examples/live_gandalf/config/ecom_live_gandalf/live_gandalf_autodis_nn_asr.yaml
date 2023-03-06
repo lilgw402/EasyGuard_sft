@@ -1,17 +1,18 @@
-workflow:
-  hdfs_output_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/tmp
-  input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/train
-  is_download: false
-  local_output_dir: ../ecom_live_gandalf/tmp
-  test_folder: 2022123[0-1]
-  test_input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/test
-  train_folder: 2022121[5-9]|2022122[0-8]
-  val_folder: 2022121[5-9]|2022122[0-8]
-  val_input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/validation
 data:
-  feature_provider:
+  dataset:
+    hdfs_output_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/exps_tmp
+    input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/train
+    is_download: false
+    local_output_dir: ../ecom_live_gandalf/exps_tmp
+    test_folder: 2022123[0-1]
+    test_input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/test
+    train_folder: 2022121[5-9]|2022122[0-8]
+    val_folder: 2022121[5-9]|2022122[0-8]
+    val_input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/validation
+  feature_provider:  
     embedding_conf:
       author_embedding: 128
+      universal_embedding: 256
     feature_norm_info:
       '0':
         - 0.0
@@ -94,86 +95,57 @@ data:
       - 149
     type: EcomLiveGandalfParquetAutoDisFeatureProvider
     use_high_precision: true
-  batch_size: 128
-  num_parallel_reads: 8
-  num_workers: 10
+  data_factory:
+    type: ParquetDataFactory
+    train_max_iteration: -1
+    val_max_iteration: -1
+    test_max_iteration: -1
+    batch_size: 32
+    batch_size_val: -1
+    num_parallel_reads: 5
+    num_workers: 4
 model:
-  asr_encoder_param:
+  features:
+    feature_num: 150
+    bucket_dim: 128
+    bucket_num: 8
+    bucket_output_size: 1024
+    slot_mask:
+      - 140
+      - 141
+      - 142
+      - 143
+      - 144
+      - 145
+      - 146
+      - 147
+      - 148
+      - 149
+  asr_encoder:
     emb_dropout_prob: 0.3
     emb_mode: pool
     embedding_dim: 768
     encoder_freeze_layer: null
-    max_length: 337
+    max_length: 512
     num_attention_heads: 3
     num_hidden_layers: 3
-  author_embedding_dim: 128
-  bucket_dim: 128
-  bucket_num: 8
-  bucket_output_size: 1024
-  dropout: 0.3
-  enable_asr_embedding: 1
-  enable_author_embedding: 0
-  feature_num: 150
-  slot_mask:
-  - 140
-  - 141
-  - 142
-  - 143
-  - 144
-  - 145
-  - 146
-  - 147
-  - 148
-  - 149
-  type: EcomLiveGandalfAutoDisNNAsrModel
+  embedding:
+    author_embedding_dim: 128
+  kwargs:
+    enable_asr_embedding: 1
+    enable_author_embedding: 0
+    dropout: 0.3
 trainer:
-  auto_resume: true
-  ema: false
-  enable_amp: true
-  epochs: 25
+  default_root_dir: null
+  default_hdfs_dir: nul
+  # precision: fp16
+  max_epochs: 25
   find_unused_parameters: true
-  optimizer:
-    learning_rate: 0.0001
-    optimizer_name: AdamW
-  output_iteration: 500
-  test_max_iteration: -1
-  train_max_iteration: -1
-tester:
-  max_iteration: -1
-  metrics:
-  - dump_table_name: ../ecom_live_gandalf/ecom_live_gandalf_autodis_nn_v3_output/test_detail_metric.csv
-    fix_recall: 0.3
-    label_key: label
-    score_key: online_score
-    type: AUC
-  - collect_fields:
-    - object_id
-    - verify_reason
-    - uv
-    - online_score
-    - output
-    - label
-    label_filed: label
-    old_high_threshold: 0.164
-    old_low_threshold: 0.499
-    old_score_filed: online_score
-    save_path: deberta_3l_dropout_score.csv
-    tag_field: verify_reason
-    type: GandalfDumper
-  output_iteration: 200
-  resume_checkpoint: checkpoint_loss=0.39088.pth
-  scan_date: []
-  type: Test
-tracer:
-  input_keys:
-  - auto_dis_input
-  - feature_dense
-  - input_ids
-  - attention_mask
-  - token_type_ids
-  output_keys:
-  - prob
-  resume_checkpoint: checkpoint_loss=0.39909.pth
-  trace_format: ts
-  type: FCNNTracer
-  verify: false
+  optimizer_kwargs:
+    optimizer:
+      type: AdamW
+      params:
+        lr: 0.0001
+  limit_val_batches: -1
+  limit_train_batches: -1
+  val_check_interval: 500

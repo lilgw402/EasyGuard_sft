@@ -42,14 +42,6 @@ config.data_factory.multiplex_mix_batch = True  # 混合数据读取下，默认
 config.data_factory.fast_resume = True
 config.data_factory.parquet_cache_on = True  # cruise loader是否开启parquet cache功能，会占用部分磁盘空间
 
-# qat-量化专用
-config.QAT.qat_flag = False
-config.QAT.ts = False
-config.QAT.calib_num = 500
-config.QAT.input = 'risky_frame'
-config.QAT.method = 'histogram'
-config.QAT.yaml = ""
-config.QAT.is_ASR = False
 
 # tester
 config.tester.type = "Test"
@@ -86,13 +78,3 @@ config.tracer.check_resume_checkpoint_exist = True  # 检查resume_checkpoint是
 
 # tracking: use in "project/name" format, name means experiments_name under the same project, like projectA/exp1, projectB/exp2
 config.trainer.tracking_project_name = ''
-
-# specific
-config.trainer.partial_pretrain_prefix_changes = (
-    config.tester.partial_pretrain_prefix_changes
-) = config.tracer.partial_pretrain_prefix_changes = [
-    "_vlbert_pre.v_projector.0->_vlbert_pre.projector",
-    "_vlbert_pre.v_projector.2->_vlbert_pre.project2emb_size.1",
-    "_video_encoder.v_projector.0->_video_encoder.projector",
-    "_video_encoder.v_projector.2->_video_encoder.project2emb_size.1",
-]

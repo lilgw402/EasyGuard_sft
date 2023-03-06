@@ -7,12 +7,15 @@ import json
 import torch
 import pickle
 import numpy as np
+from addict import Dict
 from typing import Optional
 from cruise.data_module import CruiseDataModule
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
-from examples.live_gandalf.utils.driver import get_logger
-from examples.live_gandalf.builder import DATASETS
-
+from cruise.data_module.preprocess.create_preprocess import parse_cruise_processor_cfg
+from dataset.dataset_utils.create_config import create_cruise_process_config
+from dataset.dataset_utils.parse_files import get_ds_path
+from utils.driver import get_logger
+from utils.registry import DATASETS
 
 class EcomLiveGandalfParquetAutoDisFeatureProvider:
 	def __init__(
@@ -155,11 +158,13 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider:
 			batch_output.append(self.process(data))
 		return batch_output
 
-
-@DATASETS.register_module()
-class GandalfDataModule(CruiseDataModule):
+from pytorch_lightning.core import LightningDataModule
+class GandalfDataModule(LightningDataModule):
 	def __init__(self,
-				kwargs
+				dataset,
+				feature_provider,
+				data_factory,
+				**kwargs
 				 ):
 		super(GandalfDataModule, self).__init__()
 		self.save_hparams()
@@ -205,3 +210,4 @@ class GandalfDataModule(CruiseDataModule):
 
 	def predict_dataloader(self):
 		return iter([])
+

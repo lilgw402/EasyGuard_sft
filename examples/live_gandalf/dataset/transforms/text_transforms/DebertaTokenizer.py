@@ -54,7 +54,7 @@ class DebertaTokenizer:
         assert len(attention_mask) == self.max_length
         assert len(token_type_ids) == self.max_length
 
-        features = {"input_ids":torch.tensor([input_ids],dtype=torch.int32),
-                    "attention_mask":torch.tensor([attention_mask],dtype=torch.int32),
-                    "token_type_ids":torch.tensor([token_type_ids],dtype=torch.int32)}
+        features = {"input_ids":torch.tensor(input_ids,dtype=torch.int32),
+                    "attention_mask":torch.tensor(attention_mask,dtype=torch.int32),
+                    "token_type_ids":torch.tensor(token_type_ids,dtype=torch.int32)}
         return features
