@@ -231,6 +231,7 @@ class _BaseAutoModelClass:
         region: Optional[str] = "CN",
         model_cls: Optional[str] = "model",
         model_weight_file_path: Optional[str] = None,
+        model_config_path: Optional[str] = None,
         *model_args,
         **kwargs,
     ):
@@ -270,7 +271,7 @@ class _BaseAutoModelClass:
         server_name = None
         region = region
         is_local = False
-        model_config_path = None
+        # model_config_path = None
         backend_default_flag = False
         # model_weight_file_path = None
 
@@ -301,9 +302,11 @@ class _BaseAutoModelClass:
         elif os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
             pretrained_model_name_or_path
         ):
-            model_config_path = file_exist(
-                pretrained_model_name_or_path, MODEL_CONFIG_NAMES
-            )
+            #  if user not set the argument `model_config_path`, will find the config file from local dir
+            if not model_config_path:
+                model_config_path = file_exist(
+                    pretrained_model_name_or_path, MODEL_CONFIG_NAMES
+                )
             assert (
                 model_config_path is not None
             ), f"please make sure the config file exist in f{pretrained_model_name_or_path}"
@@ -312,6 +315,7 @@ class _BaseAutoModelClass:
 
             model_type = config_dict_.get("model_type", None)
 
+            # if user not set the argument `model_weight_file_path`, will load model from the local dir
             if not model_weight_file_path:
                 model_weight_file_path = file_exist(
                     pretrained_model_name_or_path, MODEL_SAVE_NAMES
@@ -330,6 +334,7 @@ class _BaseAutoModelClass:
         """ >> preprocessing: download files << """
 
         if server_name:
+            # if user not set the argument `model_config_path`, will obtaion the config file in server
             if not model_config_path:
                 model_config_path = cache_file(
                     pretrained_model_name_or_path,
@@ -437,18 +442,25 @@ class _BaseAutoModelClass:
                 )
 
                 AutoHubClass.kwargs = extra_dict
+                # if user add the configuration class, load the related class, otherwise, will load the config file directly
+                if "config" in MODELZOO_CONFIG.get(model_type):
+                    model_config_class_: ConfigBase = (
+                        AutoConfig.from_pretrained(
+                            pretrained_model_name_or_path,
+                            **extra_dict,
+                            **config_dict,
+                            **kwargs,
+                        )
+                    )
+                    model_config_class_.config_update_for_pretrained(**kwargs)
+                    model_config_class_.update(kwargs)
+                    config_dict = model_config_class_.asdict()
+                    # config merge
+                    config_dict.update({"config": model_config_class_})
+                else:
+                    config_dict = file_read(model_config_path)
+                    config_dict.update(kwargs)
 
-                model_config_class_: ConfigBase = AutoConfig.from_pretrained(
-                    pretrained_model_name_or_path,
-                    **extra_dict,
-                    **config_dict,
-                    **kwargs,
-                )
-                model_config_class_.config_update_for_pretrained(**kwargs)
-                # config merge
-                model_config_class_.update(kwargs)
-                config_dict = model_config_class_.asdict()
-                config_dict.update({"config": model_config_class_})
                 # instantiate model
                 model: ModelBase = model_class(**config_dict)
 
