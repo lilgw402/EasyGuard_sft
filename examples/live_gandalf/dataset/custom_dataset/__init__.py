@@ -5,7 +5,7 @@
 from utils.registry import FEATURE_PROVIDERS
 from utils.torch_util import default_collate, collate_fields
 
-from .ecom_live_gandalf.ecom_live_gandalf_cruise_data_module import GandalfCruiseDataModule
+from .ecom_live_gandalf.ecom_live_gandalf_cruise_data_module import EcomLiveGandalfParquetAutoDisCruiseDataModule
 from .ecom_live_gandalf.ecom_live_gandalf_cruise_data_module import EcomLiveGandalfParquetAutoDisFeatureProvider
 
 def build_feature_provider(fp_type, arg_dict, save_extra=False, eval_mode=False, trace_mode=False):
@@ -90,4 +90,4 @@ class CruiseFakeProcessor:
         return data
 
 
-__all__ = ["GandalfCruiseDataModule","EcomLiveGandalfParquetAutoDisFeatureProvider"]
+__all__ = ["EcomLiveGandalfParquetAutoDisCruiseDataModule","EcomLiveGandalfParquetAutoDisFeatureProvider"]

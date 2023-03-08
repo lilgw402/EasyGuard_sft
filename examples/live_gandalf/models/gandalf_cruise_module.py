@@ -1,14 +1,12 @@
+from abc import abstractmethod
 import ast
 import torch
-import inspect
-import importlib
 import numpy as np
 import torch.optim.lr_scheduler as lrs
 from collections import defaultdict
 from cruise import CruiseModule
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.rank_zero import rank_zero_warn, rank_zero_info
-from cruise.trainer.logger.tensorboard import DummySummaryWriter
 from training.metrics.simple_metrics import AUC, MAE, MSE, RMSE, MPR
 from torch.nn import functional as F
 from utils.util import merge_into_target_dict
@@ -20,10 +18,10 @@ class GandalfCruiseModule(CruiseModule):
         self._eval_output_names =  []
         self._extra_metrics = []
         self._summary_interval = 50
-        self._gather_val_loss = True
+        self._gather_val_loss = False
         # self._eval_output_names =  ["acc", "binary_prec", "binary_f1", "binary_recall", "input_neg_ratio", "input_pos_ratio", "output_neg_ratio", "output_pos_ratio"]
         self._parse_eval_output_advanced_metrics()  # check if metrics like AUC/MPR will need to be calculated
-
+    
     def forward(self, batch, batch_idx):
         pass
 
@@ -43,44 +41,16 @@ class GandalfCruiseModule(CruiseModule):
     def validation_step(self, batch, batch_index):
         inputs = self.pre_process_inputs(batch)
         targets = self.pre_process_targets(batch)
-
         val_loss_dict, val_output_dict = self.forward(*(inputs + targets))
-
         reduced_output = defaultdict(list)
         for output_name, output_val in val_loss_dict.items():
             reduced_output[output_name] = output_val.mean().item()
-
-        print(val_loss_dict.keys(),val_output_dict.keys())
-        # batch_val_dict = self._metric.batch_eval(val_output_dict['output'],targets)
+        self.track_logging_info({},val_output_dict,prefix='eval',hidden_keys=None,is_loss_item=False)
         # reduced_output['output'] = val_output_dict['output']
         # reduced_output['label'] = targets
-        if self._extra_metrics:
-            # need output in test_mode
-            # self._model._on_test = True
-            val_output = self.forward(*inputs)
-            # self._model._on_test = False
-            if isinstance(val_output, torch.Tensor):
-                val_output_dict['output0'] = val_output
-            elif isinstance(val_output, (list, tuple)):
-                for ii, val_output_ii in enumerate(val_output):
-                    if not isinstance(val_output_ii, torch.Tensor):
-                        msg = f"Returned output without target is of type {type(val_output_ii)} at index={ii}"
-                        msg += f'skip test mode `output{ii}` for metric calculation'
-                        rank_zero_warn(msg)
-                        continue
-                    val_output_dict[f'output{ii}'] = val_output_ii
-            else:
-                raise ValueError(f"Unexpected type of {type(val_output)} from model.forward() without target")
-
-            for output_name, output_val in val_output_dict.items():
-                if output_name not in self._eval_output_names and output_name not in self._all_gather_output_names:
-                    continue
-                reduced_output[output_name] = output_val.cpu().numpy()
-            for target_idx, target_val in enumerate(targets):
-                reduced_output[f'label{target_idx}'] = target_val.cpu().numpy()
+        # reduced_output.update(val_output_dict)
         print('reduced_output',reduced_output.keys())
         # reduced_output = self._add_stage_prefix(reduced_output,prefix='eval',is_loss_item=False)
-        self._tk_log_dict('',val_output_dict)
         return reduced_output
 
     def validation_epoch_end(self, outputs) -> None:
@@ -168,17 +138,24 @@ class GandalfCruiseModule(CruiseModule):
         print('reduced_all_gather_output',reduced_all_gather_output.keys())
         print('reduced_test_loss',reduced_test_loss.keys())
         print('reduced_test_output',reduced_test_output.keys())
-        self._tk_log_dict("eval/custom_metrics", extra_reduced_outputs)
-        self.track_logging_info({},reduced_test_loss,prefix='loss',is_loss_item=True)
-        self.track_logging_info({},reduced_test_output,prefix='eval',is_loss_item=False)
+        # self._tk_log_dict("eval/custom_metrics", extra_reduced_outputs)
+        self.track_logging_info({},reduced_test_loss,prefix='val',is_loss_item=True)
+        # self.track_logging_info({},reduced_test_output,prefix='eval',is_loss_item=False)
         
     def on_train_epoch_start(self):
         self._tk_log_dict("monitors/epoch_num", {"epoch": self.trainer.current_epoch})
 
-    def track_logging_info(self,training_info_dict,test_info_dict,prefix,show_keys:set = None,is_loss_item:bool=True):
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=0.00001,eps=1e-3
+        )
+        return {"optimizer": optimizer}
+
+
+    def track_logging_info(self,training_info_dict,test_info_dict,prefix,hidden_keys:set = None,is_loss_item:bool=True):
         if training_info_dict:
             for okey, oval in training_info_dict.items():
-                if show_keys and okey not in show_keys:
+                if hidden_keys and okey in hidden_keys:
                     continue
                 sub_dict = dict()
                 merge_into_target_dict(sub_dict, {okey: oval}, prefix, is_loss_item=is_loss_item)
@@ -196,10 +173,10 @@ class GandalfCruiseModule(CruiseModule):
             except Exception as ex:
                 raise RuntimeError(f"Failed to sync and reduce val outputs from all ranks: {ex}")
             for okey, oval in test_info_dict.items():
-                if show_keys and okey not in show_keys:
+                if hidden_keys and okey in hidden_keys:
                     continue
                 sub_dict = dict()
-                merge_into_target_dict(sub_dict, {okey: oval}, "test", is_loss_item=is_loss_item)
+                merge_into_target_dict(sub_dict, {okey: oval}, prefix, is_loss_item=is_loss_item)
                 # self._tk_log_dict(f"{prefix}/{okey}", sub_dict)
                 self._tk_log_dict('',sub_dict)
 

@@ -32,7 +32,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         self.save_hparams()
 
     def setup(self, stage: Optional[str] = None) -> None:
-        print(self.hparams)
+        # print(self.hparams)
         self._feature_num = self.hparams.features.get('feature_num',150)
         self._feature_input_num = self._feature_num - len(self.hparams.features.get('slot_mask', []))
         self._bucket_num = self.hparams.features.get('bucket_num',8)
@@ -62,7 +62,6 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         token_type_ids=None,
         targets=None,
     ):
-        # print(auto_dis_input.shape,feature_dense.shape,input_ids.shape)
         # get auto_dis embedding
         auto_dis_embedding = self._auto_dis_bucket_encoder(auto_dis_input)
         # get concat features
@@ -103,12 +102,6 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
             return loss_dict, output_dict
         else:
             return self._post_process_output(output)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=0.00001
-        )
-        return {"optimizer": optimizer}
 
     def pre_process_inputs(self, batched_feature_data):
         batched_feature_data_items = [
