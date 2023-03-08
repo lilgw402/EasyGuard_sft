@@ -40,6 +40,8 @@ class GeneralClsMetric(BaseRunningMetric):
         binary_recall = recall_score(binary_labels, binary_output, zero_division=0)
         binary_fpr, binary_tpr, _ = roc_curve(binary_labels, binary_output, pos_label=1)
         binary_auc = auc(binary_fpr, binary_tpr)
+        if binary_auc!=binary_auc:
+            binary_auc = 0
         binary_f1 = (
             2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6)
         )
@@ -55,13 +57,30 @@ class GeneralClsMetric(BaseRunningMetric):
                 )
         key = key + "_" if key else key
         return {
-            f"{key}acc": torch_wrapper(acc),
-            f"{key}binary_prec": torch_wrapper(binary_prec),
-            f"{key}binary_recall": torch_wrapper(binary_recall),
-            f"{key}binary_f1": torch_wrapper(binary_f1),
-            f"{key}input_neg_ratio": torch_wrapper(input_neg_ratio),
-            f"{key}input_pos_ratio": torch_wrapper(input_pos_ratio),
-            f"{key}output_neg_ratio": torch_wrapper(output_neg_ratio),
-            f"{key}output_pos_ratio": torch_wrapper(output_pos_ratio),
-            f"{key}binary_auc": torch_wrapper(binary_auc),
+            f"{key}acc": acc,
+            f"{key}binary_prec": binary_prec,
+            f"{key}binary_recall": binary_recall,
+            f"{key}binary_f1": binary_f1,
+            f"{key}input_neg_ratio": input_neg_ratio,
+            f"{key}input_pos_ratio": input_pos_ratio,
+            f"{key}output_neg_ratio": output_neg_ratio,
+            f"{key}output_pos_ratio": output_pos_ratio,
+            f"{key}binary_auc": binary_auc,
         }
+        # return {
+        #     f"{key}acc": torch_wrapper(acc),
+        #     f"{key}binary_prec": torch_wrapper(binary_prec),
+        #     f"{key}binary_recall": torch_wrapper(binary_recall),
+        #     f"{key}binary_f1": torch_wrapper(binary_f1),
+        #     f"{key}input_neg_ratio": torch_wrapper(input_neg_ratio),
+        #     f"{key}input_pos_ratio": torch_wrapper(input_pos_ratio),
+        #     f"{key}output_neg_ratio": torch_wrapper(output_neg_ratio),
+        #     f"{key}output_pos_ratio": torch_wrapper(output_pos_ratio),
+        #     f"{key}binary_auc": torch_wrapper(binary_auc),
+        # }
+
+if __name__ == '__main__':
+    outputs = torch.rand([4,1])*0.47
+    targets = torch.tensor([0,0,0,0])
+    metric = GeneralClsMetric()
+    print(metric.batch_eval(outputs, targets))

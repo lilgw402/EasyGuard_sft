@@ -18,14 +18,14 @@ from cruise.data_module import CruiseDataModule
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
 from cruise.data_module.preprocess.decode import TFApiExampleDecode
 from cruise.data_module.preprocess.create_preprocess import parse_cruise_processor_cfg
-from dataset.dataset_utils.create_config import create_cruise_process_config
-from dataset.dataset_utils.parse_files import get_ds_path
 from utils.driver import get_logger
 from utils.registry import DATASETS,FEATURE_PROVIDERS
-from utils.driver import reset_logger, get_logger, init_env,init_device, DIST_CONTEXT
-from utils.util import load_conf, load_from_yaml,load_from_tcc,load_from_bbc,check_config,update_config,init_seeds
+from utils.driver import get_logger, init_env,init_device, DIST_CONTEXT
 from utils.file_util import hmkdir, check_hdfs_exist
 from utils.torch_util import default_collate
+from utils.dataset_utils.create_config import create_cruise_process_config
+from utils.dataset_utils.parse_files import get_ds_path
+
 
 @FEATURE_PROVIDERS.register_module()
 class EcomLiveGandalfParquetAutoDisFeatureProvider:
@@ -75,7 +75,6 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider:
 		auto_dis_input_list = [feature_dense_norm, feature_dense_norm * feature_dense_norm, torch.sqrt(feature_dense_norm)]
 		auto_dis_input = torch.stack(auto_dis_input_list, dim=1)
 		return auto_dis_input, feature_dense_norm
-
 	
 	def process_asr(self, asr):
 		# 加载预处理参数
@@ -184,7 +183,7 @@ class GandalfCruiseDataModule(CruiseDataModule):
 				dataset,
 				feature_provider,
 				data_factory,
-				kwargs
+				type=None
 				 ):
 		super(GandalfCruiseDataModule, self).__init__()
 		self.save_hparams()
@@ -196,7 +195,6 @@ class GandalfCruiseDataModule(CruiseDataModule):
 		self.feature_provider = Dict(self.hparams.feature_provider)
 		self.data_factory = Dict(self.hparams.data_factory)
 		self.total_cfg = Dict({'dataset':self.dataset,'feature_provider':self.feature_provider,'data_factory':self.data_factory})
-		self.prepare_io()
 		self.train_predefined_steps = 'max' if self.data_factory.get('train_max_iteration',-1) == -1 else 'max'
 		self.val_predefined_steps = 'max' if self.data_factory.get('val_max_iteration',-1) == -1 else 'max'
 
@@ -219,16 +217,6 @@ class GandalfCruiseDataModule(CruiseDataModule):
 
 	def predict_dataloader(self):
 		return iter([])
-
-	def prepare_io(self,):
-		# parse folder info
-		self.dataset.input_dir = self.dataset.input_dir.replace("hdfs:///user", "hdfs://haruna/user")
-		self.dataset.val_input_dir = self.dataset.get("val_input_dir", "").replace("hdfs:///user", "hdfs://haruna/user")
-		self.dataset.test_input_dir = self.dataset.get("test_input_dir", "").replace("hdfs:///user", "hdfs://haruna/user")
-		hdfs_output_dir = self.dataset.hdfs_output_dir
-		os.makedirs(self.dataset.local_output_dir, exist_ok=True)
-		if not check_hdfs_exist(hdfs_output_dir):
-			hmkdir(hdfs_output_dir)
 	
 	def create_cruise_dataloader(self,cfg, data_input_dir, data_folder, arg_dict, mode="val", specific_bz=None):
 		# arg_dict_cp = Dict(arg_dict)

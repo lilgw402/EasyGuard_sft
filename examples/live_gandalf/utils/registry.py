@@ -3,7 +3,6 @@
 # Create: 2021/3/24 1:39 下午
 import inspect
 
-
 class Registry:
     """A registry to map strings to classes"""
 
@@ -72,8 +71,9 @@ class Registry:
 MODELS = Registry("model")
 DATASETS = Registry('dataset')
 FEATURE_PROVIDERS = Registry('feature_provider')
+METRICS = Registry("metric")
 
-def get_model(model_type):
+def get_model_module(model_type):
     model = MODELS.get(model_type)
     return model
 
@@ -106,3 +106,6 @@ def get_module(root_module, module_path):
             module = getattr(module, module_name)
     return module
 
+def build_metric(metric_type, arg_dict):
+    metric = METRICS.get(metric_type)(**arg_dict)
+    return metric

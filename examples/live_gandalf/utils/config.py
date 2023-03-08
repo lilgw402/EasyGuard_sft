@@ -11,10 +11,8 @@ config = Dict()
 config.workflow.trainers = ["trainer"]
 config.workflow.testers = ["tester"]
 config.workflow.tracers = ["tracer"]
-# config.workflow.cuda_visible_devices = "0"  # depreciated
 
 # trainer
-config.trainer.type = "SingleTask"
 config.trainer.resume_checkpoint = ""
 config.trainer.enable_amp = True
 config.trainer.find_unused_parameters = False

@@ -5,7 +5,9 @@
 import os
 import sys
 import logging
+import warnings
 from functools import wraps
+from sklearn.exceptions import UndefinedMetricWarning
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -246,3 +248,9 @@ IN_ARNOLD = (TRIAL_ID != "" or WORKSPACE_ID != "")
 DIST_CONTEXT = DistContext()
 HADOOP_DIR = "/opt/tiger/yarn_deploy/hadoop"
 HADOOP_BIN = HADOOP_DIR + "/bin/hadoop"
+
+warnings.filterwarnings(
+    action='ignore',
+    category=UndefinedMetricWarning,
+    module=r'sklearn'
+)

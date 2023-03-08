@@ -8,8 +8,10 @@
 import torch
 import torch.nn as nn
 from typing import Optional
+from collections import defaultdict
 from cruise import CruiseModule
 from easyguard.core import AutoModel,AutoTokenizer
+from models.gandalf_cruise_module import GandalfCruiseModule
 from models.modules.encoders import AutodisBucketEncoder
 from models.modules.losses import BCEWithLogitsLoss
 from models.modules.running_metrics import GeneralClsMetric
@@ -17,13 +19,14 @@ from utils.util import count_params
 from utils.registry import MODELS
 
 @MODELS.register_module()
-class EcomLiveGandalfAutoDisNNAsrCruiseModel(CruiseModule):
+class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
     def __init__(
         self,
         features,
         asr_encoder,
         embedding,
-        kwargs
+        kwargs,
+        type=None
     ):
         super(EcomLiveGandalfAutoDisNNAsrCruiseModel, self).__init__()
         self.save_hparams()
@@ -94,29 +97,12 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(CruiseModule):
                     "output": output_prob,
                 }
             # 添加评价指标
-            eval_dict = self._metric.batch_eval(output_prob, targets, key='eval')
+            eval_dict = self._metric.batch_eval(output_prob, targets)
             output_dict.update(eval_dict)
+            output_dict.update(loss_dict)
             return loss_dict, output_dict
         else:
             return self._post_process_output(output)
-
-    def training_step(self, batch, batch_idx):
-        inputs = self.pre_process_inputs(batch)
-        targets = self.pre_process_targets(batch)
-        loss_dict, output_dict = self.forward(*(inputs+targets))
-        return loss_dict
-
-    def validation_step(self, batch, batch_idx):
-        inputs = self.pre_process_inputs(batch)
-        targets = self.pre_process_targets(batch)
-        loss_dict, output_dict = self.forward(*(inputs+targets))
-        self.log_dict(output_dict)
-
-    def test_step(self,batch,batch_idx):
-        auto_dis_input, feature_dense, input_ids, attention_mask, token_type_ids, targets = self.pre_process_inputs(
-            batch)
-        loss_dict, output_dict = self.forward(auto_dis_input, feature_dense, input_ids, attention_mask, token_type_ids,
-                                              None)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -124,6 +110,16 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(CruiseModule):
         )
         return {"optimizer": optimizer}
 
+    def pre_process_inputs(self, batched_feature_data):
+        batched_feature_data_items = [
+            batched_feature_data["auto_dis_input"],
+            batched_feature_data["feature_dense"],
+            batched_feature_data['input_ids'],
+            batched_feature_data['attention_mask'],
+            batched_feature_data['token_type_ids']
+        ]
+        return self._pre_process(batched_feature_data_items)
+        
     def init_encoders(self):
         self._auto_dis_bucket_encoder = AutodisBucketEncoder(
                                         feature_num=self._feature_input_num,
@@ -135,7 +131,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(CruiseModule):
         # Init model components:asr
         self._asr_encoder_param = self.hparams.asr_encoder
         self.asr_model_name = "deberta_base_6l"
-        self._asr_encoder = AutoModel.from_pretrained(self.asr_model_name,n_layers=3)
+        self._asr_encoder = AutoModel.from_pretrained(self.asr_model_name,n_layers=self._asr_encoder_param.get('num_hidden_layers',3))
         # self._asr_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=self._asr_encoder_param['max_length'])
         self._asr_emb_dropout = self._init_emb_dropout()
         self._init_cls_layer()
@@ -173,34 +169,3 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(CruiseModule):
 
     def _init_criterion(self):
         self._criterion_final = BCEWithLogitsLoss()
-
-    @staticmethod
-    def _pre_process(batched_feature_data_items):
-        new_inputs = []
-        for input in batched_feature_data_items:
-            if isinstance(input, tuple) or isinstance(input, list):
-                new_input = list(input)
-            else:
-                new_input = input
-            new_inputs.append(new_input)
-        return new_inputs
-
-    def _post_process_output(self, output):
-        # 业务逻辑，对模型输出做处理
-        return self._sigmoid(output)
-
-    def pre_process_inputs(self, batched_feature_data):
-        batched_feature_data_items = [
-            batched_feature_data["auto_dis_input"],
-            batched_feature_data["feature_dense"],
-            batched_feature_data['input_ids'],
-            batched_feature_data['attention_mask'],
-            batched_feature_data['token_type_ids']
-        ]
-        return self._pre_process(batched_feature_data_items)
-
-    def pre_process_targets(self, batched_feature_data):
-        batched_feature_data_items = [
-            batched_feature_data["label"],
-        ]
-        return self._pre_process(batched_feature_data_items)

@@ -43,6 +43,22 @@ def count_params(model):
         )
     )
 
+def merge_into_target_dict(src_dict, sub_dict, prefix, is_loss_item=False):
+    for key, val in sub_dict.items():
+        if is_loss_item:
+            if isinstance(val, torch.Tensor):
+                src_dict[f"{prefix}_{key}"] = val.mean().item()
+            if isinstance(val, float):
+                src_dict[f"{prefix}_{key}"] = val
+        else:
+            if isinstance(val, torch.Tensor):
+                if len(val.shape) >= 1:
+                    src_dict[f"{prefix}_{key}"] = val.mean().item()
+                else:
+                    src_dict[f"{prefix}_{key}"] = val.item()  # diff
+            if isinstance(val, float):
+                src_dict[f"{prefix}_{key}"] = val
+                
 def load_conf(json_path):
     with open(json_path) as f:
         config = json.load(f)

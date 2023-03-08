@@ -8,6 +8,28 @@ from utils.driver import get_logger, HADOOP_BIN, DIST_CONTEXT, PROJECT_PATH
 from utils.util import async_run
 
 
+def push_files(local_path, hdfs_path):
+    try:
+        if not check_hdfs_exist(hdfs_path):
+            cmd = f"{HADOOP_BIN} fs -mkdir -p {hdfs_path}"
+            os.system(cmd)
+        cmd = f"{HADOOP_BIN} fs -put -f {local_path} {hdfs_path}"
+        get_logger().info(f"run command: {cmd}")
+        os.system(cmd)
+        return True
+    except Exception as e:
+        get_logger().error(e)
+        return False
+        
+def substitute_hdfs_prefix(input_dir):
+    input_dir = input_dir.replace("hdfs:///user", "hdfs://haruna/user")
+    return input_dir
+
+def check_file_exist(input_dir):
+    os.makedirs(input_dir, exist_ok=True)
+    if not check_hdfs_exist(input_dir):
+        hmkdir(input_dir)
+
 def check_hdfs_exist(path):
     cmd = "%s fs -test -e %s" % (HADOOP_BIN, path)
     ret = os.system(cmd)
