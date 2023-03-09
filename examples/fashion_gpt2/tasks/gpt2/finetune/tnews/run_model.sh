@@ -1,3 +1,0 @@
-python3 tasks/gpt2/finetune/tnews/model.py --model=tasks/gpt2/finetune/tnews/1b.yaml --model.partial_pretrain=hdfs://haruna/home/byte_arnold_lq/data/reckon/mlxlab_aml_test/tasks/3320480/trials/10942777/output/checkpoints/global_step_220000/mp_rank_00_model_states.pt --data.train_num_workers=1 --data.val_num_workers=1 --data.train_batch_size=4 --data.val_batch_size=4
-
-# bash launch.sh tasks/gpt2/finetune/tnews/model.py  --model=tasks/gpt2/finetune/tnews/1b.yaml --model.partial_pretrain=hdfs://haruna/home/byte_arnold_lq/data/reckon/mlxlab_aml_test/tasks/3320480/trials/10942777/output/checkpoints/global_step_290000
