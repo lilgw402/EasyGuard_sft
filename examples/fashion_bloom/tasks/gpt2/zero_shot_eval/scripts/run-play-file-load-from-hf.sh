@@ -23,8 +23,8 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --data.val_num_workers=1 \
   --data.val_batch_size=1 \
   --trainer.val_check_interval=0.5 \
-  --data.train_path=hdfs://haruna/home/byte_data_aml_research/user/zhengyu.chen/lambada/dev_4864/dev.parquet  \
-  --data.val_path=hdfs://haruna/home/byte_data_aml_research/user/yao.cheng/lambada/clean_test \
+  --data.train_path=hdfs://haruna/home/byte_ecom_govern/user/doushihan/data/lambada/dev_4864/dev.parquet  \
+  --data.val_path=hdfs://haruna/home/byte_ecom_govern/user/doushihan/data/lambada/clean_test \
   --data.dataset_name=lambada \
   --data.template_name=please+next+word  \
   --data.drop_last=True \
@@ -35,7 +35,7 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --trainer.max_epochs=20 \
   --trainer.optimizer_kwargs.optimizer.params.lr=1e-5 \
   --play-file-type="qa" \
-  --play-file /mnt/bn/ecom-govern-maxiangqian/doushihan/data/data/test_0130_add_trans2_prompt.jsonl \
-  --play-out-file /mnt/bn/ecom-govern-maxiangqian/doushihan/play_file_out/easyguard_test.jsonl \
+  --play-file hdfs://haruna/home/byte_ecom_govern/user/doushihan/play_file_sample/easyguard_play_file_sample.jsonl \
+  --play-out-file hdfs://haruna/home/byte_ecom_govern/user/doushihan/play_file_sample/output/easyguard_play_file_sample_output.jsonl \
   --generate-temp 0.7
 

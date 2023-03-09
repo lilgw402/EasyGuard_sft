@@ -8,6 +8,8 @@ launch --gpu 4 --cpu 40 --memory 300 -- doas --krb5-username doushihan bash
 
 hdfs://haruna/home/byte_ecom_govern/user/doushihan
 hdfs://haruna/home/byte_ecom_govern/user/doushihan/models/gpt2/1b3_0221_mini_data/
+
+cd /opt/tiger/EasyGuard/examples/fashion_bloom/
 ```
 
 ```bash

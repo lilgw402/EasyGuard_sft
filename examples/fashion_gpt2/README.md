@@ -4,14 +4,8 @@
 launch --gpu 1 --cpu 40 --memory 128 -- doas --krb5-username doushihan bash
 hdfs://haruna/home/byte_ecom_govern/user/doushihan
 
-Model       model.network
-Datamodule  data.
-Trainer.    trainer
-```
-
-## save ckpt
-```bash
-python3 ./tasks/gpt2/merge_zero3_ckpt.py --checkpoint_dir hdfs://haruna/home/byte_ecom_govern/user/doushihan/models/gpt2/13b_0228_qa_finetune_bsz2/checkpoints/global_step_50/ --dtype=bf16
+MARIANA_INSTALL_EXTRA_PIP_DEPS=1
+MARIANA_OVERRIDE_CRUISE_VERSION=917
 ```
 
 # 1b3_v1
@@ -33,6 +27,7 @@ python3 tasks/gpt2/unsup/model.py --play --generate-temp 0.7 --model=tasks/gpt2/
 ```
 
 ### 跑文件
+
 ```bash
 bash launch.sh tasks/gpt2/unsup/model.py --model=tasks/gpt2/unsup/1b3_v1.yaml --play-file-type="qa" --play-file hdfs://haruna/home/byte_data_aml_research/user/jiankai.sun/large_model/play_files/play_file_qa.jsonl --generate-temp 0.7 --model.partial_pretrain=hdfs://haruna/home/byte_data_aml_research/user/yanshipeng/models/gpt/1b_cleandata_v2_20230212_96gpus/checkpoints/global_step_300000/mp_rank_00_model_states.pt
 ```
