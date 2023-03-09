@@ -4,4 +4,4 @@ optim: AdamW
 learning_rate: 4.0e-5
 weight_decay: 1.e-4
 lr_schedule: linear
-warmup_steps_factor: 1
+warmup_steps_factor: 4
