@@ -36,6 +36,6 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --trainer.optimizer_kwargs.optimizer.params.lr=1e-5 \
   --play-file-type="qa" \
   --play-file hdfs://haruna/home/byte_ecom_govern/user/doushihan/play_file_sample/easyguard_play_file_sample.jsonl \
-  --play-out-file hdfs://haruna/home/byte_ecom_govern/user/doushihan/play_file_sample/output/easyguard_play_file_sample_output.jsonl \
+  --play-out-file /mnt/bn/ecom-govern-maxiangqian/doushihan/play_file_out/outputs/easyguard_play_file_sample_output.jsonl \
   --generate-temp 0.7
 
