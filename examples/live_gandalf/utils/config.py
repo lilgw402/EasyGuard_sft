@@ -1,17 +1,9 @@
 # coding=utf-8
-# Email: panziqi@bytedance.com
-# Create: 2021/11/5 3:46 下午
-# Description: Config defaults
-
+# Email: jiangxubin@bytedance.com
+# Create: 2023/3/9 20:49
 from addict import Dict
 
 config = Dict()
-
-# workflow
-config.workflow.trainers = ["trainer"]
-config.workflow.testers = ["tester"]
-config.workflow.tracers = ["tracer"]
-
 # trainer
 config.trainer.resume_checkpoint = ""
 config.trainer.enable_amp = True
@@ -73,6 +65,3 @@ config.tracer.verify_diff_scale = 1e-3
 config.tracer.from_best_checkpoint = False
 config.tracer.direct_half = False
 config.tracer.check_resume_checkpoint_exist = True  # 检查resume_checkpoint是否填对
-
-# tracking: use in "project/name" format, name means experiments_name under the same project, like projectA/exp1, projectB/exp2
-config.trainer.tracking_project_name = ''

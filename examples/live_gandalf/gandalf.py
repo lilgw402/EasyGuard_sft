@@ -4,50 +4,69 @@
 # Modified: 2023-03-01 12:52:19
 import os
 import re
-import warnings
+import sys
 import argparse
-import logging
 from addict import Dict
 from cruise import CruiseTrainer, CruiseCLI
-from cruise.utilities.rank_zero import rank_zero_info
-from cruise.trainer.logger import TensorBoardLogger
-from cruise.trainer.logger.tracking import TrackingLogger
 from easyguard.utils.arguments import print_cfg
-from utils.registry import get_model,get_data_module
 from utils.config import config
-from utils.driver import reset_logger, get_logger, init_env,init_device, DIST_CONTEXT
+from utils.registry import get_model_module,get_data_module
 from utils.util import load_conf, load_from_yaml,load_from_tcc,load_from_bbc,check_config,update_config,init_seeds
 from utils.file_util import hmkdir, check_hdfs_exist
-from pytorch_lightning.cli import LightningArgumentParser,LightningCLI
-from pytorch_lightning.demos.boring_classes import DemoModel,BoringDataModule
 
+def prepare_folder(config):
+    # print(config.trainer)
+    os.makedirs(config.trainer.default_root_dir, exist_ok=True)
+    if not check_hdfs_exist(config.trainer.default_hdfs_dir):
+            hmkdir(config.trainer.default_hdfs_dir)
 
-def pl_cli_main():
-    cli = LightningCLI(DemoModel,BoringDataModule,save_config_overwrite=True,save_config_filename='/mlx_devbox/users/jiangxubin/repo/121/EasyGuard/examples/live_gandalf/pl.yaml')
+def prepare_gandalf_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, help="local yaml conf")
+    parser.add_argument("--fit", action="store_true")
+    parser.add_argument("--val", action="store_true")
+    parser.add_argument("--trace", action="store_true")
+    # origin_args = copy.deepcopy(sys.argv[1:])
+    args, config_override = parser.parse_known_args()
+    # Remove custom args for the compatability with cruise args
+    for idx,arg in enumerate(sys.argv):
+        if arg in ['--fit','--val','--trace']:
+            sys.argv.pop(idx)
+    if args.config:
+        config = Dict(load_from_yaml(args.config))
+    # update_config(config,config_override)
+    config.update({'fit':args.fit,'val':args.val, 'trace':args.trace})
+    # raise KeyError('One of train/val/trace mode must be specified')
+    return Dict(config)
+
+def prepare_trainer_components(config):
+    model_module = get_model_module(config['model']['type'])
+    data_module = get_data_module(config['data']['type'])
+    return model_module, data_module
 
 def cruise_cli_main():
-    from dataset import GandalfCruiseDataModule
+    config = prepare_gandalf_args()
+    # prepare_folder(config)
+    model_module, data_module = prepare_trainer_components(config)
+    cli = CruiseCLI(model_module,data_module,trainer_class=CruiseTrainer)
+    cfg, trainer, model, datamodule = cli.parse_args()
+    print_cfg(cfg)
+    if config['fit']:
+        trainer.fit(model, datamodule=datamodule)
+    if config['val']:
+        trainer.validate(model, datamodule=datamodule)
+        # trainer.validate(model, datamodule.val_dataloader())
+    if config['trace']:
+        trainer.trace(model, datamodule=datamodule)
+
+def main():
+    from dataset import EcomLiveGandalfParquetAutoDisCruiseDataModule
     from models import EcomLiveGandalfAutoDisNNAsrCruiseModel
-    cli = CruiseCLI(EcomLiveGandalfAutoDisNNAsrCruiseModel,GandalfCruiseDataModule,trainer_class=CruiseTrainer)
+    cli = CruiseCLI(EcomLiveGandalfAutoDisNNAsrCruiseModel,EcomLiveGandalfParquetAutoDisCruiseDataModule,trainer_class=CruiseTrainer)
     cfg, trainer, model, datamodule = cli.parse_args()
     print_cfg(cfg)
     trainer.fit(model, datamodule=datamodule)
-    # similarly can manually call val, test, predict
-    # trainer.validate(model, datamodule.val_dataloader())
 
 if __name__ == "__main__":
-    # pl_cli_main()
+    # main()
     cruise_cli_main()
-    import torch
-    from easyguard.core import AutoModel,AutoTokenizer
-    asr_model_name = "deberta_base_6l"
-    asr_encoder = AutoModel.from_pretrained(asr_model_name)
-    from dataset.transforms.text_transforms.DebertaTokenizer import DebertaTokenizer
-    # # asr_tokenizer = AutoTokenizer.from_pretrained(asr_model_name, padding='max_length', truncation=True,return_tensors="pt", max_length=20)
-    asr_tokenizer = DebertaTokenizer('./models/weights/fashion_deberta_asr/deberta_3l/vocab.txt',max_len=20)
-    inputs = asr_tokenizer('哈哈aaaa思思思思思思都是的师傅啦啦好卡啦')
-    print(inputs,type(inputs),inputs['input_ids'].shape)
-    print(torch.unsqueeze(inputs['token_type_ids'],0).shape)
-    output = asr_encoder(torch.unsqueeze(inputs['input_ids'],0),torch.unsqueeze(inputs['attention_mask'],0),torch.unsqueeze(inputs['token_type_ids'],0))
-    print(type(output),output)
-    

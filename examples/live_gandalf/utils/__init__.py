@@ -6,5 +6,8 @@ from .registry import Registry
 from .util import BbcClient
 from models import *
 from dataset import *
+from training.optimizers import *
+from training.lr_schedulers import *
+from training.metrics import *
 
-__all__ = ['Registry','BbcClient']
+# __all__ = ['Registry','BbcClient']

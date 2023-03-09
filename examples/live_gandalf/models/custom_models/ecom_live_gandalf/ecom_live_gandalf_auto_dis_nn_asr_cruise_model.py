@@ -11,7 +11,7 @@ from typing import Optional
 from collections import defaultdict
 from cruise import CruiseModule
 from easyguard.core import AutoModel,AutoTokenizer
-from models.gandalf_cruise_module import GandalfCruiseModule
+from models.template_models.gandalf_cruise_module import GandalfCruiseModule
 from models.modules.encoders import AutodisBucketEncoder
 from models.modules.losses import BCEWithLogitsLoss
 from models.modules.running_metrics import GeneralClsMetric
@@ -28,7 +28,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         kwargs,
         type=None
     ):
-        super(EcomLiveGandalfAutoDisNNAsrCruiseModel, self).__init__()
+        super(EcomLiveGandalfAutoDisNNAsrCruiseModel, self).__init__(kwargs)
         self.save_hparams()
 
     def setup(self, stage: Optional[str] = None) -> None:

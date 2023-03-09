@@ -1,6 +1,6 @@
 # coding=utf-8
-# Email: panziqi@bytedance.com
-# Create: 2021/3/24 1:39 下午
+# Email: jiangxubin@bytedance.com
+# Create: 2023/3/9 17:58 下午
 import inspect
 
 class Registry:
@@ -72,6 +72,12 @@ MODELS = Registry("model")
 DATASETS = Registry('dataset')
 FEATURE_PROVIDERS = Registry('feature_provider')
 METRICS = Registry("metric")
+SCHEDULERS = Registry("lr_scheduler")
+OPTIMIZERS = Registry("optimizer")
+
+
+DEFAULT_SCHEDULER = "ConstLrScheduler"
+DEFAULT_OPTIMIZER = "AdamW"
 
 def get_model_module(model_type):
     model = MODELS.get(model_type)
@@ -106,6 +112,16 @@ def get_module(root_module, module_path):
             module = getattr(module, module_name)
     return module
 
-def build_metric(metric_type, arg_dict):
+def get_metric_instance(metric_type, arg_dict):
     metric = METRICS.get(metric_type)(**arg_dict)
     return metric
+
+def build_lr_scheduler_instance(optimizer, arg_dict):
+    lr_scheduler_type = arg_dict.get("scheduler_name", DEFAULT_SCHEDULER)
+    lr_scheduler = SCHEDULERS.get(lr_scheduler_type)(optimizer, **arg_dict)
+    return lr_scheduler
+
+def build_optimizer_instance(model_list, arg_dict):
+    optimizer_type = arg_dict.get("optimizer_name",DEFAULT_SCHEDULER)
+    optimizer = OPTIMIZERS.get(optimizer_type)(model_list, **arg_dict).get_optimizer()
+    return optimizer

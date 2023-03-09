@@ -1,7 +1,7 @@
 # coding=utf-8
-# Email: panziqi@bytedance.com
-# Create: 2021/9/20 11:42 上午
-
+# Email: jiangxubin@bytedance.com
+# Create: 2023/3/9 18:00
+import numpy as np
 from utils.registry import METRICS
 from training.metrics.base_metric import BaseMetric
 from typing import List, Union
@@ -42,7 +42,7 @@ class AUC(SimpleMetric):
         self,
         score_key: str,
         label_key: str,
-        show_threshold_details: bool = True,
+        show_threshold_details: bool = False,
         score_idx: Union[int, List] = 1,
         pr_scope: List[int] = None,
         fix_recall: float = 0.3,
@@ -90,9 +90,56 @@ class AUC(SimpleMetric):
                 partition=self._pr_scope[2],
                 dump_table_name=table_name,
             )
-
         return result
 
+@METRICS.register_module()
+class ClsMetric(SimpleMetric):
+    def __init__(
+        self,
+        score_key: str,
+        label_key: str,
+        score_idx: Union[int, List] = 1,
+        binary_threshold=0.5,
+        multi_class=False,
+        neg_tag=0
+        ):
+        super().__init__(score_key, label_key, score_idx)
+        self.score_key = score_key
+        self.label_key = label_key
+        self.score_idx = score_idx
+        self.binary_threshold = binary_threshold
+        self.multi_class = multi_class
+        self.neg_tag = neg_tag
+        assert self.neg_tag != 1, "neg_tag=1 is ambiguous, choose another num"
+
+    def cal_metric(self,scores,labels):
+        from sklearn.metrics import precision_score,recall_score, auc, roc_curve
+        scores = np.stack(scores,axis=0)
+        labels = np.array(labels,dtype=np.int32)
+        if self.multi_class:
+            scores = np.argmax(scores, axis=1)
+        else:
+            scores = scores.squeeze()
+            scores[scores > self.binary_threshold] = 1
+            scores[scores <= self.binary_threshold] = self.neg_tag
+        total_num = labels.shape[0]
+        pos_num = np.sum(labels[labels==1])
+        input_neg_ratio = np.sum(labels == self.neg_tag) / labels.shape[0]
+        input_pos_ratio = 1 - input_neg_ratio
+        output_neg_ratio = np.sum(scores == self.neg_tag) / scores.shape[0]
+        output_pos_ratio = 1 - output_neg_ratio
+        acc = np.sum(labels == scores) / labels.shape[0]
+        binary_output = np.array(scores != self.neg_tag, dtype=np.int64)
+        binary_labels = np.array(labels != self.neg_tag, dtype=np.int64)
+        binary_prec = precision_score(binary_labels, binary_output, zero_division=0)
+        binary_recall = recall_score(binary_labels, binary_output, zero_division=0)
+        binary_fpr, binary_tpr, _ = roc_curve(binary_labels, binary_output, pos_label=1)
+        binary_auc = auc(binary_fpr, binary_tpr)
+        if binary_auc!=binary_auc:
+            binary_auc = 0
+        binary_f1 = (2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6))
+        binary_metric = {'acc':acc,'precision':binary_prec,'recall':binary_recall,'auc':binary_auc,'binary_f1':binary_f1,'input_neg_ratio':input_neg_ratio,'input_pos_ratio':input_pos_ratio,'output_neg_ratio':output_neg_ratio,'output_pos_ratio':output_pos_ratio,'pos_num':pos_num,'total_num':total_num}
+        return binary_metric
 
 @METRICS.register_module()
 class MSE(SimpleMetric):

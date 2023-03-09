@@ -6,6 +6,7 @@ import os
 import sys
 import logging
 import warnings
+import numpy as np
 from functools import wraps
 from sklearn.exceptions import UndefinedMetricWarning
 
@@ -249,8 +250,7 @@ DIST_CONTEXT = DistContext()
 HADOOP_DIR = "/opt/tiger/yarn_deploy/hadoop"
 HADOOP_BIN = HADOOP_DIR + "/bin/hadoop"
 
-warnings.filterwarnings(
-    action='ignore',
-    category=UndefinedMetricWarning,
-    module=r'sklearn'
-)
+warnings.filterwarnings(action='ignore',category=UndefinedMetricWarning,module=r'sklearn')
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
+
+
