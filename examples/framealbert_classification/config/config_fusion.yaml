@@ -1,4 +1,4 @@
 name: single_stream
-class_num: 3253  # 2100
+class_num: 2100
 feat_emb_size: 768
 head_num: 5

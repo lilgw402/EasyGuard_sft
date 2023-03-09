@@ -124,28 +124,28 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             try:
                 data_item = json.loads(example)
                 cid = data_item['leaf_cid']
-                label = self.cid2label[cid]
-                # label = self.gec[cid]['label']
+                # label = self.cid2label[cid]
+                label = self.gec[cid]['label']
                 # label = int(data_item['label'])
                 # 文本
-                title = data_item['title']
-                desc = data_item['desc']
-                country_idx = 0
-                # if 'translation' in data_item:
-                #     country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
-                #     country_idx = self.country2idx[country]
-                #     title = data_item['translation'][country]
-                #     desc = None
-                # elif 'text' in data_item:
-                #     title = data_item['text']
-                #     desc = None
-                #     country = data_item['country']
-                #     country_idx = self.country2idx[country]
-                # else:
-                #     title = data_item['title']
-                #     desc = data_item['desc']
-                #     country = data_item['country']
-                #     country_idx = self.country2idx[country]
+                # title = data_item['title']
+                # desc = data_item['desc']
+                # country_idx = 0
+                if 'translation' in data_item:
+                    country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
+                    country_idx = self.country2idx[country]
+                    title = data_item['translation'][country]
+                    desc = None
+                elif 'text' in data_item:
+                    title = data_item['text']
+                    desc = None
+                    country = data_item['country']
+                    country_idx = self.country2idx[country]
+                else:
+                    title = data_item['title']
+                    desc = data_item['desc']
+                    country = data_item['country']
+                    country_idx = self.country2idx[country]
                 text = text_concat(title, desc)
 
                 # token_ids = self.pipe.preprocess([text])[0]
@@ -189,7 +189,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     try:
                         for url in data_item['images']:
                             # image_str = download_url_with_exception(get_original_url(url), timeout=3)
-                            image_str = download_image_to_base64(get_original_url(url), timeout=1)
+                            image_str = download_image_to_base64(get_original_url(url), timeout=2)
                             # image_str = download_image_to_base64(get_real_url(url), timeout=2)
                             if image_str != b'' and image_str != '':
                                 try:
