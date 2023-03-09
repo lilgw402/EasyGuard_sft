@@ -168,8 +168,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if 'image' in data_item:
                     # get image by b64
                     try:
-                        image_tensor = self.image_preprocess(data_item['image'])
-                        # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
+                        # image_tensor = self.image_preprocess(data_item['image'])
+                        image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
