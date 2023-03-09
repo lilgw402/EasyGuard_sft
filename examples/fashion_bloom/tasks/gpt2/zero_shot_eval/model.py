@@ -102,24 +102,32 @@ class GPT2Model(CruiseModule):
 
         self.loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.hparams.network.pad_idx, reduction='none')
 
-        # if not self.hparams.use_hf_ckpt:
-        #     # cruise model
-        #     self.gpt = GPT2LMHeadModel(self.hparams)
-        #     self.init_weights()
-        #     self.freeze_params(self.hparams.freeze_prefix or [])
-        if True:
+        if self.hparams.use_hf_ckpt:
             if self.hparams.partial_pretrain.startswith('hdfs'):
                 tmp_dir = os.path.join(tempfile.gettempdir(), os.path.basename(self.hparams.partial_pretrain))
                 self.local_dir = tmp_dir
             else:
                 self.local_dir = self.hparams.partial_pretrain
-            
             print(f'local_dir: {self.local_dir}')
+
             if self.hparams.model_config.startswith('hdfs'):
-                self.local_config = self.local_dir + "_config.json"
+                self.local_config = self.local_dir
             else:
                 self.local_config = self.hparams.model_config
             print(f'local_config: {self.local_config}')
+        else:
+            if self.hparams.partial_pretrain.startswith('hdfs'):
+                tmp_dir = os.path.join(tempfile.gettempdir(), os.path.basename(self.hparams.partial_pretrain))
+                self.local_dir = tmp_dir
+            else:
+                self.local_dir = self.hparams.partial_pretrain
+            print(f'local_dir: {self.local_dir}')
+
+            if self.hparams.model_config.startswith('hdfs'):
+                self.local_config = os.path.join(tempfile.gettempdir(), os.path.basename(self.hparams.model_config))
+            else:
+                self.local_config = self.hparams.model_config
+            print(f'local_config: {self.local_config}')            
     
     def local_rank_zero_prepare(self) -> None:
         if self.hparams.use_hf_ckpt:

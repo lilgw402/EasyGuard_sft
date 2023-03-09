@@ -17,7 +17,7 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --data.max_seq_len=512 \
   --model=tasks/gpt2/zero_shot_eval/1b.yaml \
   --model.partial_pretrain="$chkpt_path" \
-  --model.model_config="$chkpt_path/config.json" \
+  --model.model_config="$chkpt_path" \
   --data.train_num_workers=1 \
   --data.train_batch_size=1 \
   --data.val_num_workers=1 \
