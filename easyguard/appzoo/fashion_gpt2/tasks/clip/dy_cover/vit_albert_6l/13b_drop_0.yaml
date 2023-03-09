@@ -1,0 +1,15 @@
+vit:
+  emb_dropout: 0.0
+  patch_length: 196
+  patch_size: 16
+  num_layers: 40
+  num_heads: 40
+  embed_dim: 5120
+  mlp_dim: 20480
+  use_native_attention: False
+partial_pretrain: []
+bert:
+  hidden_size: 5120
+  intermediate_size: 20480
+  num_hidden_layers: 40
+  num_attention_heads: 40
