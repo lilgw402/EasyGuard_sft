@@ -35,7 +35,7 @@ optimizer_kwargs:
       bias_correction: true
       adam_w_mode: true
   scheduler:
-    type: "mariana.optim.lr_scheduler.get_cosine_schedule_with_warmup_lrdecay"
+    type: "fashBloom.optim.lr_scheduler.get_cosine_schedule_with_warmup_lrdecay"
     total_steps_param_name: "num_training_steps"
     warmup_steps_param_name: "num_warmup_steps"
     interval: "step"

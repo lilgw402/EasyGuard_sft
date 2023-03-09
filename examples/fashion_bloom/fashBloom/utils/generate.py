@@ -13,7 +13,7 @@ from torch.nn import functional as F
 import warnings
 from cruise.utilities.hdfs_io import hopen
 from promptsource.templates import DatasetTemplates, Template
-from mariana.utils.processor import ocnli_processor, rte_processor, lambada_processor
+from fashBloom.utils.processor import ocnli_processor, rte_processor, lambada_processor
 
 @torch.no_grad()
 def sample(model_decode_func, x, steps, temperature=1.0, do_sample=False, top_k=None, top_p=None, eos=3, until_n_eos=1):

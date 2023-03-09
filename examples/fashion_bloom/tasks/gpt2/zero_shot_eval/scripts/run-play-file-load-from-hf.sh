@@ -3,19 +3,8 @@ set -x
 
 declare -A model_dir
 model_dir=(
-    # ['opt_1b3']='/mnt/bn/mlsys-nas/hf_models/opt-1.3b'
-    ['opt_1b3']='hdfs://haruna/home/byte_data_aml_research/user/guokun.lai/hf_models/opt-1.3b'
-    ['opt_66b']='/mnt/bn/mlsys-nas/hf_models/opt-66b'
-    ['bloom_176b']='/mnt/bn/ecom-govern-maxiangqian/doushihan/hf_models/bloom176b/bloom'
-    ['bloom_7b1']='/mnt/bn/ecom-govern-maxiangqian/doushihan/hf_models/bloom7b1/bloom-7b1'
-    ['bloom_7b1_hdfs']='hdfs://haruna/home/byte_data_aml_research/user/yao.cheng/hf_models/bloom-7b1'
-    ['bloom_560m']='/mnt/bn/ecom-govern-maxiangqian/doushihan/hf_models/bloom560m/bloomz-560m'
-)
-
-trainer_config=(
-    ['opt_1b3']='tasks/gpt2/zero_shot_eval/zero3-hf-no-offload.yaml'
-    ['opt_66b']='tasks/gpt2/zero_shot_eval/zero3-hf-no-offload.yaml'
-    ['bloom_176b']='tasks/gpt2/zero_shot_eval/zero3-hf-bloom-175b-offload-param-none-optim-cpu.yaml'
+    ['bloom_7b1']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/hf_models/bloom-7b1'
+    ['bloom_560m']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/hf_models/bloom560m/bloomz-560m'
 )
 
 chkpt_path=${model_dir[$@]}
@@ -47,6 +36,6 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --trainer.optimizer_kwargs.optimizer.params.lr=1e-5 \
   --play-file-type="qa" \
   --play-file /mnt/bn/ecom-govern-maxiangqian/doushihan/data/data/test_0130_add_trans2_prompt.jsonl \
-  --play-out-file /mnt/bn/ecom-govern-maxiangqian/doushihan/play_file_out/test_0130_add_trans2_prompt/val_output.jsonl \
+  --play-out-file /mnt/bn/ecom-govern-maxiangqian/doushihan/play_file_out/easyguard_test.jsonl \
   --generate-temp 0.7
 

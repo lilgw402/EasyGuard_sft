@@ -13,11 +13,46 @@ from transformers.deepspeed import HfDeepSpeedConfig
 from cruise import CruiseModule, CruiseCLI, CruiseConfig
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.hdfs_io import hcopy
-from mariana.data.gpt.datamodule.zero_shot import ZeroShotGPTDatamodule
-from mariana.utils.exp_helper import ExpHelper
-from mariana.models.gpt2 import get_subsequent_mask, Conv1D
-from mariana.utils.generate import play_console, play_file, few_shot_play_file, play_file_qa, play_file_qa_batch
-from mariana.optim import mariana_optimizer_kwargs_defaults
+from fashBloom.data.gpt.datamodule.zero_shot import ZeroShotGPTDatamodule
+from fashBloom.utils.exp_helper import ExpHelper
+from fashBloom.utils.generate import play_console, play_file, few_shot_play_file, play_file_qa, play_file_qa_batch
+from fashBloom.optim import mariana_optimizer_kwargs_defaults
+
+
+def get_subsequent_mask(seq):
+    '''
+    For masking out the subsequent info.
+    seq: [bsz, seq_len]
+    mask: [bsz, seq_len, seq_len]
+    '''
+    _, len_s = seq.size()
+    subsequent_mask = (1 - torch.triu(
+        torch.ones((1, len_s, len_s), device=seq.device), diagonal=1)).bool()
+    mask = seq.unsqueeze(-2) & subsequent_mask
+    return mask
+
+class Conv1D(nn.Module):
+    """
+    1D-convolutional layer as defined by Radford et al. for OpenAI GPT (and also used in GPT-2).
+    Basically works like a linear layer but the weights are transposed.
+    Args:
+        nf (`int`): The number of output features.
+        nx (`int`): The number of input features.
+    """
+
+    def __init__(self, nf, nx):
+        super().__init__()
+        self.nf = nf
+        w = torch.empty(nx, nf)
+        nn.init.normal_(w, std=0.02)
+        self.weight = nn.Parameter(w)
+        self.bias = nn.Parameter(torch.zeros(nf))
+
+    def forward(self, x):
+        size_out = x.size()[:-1] + (self.nf,)
+        x = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
+        x = x.view(size_out)
+        return x
 
 
 # Config adapter

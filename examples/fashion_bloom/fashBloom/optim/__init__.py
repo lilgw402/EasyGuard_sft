@@ -1,4 +1,3 @@
-"""Convenient optimizer settings used in mariana"""
 from cruise import CruiseConfig
 
 mariana_optimizer_kwargs_defaults = CruiseConfig({
@@ -14,7 +13,7 @@ mariana_optimizer_kwargs_defaults = CruiseConfig({
             },
     },
     'scheduler': {
-        'type': "mariana.optim.lr_scheduler.get_linear_schedule_with_warmup",
+        'type': "fashBloom.optim.lr_scheduler.get_linear_schedule_with_warmup",
         'total_steps_param_name': "num_training_steps",
         'warmup_steps_param_name': "num_warmup_steps",
         'interval': 'step',

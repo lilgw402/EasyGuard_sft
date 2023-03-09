@@ -3,11 +3,11 @@ set -x
 
 declare -A model_dir
 model_dir=(
-    ['bloom_7b1_finetune']='/mnt/bn/ecom-govern-maxiangqian/doushihan/finetune_models/bloom/bloom7b1_finetune_round1_bsz2/checkpoints/global_step_608/zero3_merge_states.pt'
+    ['bloom_7b1_finetune']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/models/bloom/global_step_608/zero3_merge_states.pt'
 )
 
 tokenizer_dir=(
-    ['bloom_7b1_finetune']='/mnt/bn/ecom-govern-maxiangqian/doushihan/hf_models/bloom7b1/bloom-7b1'
+    ['bloom_7b1_finetune']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/hf_models/bloom-7b1'
 )
 
 
@@ -45,7 +45,7 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --trainer.max_epochs=20 \
   --trainer.optimizer_kwargs.optimizer.params.lr=1e-5 \
   --play-file-type="qa" \
-  --play-file hdfs://haruna/home/byte_data_aml_research/user/jiankai.sun/large_model/play_files/play_file_qa.jsonl \
-  --play-out-file /mnt/bn/ecom-govern-maxiangqian/doushihan/play_file_out/outputs/lambada/val_output.jsonl \
+  --play-file /mnt/bn/ecom-govern-maxiangqian/doushihan/data/data/test_0130_add_trans2_prompt.jsonl \
+  --play-out-file /mnt/bn/ecom-govern-maxiangqian/doushihan/play_file_out/easyguard_test.jsonl \
   --generate-temp 0.7
 
