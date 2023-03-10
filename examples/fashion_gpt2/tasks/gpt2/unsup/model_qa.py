@@ -198,12 +198,11 @@ class GPT2Model(CruiseModule):
 if __name__ == '__main__':
     helper = ExpHelper(__file__)
     from cruise.trainer.callback import ModelCheckpoint
-    ckpter = ModelCheckpoint(monitor='loss',
+    ckpter = ModelCheckpoint(monitor='step'
                              save_last=False,
                              save_top_k=-1,
                              every_n_train_steps=2000,
-                             every_n_epochs=1,
-                             mode='min',
+                             save_weights_only=True,
                              save_on_train_epoch_end=True,
                              enable_trace=False)
     cli = CruiseCLI(
@@ -212,9 +211,10 @@ if __name__ == '__main__':
         trainer_defaults={
             'precision': 16,
             'enable_versions': False,
-            'log_every_n_steps': 20,
+            'log_every_n_steps': 100,
             'find_unused_parameters': False,
             'max_epochs': 10,
+            'resume_ckpt_path': None,
             "default_hdfs_dir": helper.hdfs_prefix,
             "project_name": helper.project_name,
             'val_check_interval': -1,
