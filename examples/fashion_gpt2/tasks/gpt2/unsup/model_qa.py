@@ -197,6 +197,7 @@ class GPT2Model(CruiseModule):
 if __name__ == '__main__':
     helper = ExpHelper(__file__)
     from cruise.trainer.callback import ModelCheckpoint
+
     ckpter = ModelCheckpoint(monitor='epoch',
                              save_last=True,
                              save_top_k=-1,
@@ -208,21 +209,21 @@ if __name__ == '__main__':
         GPT2Model,
         datamodule_class=QAFinetuneGPTDatamodule,
         trainer_defaults={
-            'precision': 16,
-            'enable_versions': False,
-            'log_every_n_steps': 100,
+            'precision'             : 16,
+            'enable_versions'       : False,
+            'log_every_n_steps'     : 100,
             'find_unused_parameters': False,
-            'max_epochs': 10,
-            'resume_ckpt_path': None,
-            "default_hdfs_dir": helper.hdfs_prefix,
-            "project_name": helper.project_name,
-            'val_check_interval': -1,
-            'summarize_model_depth': 2,
-            'gradient_clip_val': 1.0,
-            'checkpoint_monitor': 'step',
-            'checkpoint_mode': 'max',
-            'callbacks': [ckpter],
-            'optimizer_kwargs': mariana_optimizer_kwargs_defaults,
+            'max_epochs'            : 10,
+            'resume_ckpt_path'      : None,
+            "default_hdfs_dir"      : helper.hdfs_prefix,
+            "project_name"          : helper.project_name,
+            'val_check_interval'    : -1,
+            'summarize_model_depth' : 2,
+            'gradient_clip_val'     : 1.0,
+            'checkpoint_monitor'    : 'step',
+            'checkpoint_mode'       : 'max',
+            'callbacks'             : [ckpter],
+            'optimizer_kwargs'      : mariana_optimizer_kwargs_defaults,
         })
     cli.add_argument('--val-only', default=False, action='store_true', dest='val_only')
     cli.add_argument('--play', default=False, action='store_true', dest='play')
