@@ -1,50 +1,48 @@
-from typing import List, Optional, Dict, Union
 import math
-import os
+from typing import Dict, List, Optional
+
 import torch
-import torch.nn.functional as F
-from torch import nn
-
-from cruise import CruiseModule, CruiseCLI, CruiseConfig, last_cli
+from cruise import CruiseCLI, CruiseConfig, CruiseModule, last_cli
 from cruise.utilities.distributed import DIST_ENV
-from mariana.utils.exp_helper import ExpHelper
 from mariana.data.gpt.datamodule.qa_finetune import QAFinetuneGPTDatamodule
-from mariana.models.gpt2 import GPT2LMHeadModel, get_subsequent_mask, Conv1D
-from mariana.utils.generate import play_console, play_file, play_file_qa
+from mariana.models.gpt2 import Conv1D, GPT2LMHeadModel, get_subsequent_mask
 from mariana.optim import mariana_optimizer_kwargs_defaults
-from mariana.utils.checkpoint_utils import load_zero3_state_dict, is_zero3
-
+from mariana.utils.checkpoint_utils import is_zero3, load_zero3_state_dict
+from mariana.utils.exp_helper import ExpHelper
+from mariana.utils.generate import play_console, play_file
+from torch import nn
 
 # Config adapter
 network_config = {
-    "hidden_size": 2048,
-    "n_embed": 512,  # vocab embedding
-    "n_inner": 8192,
-    "n_head": 16,
-    "n_layer": 24,
-    "vocab_size": 145664,
-    "max_position_embeddings": 1025,
-    "layer_norm_epsilon": 1.0e-5,
-    "activation_function": "gelu_new",
-    "resid_pdrop": 0.1,
-    "embd_pdrop": 0.1,
-    "attn_pdrop": 0.1,
-    "scale_attn_weights": True,  # TODO:
+    "hidden_size"                    : 2048,
+    "n_embed"                        : 512,  # vocab embedding
+    "n_inner"                        : 8192,
+    "n_head"                         : 16,
+    "n_layer"                        : 24,
+    "vocab_size"                     : 145664,
+    "max_position_embeddings"        : 1025,
+    "layer_norm_epsilon"             : 1.0e-5,
+    "activation_function"            : "gelu_new",
+    "resid_pdrop"                    : 0.1,
+    "embd_pdrop"                     : 0.1,
+    "attn_pdrop"                     : 0.1,
+    "scale_attn_weights"             : True,  # TODO:
     "scale_attn_by_inverse_layer_idx": False,  # TODO:
-    "reorder_and_upcast_attn": False,  # TODO:
-    "initializer_range": 0.02,
-    "gradient_checkpointing": False,
-    "tie_weight": True,
-    "pad_idx": 2,
-    "use_ft_flash_attn": False,
-    "use_ft_linear": False,
-    "use_ft_layernorm": False,
-    "use_rmpad": False,
-  }
+    "reorder_and_upcast_attn"        : False,  # TODO:
+    "initializer_range"              : 0.02,
+    "gradient_checkpointing"         : False,
+    "tie_weight"                     : True,
+    "pad_idx"                        : 2,
+    "use_ft_flash_attn"              : False,
+    "use_ft_linear"                  : False,
+    "use_ft_layernorm"               : False,
+    "use_rmpad"                      : False,
+}
 
 
 class GPT2Model(CruiseModule):
     """Deberta pretrain"""
+
     def __init__(self,
                  network: CruiseConfig = network_config,
                  freeze_prefix: Optional[List[str]] = None,
@@ -87,10 +85,10 @@ class GPT2Model(CruiseModule):
                     param.requires_grad = False
 
     def forward(
-        self,
-        input_ids,
-        attention_mask,
-        labels=None,
+            self,
+            input_ids,
+            attention_mask,
+            labels=None,
     ):
         attention_mask = get_subsequent_mask(attention_mask)
         model_out = self.gpt(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
@@ -151,9 +149,9 @@ class GPT2Model(CruiseModule):
         return optimizers, lr_schedulers
 
     def lr_scheduler_step(
-        self,
-        schedulers,
-        **kwargs,
+            self,
+            schedulers,
+            **kwargs,
     ) -> None:
         r"""
         默认是per epoch的lr schedule, 改成per step的
@@ -190,16 +188,17 @@ class GPT2Model(CruiseModule):
         #
         # Reference (Megatron-LM): https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/model/gpt_model.py
         for name, p in module.named_parameters():
-            if "c_proj.weight" in name or 'attn_ow' in name: # deepspeed transformer kernel 是 attn_ow
+            if "c_proj.weight" in name or 'attn_ow' in name:  # deepspeed transformer kernel 是 attn_ow
                 # Special Scaled Initialization --> There are 2 Layer Norms per Transformer Block
-                p.data.normal_(mean=0.0, std=(self.hparams.network.initializer_range / math.sqrt(2 * self.hparams.network.n_layer)))
+                p.data.normal_(mean=0.0, std=(
+                        self.hparams.network.initializer_range / math.sqrt(2 * self.hparams.network.n_layer)))
 
 
 if __name__ == '__main__':
     helper = ExpHelper(__file__)
     from cruise.trainer.callback import ModelCheckpoint
-    ckpter = ModelCheckpoint(monitor='step'
-                             save_last=False,
+    ckpter = ModelCheckpoint(monitor='epoch',
+                             save_last=True,
                              save_top_k=-1,
                              every_n_train_steps=2000,
                              save_weights_only=True,
@@ -224,7 +223,7 @@ if __name__ == '__main__':
             'checkpoint_mode': 'max',
             'callbacks': [ckpter],
             'optimizer_kwargs': mariana_optimizer_kwargs_defaults,
-            })
+        })
     cli.add_argument('--val-only', default=False, action='store_true', dest='val_only')
     cli.add_argument('--play', default=False, action='store_true', dest='play')
     cli.add_argument('--play-file', default='', type=str, help='generate by samples loaded from file')
@@ -236,7 +235,6 @@ if __name__ == '__main__':
     cli.add_argument('--generate-topk', default=5, type=int, help='sample top-k')
     cli.add_argument('--generate-topp', default=None, type=float, help='sample at least top-p probability')
     cli.add_argument('--generate-n-eos', default=1, type=int, help='Stop until n-eos tokens')
-
 
     cfg, trainer, model, datamodule = cli.parse_args()
     if cfg.val_only:
