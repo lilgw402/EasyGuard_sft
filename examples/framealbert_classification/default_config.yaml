@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0309_cruise_tts
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0311_cruise_tts
   logger: true
   log_every_n_steps: 500
   benchmark: false
@@ -25,9 +25,9 @@ trainer:
   summarize_model_depth: 3
   resume_ckpt_path: null
   callbacks: null
-  enable_checkpoint: 30
-  checkpoint_monitor: loss
-  checkpoint_mode: min
+  enable_checkpoint: 10
+  checkpoint_monitor: val_top1_acc
+  checkpoint_mode: max
   dataloader_timeout: -1
   dataloader_retry_limit: 100
   dataloader_retry_persistent_limit: 5
@@ -44,10 +44,10 @@ model:
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
   low_lr_prefix: # [ ]
-    - falbert.visual.
-  use_multihead: true
+    - falbert.
+  use_multihead: false
   all_gather: false
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0305_cruise_tts/version_2353372/checkpoints/epoch=0-step=5000-loss=0.054.ckpt
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0309_cruise_tts/version_2368787/checkpoints/epoch=8-step=76000-loss=0.106.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=1-step=16000-loss=2.067.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th
@@ -57,7 +57,7 @@ model:
     - classifier_concat->classifier_concat_banned
     - multi_heads->multi_heads_banned
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_desc_jsonl/train_jsonl
   # hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/train_translate_tmall_all_transform
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples

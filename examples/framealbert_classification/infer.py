@@ -134,6 +134,10 @@ if __name__ == "__main__":
     model.setup("val")
     model.cuda()
 
+    # jit load infer
+    # model = torch.jit.load('./traced_model/FrameAlbertClassify.ts')
+    # model.cuda()
+
     countries = ['GB', 'TH', 'ID', 'VN', 'MY']
     for country in countries:
         file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl'
@@ -158,6 +162,16 @@ if __name__ == "__main__":
                                      frames_mask=frames_mask.cuda(),
                                      head_mask=head_mask.cuda(), )
             logits = res['logits']
+
+            # jit load infer
+            # res = model(input_ids.cuda(),
+            #             input_segment_ids.cuda(),
+            #             input_mask.cuda(),
+            #             frames.cuda().half(),
+            #             frames_mask.cuda(),
+            #             head_mask.cuda(), )
+            # logits = res
+
             prob, pred = logits.topk(5, 1, True, True)
             labels = [int(p) for p in pred[0]]
 
