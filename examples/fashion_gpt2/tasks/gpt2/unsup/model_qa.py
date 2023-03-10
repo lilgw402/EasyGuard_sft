@@ -210,7 +210,7 @@ if __name__ == '__main__':
         trainer_defaults={
             'precision': 16,
             'enable_versions': False,
-            'log_every_n_steps': 100,
+            'log_every_n_steps': 10,
             'find_unused_parameters': False,
             'max_epochs': 10,
             'resume_ckpt_path': None,
