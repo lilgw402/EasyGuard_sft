@@ -9,9 +9,9 @@ import pickle
 import numpy as np
 from addict import Dict
 from typing import Optional,List
-from easyguard.core import AutoModel,AutoTokenizer
+from easyguard.core import AutoTokenizer
 from dataset.transforms.text_transforms.DebertaTokenizer import DebertaTokenizer
-from dataset.gandalf_cruise_data_module import GandalfParquetFeatureProvider,GandalfCruiseDataModule
+from dataset.template_datasets.GandalfCruiseDataModule import GandalfParquetFeatureProvider,GandalfParquetCruiseDataModule
 from utils.driver import get_logger
 from utils.registry import DATASETS,FEATURE_PROVIDERS
 
@@ -26,13 +26,13 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 			slot_mask=None,
 			feature_norm_info=None,
 			embedding_conf=None,
+			tokenizer_path=None,
 			save_extra=False,
 			eval_mode=False,
             trace_mode=False,
 			**kwargs
 	):
 		super(EcomLiveGandalfParquetAutoDisFeatureProvider, self).__init__()
-		self._save_extra = save_extra
 		self._slot_mask = slot_mask
 		self._feature_num = feature_num
 		self._use_high_precision = use_high_precision
@@ -41,10 +41,9 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 		self._embedding_conf =  embedding_conf
 		self._feature_input_num = feature_num - len(slot_mask)
 		self._active_slot = [i for i in range(self._feature_num) if i not in self._slot_mask]
-		self.asr_model_name = "deberta_base_6l"
-		self._asr_encoder = AutoModel.from_pretrained(self.asr_model_name)
-		# self._asr_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=512)
-		self._asr_tokenizer = DebertaTokenizer('./models/weights/fashion_deberta_asr/deberta_3l/vocab.txt',max_len=512)
+		# self._text_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=512)
+		self._text_tokenizer = DebertaTokenizer(f'{tokenizer_path}/vocab.txt',max_len=512)
+		self._save_extra = save_extra
 
 	def process_feature_dense(self, features):
 		# 加载预处理参数
@@ -65,9 +64,9 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 		auto_dis_input = torch.stack(auto_dis_input_list, dim=1)
 		return auto_dis_input, feature_dense_norm
 	
-	def process_asr(self, asr):
+	def process_text(self, text):
 		# 加载预处理参数
-		asr_inputs = self._asr_tokenizer(asr)
+		asr_inputs = self._text_tokenizer(text)
 		return asr_inputs
 
 	def process(self, data):
@@ -109,7 +108,7 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 				embeddings_input.update({k: torch.zeros(self._embedding_conf[k])})
 		# 数值特征
 		auto_dis_input, feature_dense = self.process_feature_dense(features=strategy)
-		asr_input = self.process_asr(asr)
+		asr_input = self.process_text(asr)
 		# 人审召回相关的label
 		label = labels.get('label', 0)  # 处罚维度label
 		# 更新传入模型的输入
@@ -139,14 +138,14 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 		return feature_data
 
 @DATASETS.register_module()
-class EcomLiveGandalfParquetAutoDisCruiseDataModule(GandalfCruiseDataModule):
+class EcomLiveGandalfParquetAutoDisCruiseDataModule(GandalfParquetCruiseDataModule):
 	def __init__(self,
 				dataset,
 				feature_provider,
 				data_factory,
 				type=None
 				 ):
-		super(GandalfCruiseDataModule, self).__init__()
+		super(EcomLiveGandalfParquetAutoDisCruiseDataModule, self).__init__()
 		self.save_hparams()
 
 	def setup(self, stage: Optional[str] = None) -> None:

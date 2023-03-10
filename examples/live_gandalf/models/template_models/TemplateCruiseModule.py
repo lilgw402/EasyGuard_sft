@@ -103,4 +103,4 @@ class TemplateCruiseModule(CruiseModule):
 
    
 if __name__ == '__main__':
-    module = GandalfCruiseModule()
+    module = TemplateCruiseModule()

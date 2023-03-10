@@ -1,15 +1,13 @@
 data:
   dataset:
-    hdfs_output_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/exps_tmp
-    input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/train
-    is_download: false
-    local_output_dir: ../ecom_live_gandalf/exps_tmp
-    test_folder: 2022123[0-1]
-    test_input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/test
+    input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/train
+    val_input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/validation
+    test_input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/test
     train_folder: 2022121[5-9]|2022122[0-8]
-    val_folder: 2022121[5-9]|2022122[0-8]
-    val_input_dir: hdfs:///user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/validation
+    val_folder: '20221214'
+    test_folder: 2022123[0-1]
   feature_provider:  
+    tokenizer_path: ./models/weights/fashion_deberta_asr/deberta_3l
     embedding_conf:
       author_embedding: 128
       universal_embedding: 256
@@ -100,11 +98,13 @@ data:
     train_max_iteration: -1
     val_max_iteration: -1
     test_max_iteration: -1
-    batch_size: 32
+    batch_size: 64
     batch_size_val: -1
     num_parallel_reads: 5
     num_workers: 4
+  type: EcomLiveGandalfParquetAutoDisCruiseDataModule
 model:
+  type: EcomLiveGandalfAutoDisNNAsrCruiseModel
   features:
     feature_num: 150
     bucket_dim: 128
@@ -126,26 +126,36 @@ model:
     emb_mode: pool
     embedding_dim: 768
     encoder_freeze_layer: null
-    max_length: 512
+    max_length: 256
     num_attention_heads: 3
-    num_hidden_layers: 3
+    num_hidden_layers: 1
   embedding:
     author_embedding_dim: 128
   kwargs:
     enable_asr_embedding: 1
     enable_author_embedding: 0
     dropout: 0.3
+    optimizer:
+      optimizer_name: AdamW
+      params:
+        lr: 0.00001
+    lr_scheduler:
+      scheduler_name: CosineDecayLrScheduler
+      min_lr: 1e-7
+      warmup_steps": 1000
 trainer:
-  default_root_dir: null
-  default_hdfs_dir: nul
-  # precision: fp16
+  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs
+  # default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps_tmp
+  logger: tracking
   max_epochs: 25
   find_unused_parameters: true
-  optimizer_kwargs:
-    optimizer:
-      type: AdamW
-      params:
-        lr: 0.0001
+  # optimizer_kwargs:
+  #   optimizer:
+  #     type: AdamW
+  #     params:
+  #       lr: 0.00001
   limit_val_batches: -1
   limit_train_batches: -1
   val_check_interval: 500
+  project_name: gandalf
+  experiment_name: augutus_auto_dis_nn_asr

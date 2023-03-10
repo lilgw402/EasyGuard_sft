@@ -19,9 +19,9 @@ from utils.dataset_utils.parse_files import get_ds_path
 
 
 @FEATURE_PROVIDERS.register_module()
-class GandalfParquetFeatureProvider:
+class TemplateParquetFeatureProvider:
 	def __init__(self):
-		super(GandalfParquetFeatureProvider, self).__init__()
+		super(TemplateParquetFeatureProvider, self).__init__()
 
 	def process(self, data):
 		pass
@@ -51,9 +51,9 @@ class GandalfParquetFeatureProvider:
 		return default_collate(self.batch_process(batch_data))
 
 @DATASETS.register_module()
-class GandalfCruiseDataModule(CruiseDataModule):
+class TemplateCruiseDataModule(CruiseDataModule):
 	def __init__(self):
-		super(GandalfCruiseDataModule, self).__init__()
+		super(TemplateCruiseDataModule, self).__init__()
 		self.save_hparams()
 
 	def setup(self, stage: Optional[str] = None) -> None:

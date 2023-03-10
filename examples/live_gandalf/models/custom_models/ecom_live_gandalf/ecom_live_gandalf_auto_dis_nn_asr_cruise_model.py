@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from typing import Optional
 from easyguard.core import AutoModel,AutoTokenizer
-from models.template_models.gandalf_cruise_module import GandalfCruiseModule
+from models.template_models.GandalfCruiseModule import GandalfCruiseModule
 from models.modules.encoders import AutodisBucketEncoder
 from models.modules.losses import BCEWithLogitsLoss
 from models.modules.running_metrics import GeneralClsMetric

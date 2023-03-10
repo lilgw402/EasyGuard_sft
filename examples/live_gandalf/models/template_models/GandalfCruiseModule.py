@@ -2,7 +2,7 @@ import numpy as np
 from collections import defaultdict
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.rank_zero import rank_zero_warn, rank_zero_info
-from .template_cruise_module import TemplateCruiseModule
+from .TemplateCruiseModule import TemplateCruiseModule
 from utils.util import merge_into_target_dict
 
 class GandalfCruiseModule(TemplateCruiseModule):
