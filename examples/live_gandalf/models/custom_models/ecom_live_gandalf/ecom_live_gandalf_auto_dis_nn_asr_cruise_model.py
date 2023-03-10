@@ -8,8 +8,6 @@
 import torch
 import torch.nn as nn
 from typing import Optional
-from collections import defaultdict
-from cruise import CruiseModule
 from easyguard.core import AutoModel,AutoTokenizer
 from models.template_models.gandalf_cruise_module import GandalfCruiseModule
 from models.modules.encoders import AutodisBucketEncoder
