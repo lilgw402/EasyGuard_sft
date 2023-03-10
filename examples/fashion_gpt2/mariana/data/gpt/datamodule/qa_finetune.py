@@ -120,7 +120,7 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
     It supports reading from raw text dataset and process using pretrained tokenizers.
     """
     def __init__(self,
-                 train_path: str = 'hdfs://haruna/home/byte_data_aml_research/user/zhangzhi.joshua/data/gpt/qa/sample.parquet',
+                 train_path: str = '',
                  val_path: str = '',
                  train_size: int = 185,
                  train_batch_size: int = 4,
@@ -129,7 +129,7 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
                  val_num_workers: int = 1,
                  max_seq_len: int = 1024,
                  text_keys: List[str] = ['question', 'answer'],
-                 tokenizer: str = 'hdfs://haruna/home/byte_data_aml_research/user/zhangzhi.joshua/tokenizer/zh_0620_newcut_caster_145665_lowercase',
+                 tokenizer: str = 'hdfs://haruna/home/byte_ecom_govern/user/doushihan/tokenizer/tokenizer/zh_0620_newcut_caster_145665_lowercase',
                  tokenizer_type: str = "caster",
                  gpu_prefetch: bool = False,
                  add_sep_token: bool = True,
