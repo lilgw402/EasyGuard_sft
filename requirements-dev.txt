@@ -25,3 +25,4 @@ byted-cruise>=0.3.4,<=0.4.9
 matplotlib>=3.5.3,<=4.0
 byted-wandb -i https://bytedpypi.byted.org/simple
 pre-commit==2.21.0
+easydict>=1.10,<=2.0.0

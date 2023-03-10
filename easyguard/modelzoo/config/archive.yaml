@@ -61,3 +61,8 @@ fashion-swin-base-224-fashionvtp:
   server: hdfs
   region: CN
   description: fashionvtp的多模态视觉backbone
+fashionbert-zh:
+  type: fashionbert
+  server: hdfs
+  region: CN
+

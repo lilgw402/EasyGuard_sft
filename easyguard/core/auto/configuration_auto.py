@@ -15,6 +15,8 @@
 """ Auto Config class."""
 
 from collections import OrderedDict
+from genericpath import isfile
+import os
 from typing import List, Optional, Union
 
 from ...modelzoo import MODELZOO_CONFIG
@@ -106,16 +108,19 @@ class AutoConfig:
                 "model_type": model_type,
                 "remote_url": model_url,
             }
-            # obtain model config file path
-            model_config_file_path = (
-                cache_file(
-                    pretrained_model_name_or_path,
-                    MODEL_CONFIG_NAMES,
-                    **extra_dict,
+            if os.path.isfile(pretrained_model_name_or_path):
+                model_config_file_path = pretrained_model_name_or_path
+            else:
+                # obtain model config file path
+                model_config_file_path = (
+                    cache_file(
+                        pretrained_model_name_or_path,
+                        MODEL_CONFIG_NAMES,
+                        **extra_dict,
+                    )
+                    if not is_local
+                    else kwargs["config_path"]
                 )
-                if not is_local
-                else kwargs["config_path"]
-            )
 
             model_config = file_read(model_config_file_path)
             return model_config_class(**model_config)

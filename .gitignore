@@ -155,6 +155,11 @@ events.out*
 
 # model
 *.model
+*.th
+*.bin
+*.pt
+*.ckpt
+*.pth
 
 # cruise
 *cruise_logs/

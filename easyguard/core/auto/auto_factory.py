@@ -16,9 +16,7 @@
 import importlib
 import os
 from collections import OrderedDict
-from distutils.command.config import config
-from http import server
-from typing import Optional
+from typing import Optional, Union, Any, Dict
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
@@ -221,8 +219,61 @@ class _BaseAutoModelClass:
         )
 
     @classmethod
-    def from_config(cls, config, **kwargs):
-        ...
+    def _get_model_class(cls, model_type: str):
+        model_name_tuple = MODELZOO_CONFIG[model_type][cls._model_key]
+        (
+            model_module_package,
+            model_module_name,
+        ) = MODELZOO_CONFIG.to_module(model_name_tuple)
+        # obtain model class
+        model_class = lazy_model_import(model_module_package, model_module_name)
+        return model_class
+
+    # @classmethod
+    # def from_config(
+    #     cls,
+    #     config: Union[str, Dict[str, Any]],
+    #     model_cls: Optional[str] = "model",
+    #     **kwargs,
+    # ):
+    #     assert isinstance(
+    #         config, (str, dict)
+    #     ), f"the argument config must be {str} or {dict}."
+
+    #     dict_config = config
+    #     if isinstance(config, str):
+    #         assert os.path.exists(config), f"{config} is not a valid path."
+    #         assert config.endswith(
+    #             (".yaml", ".json")
+    #         ), f"{config} is not a valid file."
+    #         dict_config = file_read(config)
+
+    #     # which is used to find the category of the target model for default models
+    #     cls._model_key = model_cls
+    #     # a model mapping for hf models, which is merely used to find the category of the target model
+    #     cls._model_mapping = _LazyAutoMapping(
+    #         CONFIG_MAPPING_NAMES, MODELZOO_CONFIG.get_mapping(model_cls)
+    #     )
+
+    #     model_type = dict_config.get("model_type", None)
+    #     assert model_type is not None, f"the key `model_type` does not exist"
+    #     model_config = MODELZOO_CONFIG.get(model_type, None)
+
+    #     if not model_config:
+    #         logger.warn(
+    #             f"the target model `{model_type}` does not exist, will use transformers to load"
+    #         )
+    #         try:
+    #             from transformers import AutoModel, AutoConfig
+
+    #             model_config_class_ = AutoConfig.for_model(model_type)
+
+    #             model = AutoModel.from_config(model_config_class_)
+    #         except:
+    #             ...
+
+    #     backend = model_config.get("backend", None)
+    #     assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
 
     @classmethod
     def from_pretrained(
@@ -231,7 +282,6 @@ class _BaseAutoModelClass:
         region: Optional[str] = "CN",
         model_cls: Optional[str] = "model",
         model_weight_file_path: Optional[str] = None,
-        model_config_path: Optional[str] = None,
         *model_args,
         **kwargs,
     ):
@@ -271,7 +321,7 @@ class _BaseAutoModelClass:
         server_name = None
         region = region
         is_local = False
-        # model_config_path = None
+        model_config_path = None
         backend_default_flag = False
         # model_weight_file_path = None
 
@@ -299,9 +349,7 @@ class _BaseAutoModelClass:
             server_name = model_archive.get("server", None)
 
             is_local = False
-        elif os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
-            pretrained_model_name_or_path
-        ):
+        elif os.path.isdir(pretrained_model_name_or_path):
             #  if user not set the argument `model_config_path`, will find the config file from local dir
             if not model_config_path:
                 model_config_path = file_exist(
@@ -322,9 +370,17 @@ class _BaseAutoModelClass:
                 )
 
             is_local = True
+        elif os.path.isfile(pretrained_model_name_or_path):
+            assert pretrained_model_name_or_path.endswith(
+                (".yaml", ".json")
+            ), f"{pretrained_model_name_or_path} is not a valid file."
+            config_dict_ = file_read(pretrained_model_name_or_path)
+            model_type = config_dict_.get("model_type", None)
+            is_local = True
+            model_config_path = pretrained_model_name_or_path
         else:
-            logger.warning(
-                "can not found model location, load from huggingface..."
+            raise ValueError(
+                f"`{pretrained_model_name_or_path}` should be a name from archive.yaml or a directory which contains some files about your model or a config file about model"
             )
         # else:
         #     raise ValueError(
@@ -386,8 +442,15 @@ class _BaseAutoModelClass:
             {"is_local": is_local, "config_path": model_config_path}
         )
 
-        if not model_type:
-            logger.info(f"try to use transformers to load model~")
+        model_config = MODELZOO_CONFIG.get(model_type, None)
+        # assert (
+        #     model_config is not None
+        # ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
+
+        if not model_config:
+            logger.info(
+                f"the target model `{model_type}` does not exist, try to use transformers to load model~"
+            )
             try:
                 from transformers import AutoModel
 
@@ -397,10 +460,6 @@ class _BaseAutoModelClass:
             except:
                 raise KeyError(pretrained_model_name_or_path)
         else:
-            model_config = MODELZOO_CONFIG.get(model_type, None)
-            assert (
-                model_config is not None
-            ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
             backend = model_config.get("backend", None)
             assert backend in BACKENDS, f"backend should be one of f{BACKENDS}"
 
@@ -431,15 +490,15 @@ class _BaseAutoModelClass:
                 backend_default_flag = True
 
             if backend_default_flag:
-                model_name_tuple = MODELZOO_CONFIG[model_type][cls._model_key]
-                (
-                    model_module_package,
-                    model_module_name,
-                ) = MODELZOO_CONFIG.to_module(model_name_tuple)
-                # obtain model class
-                model_class = lazy_model_import(
-                    model_module_package, model_module_name
-                )
+                # (
+                #     model_module_package,
+                #     model_module_name,
+                # ) = MODELZOO_CONFIG.to_module(model_name_tuple)
+                # # obtain model class
+                # model_class = lazy_model_import(
+                #     model_module_package, model_module_name
+                # )
+                model_class = cls._get_model_class(model_type)
 
                 AutoHubClass.kwargs = extra_dict
                 # if user add the configuration class, load the related class, otherwise, will load the config file directly

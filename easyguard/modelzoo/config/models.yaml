@@ -137,6 +137,11 @@ models:
       processor: FalBertProcessor
     tokenization_falbert:
       tokenizer: FalBertTokenizer
+  fashionbert:
+    name: FashionBert
+    backend: default
+    modeling_fashionbert: 
+      model: FashionBert
     
 
     
