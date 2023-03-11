@@ -122,7 +122,7 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
     def __init__(self,
                  train_path: str = '',
                  val_path: str = '',
-                 train_size: int = 185,
+                 train_size: int = 369920,
                  train_batch_size: int = 4,
                  train_num_workers: int = 1,
                  val_batch_size: int = 4,
