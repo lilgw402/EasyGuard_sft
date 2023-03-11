@@ -44,7 +44,7 @@ model:
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
   low_lr_prefix: # [ ]
-    - falbert.
+    - falbert.visual.
   use_multihead: false
   all_gather: false
   load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0311_cruise_tts/version_2373481/checkpoints/epoch=4-step=36000-val_top1_acc=75.171.ckpt
