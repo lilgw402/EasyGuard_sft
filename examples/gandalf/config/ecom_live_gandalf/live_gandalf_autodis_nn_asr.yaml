@@ -145,7 +145,7 @@ model:
       warmup_steps": 1000
 trainer:
   default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs
-  # default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps_tmp
+  default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps_tmp
   logger: tracking
   max_epochs: 25
   find_unused_parameters: true
