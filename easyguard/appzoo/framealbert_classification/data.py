@@ -123,44 +123,19 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         for example in self.generate():
             try:
                 data_item = json.loads(example)
+
+                # drop
+                if self.is_training:
+                    dropout_choice = ['drop_text', 'drop_img', 'nodrop']
+                    drop = np.random.choice(dropout_choice, p=[0.05, 0.1, 0.85])
+                else:
+                    drop = 'nodrop'
+
+                # label
                 cid = data_item['leaf_cid']
                 # label = self.cid2label[cid]
                 label = self.gec[cid]['label']
                 # label = int(data_item['label'])
-                # 文本
-                # title = data_item['title']
-                # desc = data_item['desc']
-                # country_idx = 0
-                if 'translation' in data_item:
-                    country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
-                    country_idx = self.country2idx[country]
-                    title = data_item['translation'][country]
-                    desc = None
-                elif 'text' in data_item:
-                    title = data_item['text']
-                    desc = None
-                    country = data_item['country']
-                    country_idx = self.country2idx[country]
-                else:
-                    title = data_item['title']
-                    desc = data_item['desc']
-                    country = data_item['country']
-                    country_idx = self.country2idx[country]
-                text = text_concat(title, desc)
-
-                # token_ids = self.pipe.preprocess([text])[0]
-                # token_ids = token_ids.asnumpy()
-                # token_ids = torch.from_numpy(token_ids)
-
-                tokens = self.tokenizer(
-                    [text],
-                    padding='max_length',
-                    max_length=self.text_len,
-                    truncation=True,
-                    return_tensors='pt'
-                )
-                token_ids = tokens['input_ids']
-                attention_mask = tokens['attention_mask']
 
                 # 图像
                 frames = []
@@ -210,6 +185,47 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                             f"No images in data {data_item.get('pid', 'None pid')} -- zero of {len(data_item['images'])}")
                 else:
                     raise Exception(f'cannot find image or images')
+
+                if drop == 'drop_img':
+                    frames = []
+
+                # 文本
+                # title = data_item['title']
+                # desc = data_item['desc']
+                # country_idx = 0
+                if 'translation' in data_item:
+                    country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
+                    country_idx = self.country2idx[country]
+                    title = data_item['translation'][country]
+                    desc = None
+                elif 'text' in data_item:
+                    title = data_item['text']
+                    desc = None
+                    country = data_item['country']
+                    country_idx = self.country2idx[country]
+                else:
+                    title = data_item['title']
+                    desc = data_item['desc']
+                    country = data_item['country']
+                    country_idx = self.country2idx[country]
+                text = text_concat(title, desc)
+
+                if drop == 'drop_text' and frames:
+                    text = ''
+
+                # token_ids = self.pipe.preprocess([text])[0]
+                # token_ids = token_ids.asnumpy()
+                # token_ids = torch.from_numpy(token_ids)
+
+                tokens = self.tokenizer(
+                    [text],
+                    padding='max_length',
+                    max_length=self.text_len,
+                    truncation=True,
+                    return_tensors='pt'
+                )
+                token_ids = tokens['input_ids']
+                attention_mask = tokens['attention_mask']
 
                 input_dict = {
                     'frames': frames,

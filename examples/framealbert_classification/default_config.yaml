@@ -73,7 +73,7 @@ data:
   text_len: 128
   frame_len: 1
   head_num: 5
-  exp: cruise_tts
+  exp: cruise_tts_drop
   download_files:
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/GEC_cat.npy->/opt/tiger/easyguard
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
