@@ -1,4 +1,3 @@
-find . | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 task_id=$(date +%Y%m%d-%H%M)
 bash launch.sh tasks/gpt2/unsup/model_qa.py \
     --model=tasks/gpt2/unsup/1b3_v1.yaml \
