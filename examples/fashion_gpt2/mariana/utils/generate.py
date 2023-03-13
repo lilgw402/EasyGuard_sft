@@ -352,8 +352,8 @@ def play_file_qa(fname, tokenizer, model, output_file_path,  trial_num=5,
                 jl = json.loads(line)
                 text = jl['page_info']['query'].strip()
                 label = jl['answer']
-                print('tokens           : ', tokenizer.tokenize(text))
-                print('label:           :', jl['answer'])
+                # print('tokens           : ', tokenizer.tokenize(text))
+                # print('label:           :', jl['answer'])
                 input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
                 for i in range(trial_num):
                     y = sample_generate(model,
