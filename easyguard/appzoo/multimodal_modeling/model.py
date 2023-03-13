@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import os
-import math
 import json
+import math
+import os
 from collections import OrderedDict
 from types import SimpleNamespace
 from typing import Tuple
@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import yaml
 from torch.optim.lr_scheduler import _LRScheduler
+
 from ptx.model import Model
 
 try:
@@ -21,17 +22,16 @@ except ImportError:
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 
+from easyguard.modelzoo.models.falbert.albert import ALBert
+from easyguard.modelzoo.models.falbert.swin import SwinTransformer
+
 from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
 from cruise.utilities.hdfs_io import hexists, hopen
 
-from easyguard.modelzoo.models.falbert.albert import ALBert
-from easyguard.modelzoo.models.falbert.swin import SwinTransformer
-
-from ...utils.losses import LearnableNTXentLoss, LearnablePCLLoss, SCELoss
-from ...modelzoo.modeling_utils import ModelBase
-
 from ...core import AutoModel
+from ...modelzoo.modeling_utils import ModelBase
+from ...utils.losses import LearnableNTXentLoss, LearnablePCLLoss, SCELoss
 
 
 class CosineAnnealingWarmupRestarts(_LRScheduler):
@@ -171,7 +171,7 @@ class FashionBertv2(CruiseModule):
         self.save_hparams()
 
     def setup(self, stage) -> None:
-        self.model = AutoModel.from_pretrained("fashionbert-zh")
+        self.model = AutoModel.from_pretrained("fashionbert-base")
 
         """
         Initialize loss
