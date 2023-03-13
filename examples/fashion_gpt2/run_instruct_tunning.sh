@@ -9,7 +9,7 @@ bash launch.sh tasks/gpt2/unsup/model_qa.py \
     --data.train_batch_size=32 \
     --model.network.use_ft_flash_attn=true \
     --trainer.precision=bf16 \
-    --trainer.max_epochs=5 \
+    --trainer.max_epochs=3 \
     --model.network.gradient_checkpointing=false \
     --data.max_seq_len=256 \
     --data.mask_prompt_loss=true \
