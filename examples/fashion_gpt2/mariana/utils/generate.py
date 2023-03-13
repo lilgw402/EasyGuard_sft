@@ -12,6 +12,7 @@ import warnings
 from builtins import print
 from cruise.utilities.hdfs_io import hopen
 from torch.nn import functional as F
+from tqdm import tqdm
 
 try:
     from promptsource.templates import DatasetTemplates, Template
@@ -347,7 +348,7 @@ def play_file_qa(fname, tokenizer, model, trial_num=5,
     full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
     count = 0
     with hopen(fname) as f:
-        for line in f:
+        for line in tqdm(f, desc=f"Processing file: {fname}"):
             count += 1
             if limit_samples > 0 and count >= limit_samples:
                 print(f"Reach limit_samples: {limit_samples}, stop.")

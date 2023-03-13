@@ -295,7 +295,7 @@ if __name__ == '__main__':
     cli.add_argument('--val-only', default=False, action='store_true', dest='val_only')
     cli.add_argument('--play', default=False, action='store_true', dest='play')
     cli.add_argument('--play-file', default='', type=str, help='generate by samples loaded from file')
-    cli.add_argument('--output_file_path', default=None, dest='play file output file path')
+    cli.add_argument('--output_file_path', default=None, help='play file output file path')
     cli.add_argument('--play-file-type', default='none', type=str, help='generate by samples loaded from file for qa')
     cli.add_argument('--play-file-limit', default=-1, type=int, help="If >0, limit how many lines to generate.")
     cli.add_argument('--generate-trial-num', default=5, type=int, help="generation trial num, default is 5")
