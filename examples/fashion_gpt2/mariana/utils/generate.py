@@ -340,14 +340,14 @@ def play_file(fname, tokenizer, model, output_file_path, trial_num=5,
                 print(traceback.format_exc())
 
 
-def play_file_qa(fname, tokenizer, model, trial_num=5,
+def play_file_qa(fname, tokenizer, model, output_file_path,  trial_num=5,
                  steps=256, temperature=0.6, do_sample=True,
                  top_k=5, top_p=None, dynamic_top_p=None, omega=0.3,
                  decay_lambda=0.9, until_n_eos=1, limit_samples=-1):
     print(f"Generating by prompts from {fname}...")
     full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
     count = 0
-    with hopen(fname) as f:
+    with hopen(fname) as f, open(output_file_path, mode='w', encoding='utf-8') as fw:
         for line in tqdm(f, desc=f"Processing file: {fname}"):
             count += 1
             if limit_samples > 0 and count >= limit_samples:
@@ -356,6 +356,7 @@ def play_file_qa(fname, tokenizer, model, trial_num=5,
             try:
                 jl = json.loads(line)
                 text = jl['page_info']['query'].strip()
+                label = jl['answer']
                 print('prompt/query: ', text)
                 # print('tokens: ', tokenizer.tokenize(text))
                 # print('origin content', jl['page_info']['query'][:steps])
@@ -377,6 +378,7 @@ def play_file_qa(fname, tokenizer, model, trial_num=5,
                     # y = y.tolist()[0][1:]
                     completion = ''.join(tokenizer.decode(y))
                     completion.replace('##', '')
+                    fw.write("\t".join([text, label, completion]) + '\n')
                     print(f'[{i}]: {completion}')
             except Exception as e:
                 print(e)
