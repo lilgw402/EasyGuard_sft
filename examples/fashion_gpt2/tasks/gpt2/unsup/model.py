@@ -330,7 +330,8 @@ if __name__ == '__main__':
                 play_file_qa(cfg.play_file,
                              tokenizer,
                              model.cuda(),
-                             cfg.generate_trial_num,
+                             output_file_path=cfg.output_file_path,
+                             trial_num=cfg.generate_trial_num,
                              steps=cfg.generate_steps,
                              temperature=cfg.generate_temp,
                              do_sample=cfg.generate_do_sample,
@@ -342,7 +343,6 @@ if __name__ == '__main__':
                              until_n_eos=cfg.generate_n_eos,
                              limit_samples=cfg.play_file_limit)
             else:
-
                 play_file(cfg.play_file,
                           tokenizer,
                           model.cuda(),
