@@ -346,23 +346,15 @@ def play_file_qa(fname, tokenizer, model, output_file_path,  trial_num=5,
                  decay_lambda=0.9, until_n_eos=1, limit_samples=-1):
     print(f"Generating by prompts from {fname}...")
     full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
-    count = 0
     with hopen(fname) as f, open(output_file_path, mode='w', encoding='utf-8') as fw:
-        for line in tqdm(f, desc=f"Processing file: {fname}"):
-            count += 1
-            if limit_samples > 0 and count >= limit_samples:
-                print(f"Reach limit_samples: {limit_samples}, stop.")
-                break
+        for i, line in enumerate(tqdm(f, desc=f"PROCESSING FILE: {output_file_path}")):
             try:
                 jl = json.loads(line)
                 text = jl['page_info']['query'].strip()
                 label = jl['answer']
-                print('prompt/query: ', text)
-                # print('tokens: ', tokenizer.tokenize(text))
-                # print('origin content', jl['page_info']['query'][:steps])
-                print("ground truth answer: {}".format(jl['page_info']['answer']))
+                print('tokens           : ', tokenizer.tokenize(text))
+                print('label:           :', jl['answer'])
                 input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
-                # print("input_ids: {}".format(input_ids))
                 for i in range(trial_num):
                     y = sample_generate(model,
                                         input_ids=input_ids.to(model.device),
@@ -375,11 +367,9 @@ def play_file_qa(fname, tokenizer, model, output_file_path,  trial_num=5,
                                         eos=tokenizer.eos_token_id,
                                         until_n_eos=until_n_eos,
                                         full_stop_input_ids=full_stop_input_ids)
-                    # y = y.tolist()[0][1:]
                     completion = ''.join(tokenizer.decode(y))
                     completion.replace('##', '')
                     fw.write("\t".join([text, label, completion]) + '\n')
-                    print(f'[{i}]: {completion}')
             except Exception as e:
                 print(e)
                 print(traceback.format_exc())
