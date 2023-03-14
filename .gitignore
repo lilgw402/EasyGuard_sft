@@ -36,6 +36,7 @@ wheels/
 *.egg
 MANIFEST
 .idea
+.DS_Store
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -141,7 +142,7 @@ wandb/*
 cruise_logs/*
 launch_logs/*
 
-.idea
+.idea/*
 
 # npm modules
 node_modules/

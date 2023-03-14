@@ -191,19 +191,32 @@ class FashionBertv2(CruiseModule):
             num_classes=self.model.config_fusion.category_logits_level2 + 1,
         )  # 融合表征的预测损失
 
+        self.fuse_category = nn.Sequential(
+            nn.Linear(
+                self.config_fusion.hidden_size,
+                self.config_fusion.hidden_size * 2,
+            ),
+            nn.GELU(),
+            nn.Dropout(self.config_fusion.embd_pdrop),
+            nn.Linear(
+                self.config_fusion.hidden_size * 2,
+                self.config_fusion.category_logits_level2 + 1,
+            ),
+        )
+
     def cal_pt_loss(self, **kwargs):
         for key in ["t_rep", "v_rep", "fuse_rep", "label_l1"]:
             if key in kwargs:
                 kwargs[key] = self.all_gather(kwargs[key].contiguous())
                 kwargs[key] = kwargs[key].flatten(0, 1)
 
-        vt_loss = self.calc_nce_loss_vt(kwargs["t_rep"], kwargs["v_rep"])
+        vt_loss = self.calc_nce_loss_vt.forward(t_emb=kwargs["t_rep"], v_emb=kwargs["v_rep"])
 
         assert "label_l1" in kwargs
-        ff_loss = self.calc_pcl_loss_ff(kwargs["fuse_rep"], kwargs["label_l1"])
+        ff_loss = self.calc_pcl_loss_ff.forward(f_emb=kwargs["fuse_rep"], label=kwargs["label_l1"])
 
         assert "label" in kwargs and "fuse_cat" in kwargs
-        cat_loss = self.category_pred_loss(kwargs["fuse_cat"], kwargs["label"])
+        cat_loss = self.category_pred_loss.forward(pred=kwargs["fuse_cat"], labels=kwargs["label"])
 
         loss = (vt_loss + ff_loss + cat_loss) / 3
 
@@ -223,6 +236,7 @@ class FashionBertv2(CruiseModule):
         )
         rep_dict = self.model(token_ids, image)
         rep_dict.update(batch)
+        rep_dict['fuse_cat'] = self.fuse_category(rep_dict['fuse_emb'][:, 0])  # [B, num_categories]
 
         loss_dict = self.cal_pt_loss(**rep_dict)
 

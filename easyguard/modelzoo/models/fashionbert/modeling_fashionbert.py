@@ -87,39 +87,39 @@ class FashionBert(ModelBase):
             self.config_fusion.hidden_size, self.config_fusion.hidden_size
         )
 
-        """
-        Initialize output layer
-        """
-        self.fuse_category = nn.Sequential(
-            nn.Linear(
-                self.config_fusion.hidden_size,
-                self.config_fusion.hidden_size * 2,
-            ),
-            nn.GELU(),
-            nn.Dropout(self.config_fusion.embd_pdrop),
-            nn.Linear(
-                self.config_fusion.hidden_size * 2,
-                self.config_fusion.category_logits_level2 + 1,
-            ),
-        )
-
-        """
-        Initialize loss
-        """
-        self.calc_nce_loss_vt = LearnableNTXentLoss(
-            init_tau=self.config_fusion.init_tau,
-            clamp=self.config_fusion.tau_clamp,
-        )  # 底层图-文CLIP损失
-        self.calc_pcl_loss_ff = LearnablePCLLoss(
-            init_tau=self.config_fusion.init_tau,
-            clamp=self.config_fusion.tau_clamp,
-            num_labels=self.config_fusion.category_logits_level1 + 1,
-        )  # 上层融合-融合CLIP损失，使用一级标签
-        self.category_pred_loss = SCELoss(
-            alpha=1.0,
-            beta=0.5,
-            num_classes=self.config_fusion.category_logits_level2 + 1,
-        )  # 融合表征的预测损失
+        # """
+        # Initialize output layer
+        # """
+        # self.fuse_category = nn.Sequential(
+        #     nn.Linear(
+        #         self.config_fusion.hidden_size,
+        #         self.config_fusion.hidden_size * 2,
+        #     ),
+        #     nn.GELU(),
+        #     nn.Dropout(self.config_fusion.embd_pdrop),
+        #     nn.Linear(
+        #         self.config_fusion.hidden_size * 2,
+        #         self.config_fusion.category_logits_level2 + 1,
+        #     ),
+        # )
+        #
+        # """
+        # Initialize loss
+        # """
+        # self.calc_nce_loss_vt = LearnableNTXentLoss(
+        #     init_tau=self.config_fusion.init_tau,
+        #     clamp=self.config_fusion.tau_clamp,
+        # )  # 底层图-文CLIP损失
+        # self.calc_pcl_loss_ff = LearnablePCLLoss(
+        #     init_tau=self.config_fusion.init_tau,
+        #     clamp=self.config_fusion.tau_clamp,
+        #     num_labels=self.config_fusion.category_logits_level1 + 1,
+        # )  # 上层融合-融合CLIP损失，使用一级标签
+        # self.category_pred_loss = SCELoss(
+        #     alpha=1.0,
+        #     beta=0.5,
+        #     num_classes=self.config_fusion.category_logits_level2 + 1,
+        # )  # 融合表征的预测损失
 
         """
         Initialize some fixed parameters.
@@ -171,9 +171,7 @@ class FashionBert(ModelBase):
         text_segment_ids = torch.clamp(text_segment_ids, min=0, max=1)
         batch_size, text_length = token_ids.shape
         position_ids = (
-            self.text_position_ids[:text_length]
-            .unsqueeze(0)
-            .expand((batch_size, -1))
+            self.text_position_ids[:text_length].unsqueeze(0).expand((batch_size, -1))
         )  # [B, M]
 
         t_out = self.text(
@@ -197,9 +195,7 @@ class FashionBert(ModelBase):
         v_cat = torch.cat([v_rep.unsqueeze(1), v_emb], dim=1)  # [B, 1 + N, d_v]
         batch_size, image_length, _ = v_cat.shape
         position_ids = (
-            self.image_position_ids[:image_length]
-            .unsqueeze(0)
-            .expand((batch_size, -1))
+            self.image_position_ids[:image_length].unsqueeze(0).expand((batch_size, -1))
         )
         v_cat = v_cat + self.visual_pos(position_ids)
         v_cat = self.visual_fuse(v_cat)  # [B, 1 + N, d_v]
@@ -211,38 +207,28 @@ class FashionBert(ModelBase):
     def forward_fuse(self, t_emb, t_rep, text_masks, v_emb, v_rep):
         batch_size, text_length, _ = t_emb.shape
         text_segment_ids = (
-            self.text_segment_ids[:text_length]
-            .unsqueeze(0)
-            .expand((batch_size, -1))
+            self.text_segment_ids[:text_length].unsqueeze(0).expand((batch_size, -1))
         )
         t_emb = self.ln_text(
-            self.t_projector_fuse(t_emb)
-            + self.segment_embedding(text_segment_ids)
+            self.t_projector_fuse(t_emb) + self.segment_embedding(text_segment_ids)
         )  # [B, M, d_f]
 
         batch_size, image_length, _ = v_emb.shape
         image_segment_ids = (
-            self.image_segment_ids[:image_length]
-            .unsqueeze(0)
-            .expand((batch_size, -1))
+            self.image_segment_ids[:image_length].unsqueeze(0).expand((batch_size, -1))
         )
         v_emb = self.ln_visual(
-            self.v_projector_fuse(v_emb)
-            + self.segment_embedding(image_segment_ids)
+            self.v_projector_fuse(v_emb) + self.segment_embedding(image_segment_ids)
         )  # [B, 1 + N, d_f]
         cls_emb = self.ln_cls(
             self.fuse_cls(torch.cat([t_rep, v_rep], dim=-1))
-        ).unsqueeze(
-            1
-        )  # [B, 1, d_f]
+        ).unsqueeze(1)  # [B, 1, d_f]
         fuse_emb = self.fuse_dropout(
             torch.cat([cls_emb, t_emb, v_emb], dim=1)
         )  # [B, 1 + M + 1 + N, d_f]
 
         image_masks = (
-            self.image_masks[:image_length]
-            .unsqueeze(0)
-            .expand((batch_size, -1))
+            self.image_masks[:image_length].unsqueeze(0).expand((batch_size, -1))
         )
         cls_masks = self.clsf_masks.unsqueeze(0).expand((batch_size, -1))
         fuse_mask = (
@@ -253,9 +239,9 @@ class FashionBert(ModelBase):
         )  # [B, 1 + M + 1 + N, d_f]
 
         fuse_rep = self.fuse_pooler(fuse_emb[:, 0])  # [B, d_f]
-        fuse_cat = self.fuse_category(fuse_emb[:, 0])  # [B, num_categories]
+        # fuse_cat = self.fuse_category(fuse_emb[:, 0])  # [B, num_categories]
 
-        return fuse_rep, fuse_cat
+        return fuse_emb, fuse_rep   # fuse_cat
 
     def forward(
         self,
@@ -267,15 +253,16 @@ class FashionBert(ModelBase):
         text_masks = (token_ids != self.PAD).long()
         t_rep, t_emb = self.forward_text(token_ids)
         v_rep, v_emb = self.forward_image(image)
-        fuse_rep, fuse_cat = self.forward_fuse(
+        fuse_emb, fuse_rep = self.forward_fuse(
             t_emb, t_rep, text_masks, v_emb, v_rep
         )
 
         return {
             "t_rep": t_rep,
             "v_rep": v_rep,
+            "fuse_emb": fuse_emb,
             "fuse_rep": fuse_rep,
-            "fuse_cat": fuse_cat,
+            # "fuse_cat": fuse_cat,
         }
 
 
