@@ -8,5 +8,5 @@ bash launch.sh tasks/gpt2/unsup/model.py \
     --generate-steps=1 \
     --data.tokenizer=hdfs://haruna/home/byte_ecom_govern/user/doushihan/tokenizer/tokenizer/zh_0620_newcut_caster_145665_lowercase \
     --output_file_path=/mnt/bn/wanli/experiments/instruct_tunning/outputs/inference_result_${task_id}.txt \
-    --play-file=hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/gpt2/data/ccr_valid.jsonl \
+    --play-file=/mlx_devbox/users/wanli.0815/repo/EasyGuard/examples/fashion_gpt2/valid.jsonl \
     --model.partial_pretrain=/mnt/bn/wanli/experiments/instruct_tunning/outputs/20230313-1404/checkpoints/global_step_18000/mp_rank_00_model_states.pt
