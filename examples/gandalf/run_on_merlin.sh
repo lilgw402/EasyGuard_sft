@@ -12,14 +12,13 @@ export PYTHONPATH=$PYTHONPATH:/opt/tiger
 export PYTHONPATH=$PYTHONPATH:/opt/tiger/anyon2
 export PYTHONPATH=$PYTHONPATH:/opt/tiger/titan
 export PYTHONPATH=$PYTHONPATH:/opt/tiger/cruise
-export PYTHONPATH=$PYTHONPATH:/opt/tiger/easyguard
+export PYTHONPATH=$PYTHONPATH:$ROOT_HOME
 
 
-
-# # pretrain weights
+# # pretrain weights for custom tokenizer
 echo 'pulling down pretrained weights...'
-if [ ! -d "models/weights" ]; then mkdir models/weights; fi
-if [ ! -d "models/weights/fashion_deberta_asr" ]; then hadoop fs -get  hdfs:///user/jiangxubin/models/pretrain/fashion_deberta_asr ./models/weights; fi
+if [ ! -d "models/weights/fashion_deberta_asr/" ]; then mkdir -p models/weights/fashion_deberta_asr/; fi
+if [ ! -d "models/weights/fashion_deberta_asr/deberta_3l" ]; then hadoop fs -get  hdfs:///user/jiangxubin/models/pretrain/fashion_deberta_asr/deberta_3l ./models/weights/fashion_deberta_asr; fi
 
 # # trigger train proc
 export ROOT_HOME=${ROOT_HOME:=$ROOT_HOME}

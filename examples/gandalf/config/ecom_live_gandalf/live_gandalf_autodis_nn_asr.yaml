@@ -1,13 +1,15 @@
 data:
   dataset:
-    input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/train
-    val_input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/validation
-    test_input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_f_3_1_d_0/test
-    train_folder: 2022121[5-9]|2022122[0-8]
-    val_folder: '20221214'
+    input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_neg_high_precision_extractor_1/train
+    val_input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_neg_high_precision_extractor_1/validation
+    test_input_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/dataset/ecom_live_gandalf_parquet_neg_high_precision_extractor_1/test
+    train_folder: 20221229|2022123[0-1]|2023010[1-9]|2023011[0-1]
+    val_folder: 2022121[5-9]|2022122[0-8]
     test_folder: 2022123[0-1]
   feature_provider:  
+    feature_num: 150
     tokenizer_path: ./models/weights/fashion_deberta_asr/deberta_3l
+    max_length: 512
     embedding_conf:
       author_embedding: 128
       universal_embedding: 256
@@ -78,8 +80,6 @@ data:
       '96':
         - -1.0
         - 1.0
-    feature_num: 150
-    filtered_tags: "\u6750\u8D28|\u529F\u6548"
     slot_mask:
       - 140
       - 141
@@ -92,13 +92,14 @@ data:
       - 148
       - 149
     type: EcomLiveGandalfParquetAutoDisFeatureProvider
-    use_high_precision: true
+    use_high_precision: false
+    filtered_tags: null
   data_factory:
     type: ParquetDataFactory
     train_max_iteration: -1
     val_max_iteration: -1
     test_max_iteration: -1
-    batch_size: 64
+    batch_size: 128
     batch_size_val: -1
     num_parallel_reads: 5
     num_workers: 4
@@ -122,13 +123,13 @@ model:
       - 148
       - 149
   asr_encoder:
+    encoder_name: fashion-deberta-asr-small
     emb_dropout_prob: 0.3
     emb_mode: pool
     embedding_dim: 768
     encoder_freeze_layer: null
-    max_length: 256
     num_attention_heads: 3
-    num_hidden_layers: 1
+    num_hidden_layers: 3
   embedding:
     author_embedding_dim: 128
   kwargs:
@@ -149,13 +150,8 @@ trainer:
   logger: tracking
   max_epochs: 25
   find_unused_parameters: true
-  # optimizer_kwargs:
-  #   optimizer:
-  #     type: AdamW
-  #     params:
-  #       lr: 0.00001
   limit_val_batches: -1
   limit_train_batches: -1
   val_check_interval: 500
   project_name: gandalf
-  experiment_name: augutus_auto_dis_nn_asr
+  experiment_name: augutus/auto_dis_nn_asr_demo

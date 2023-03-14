@@ -21,6 +21,7 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 	def __init__(
 			self,
 			feature_num,
+			max_len=512,
 			use_high_precision=False,
 			filtered_tags=None,
 			slot_mask=None,
@@ -42,7 +43,7 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 		self._feature_input_num = feature_num - len(slot_mask)
 		self._active_slot = [i for i in range(self._feature_num) if i not in self._slot_mask]
 		# self._text_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=512)
-		self._text_tokenizer = DebertaTokenizer(f'{tokenizer_path}/vocab.txt',max_len=512)
+		self._text_tokenizer = DebertaTokenizer(f'{tokenizer_path}/vocab.txt',max_len=max_len)
 		self._save_extra = save_extra
 
 	def process_feature_dense(self, features):

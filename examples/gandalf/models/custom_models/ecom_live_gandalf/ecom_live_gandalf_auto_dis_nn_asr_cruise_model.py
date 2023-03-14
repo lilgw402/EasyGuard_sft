@@ -112,6 +112,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         return self._pre_process(batched_feature_data_items)
         
     def init_encoders(self):
+        #Init bucket encoder
         self._auto_dis_bucket_encoder = AutodisBucketEncoder(
                                         feature_num=self._feature_input_num,
                                         bucket_num=self._bucket_num,
@@ -121,9 +122,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
                                         add_block=False)
         # Init model components:asr
         self._asr_encoder_param = self.hparams.asr_encoder
-        self.asr_model_name = "deberta_base_6l"
-        self._asr_encoder = AutoModel.from_pretrained(self.asr_model_name,n_layers=self._asr_encoder_param.get('num_hidden_layers',3))
-        # self._asr_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=self._asr_encoder_param['max_length'])
+        self._asr_encoder = AutoModel.from_pretrained(self._asr_encoder_param.get('encoder_name','fashion-deberta-asr-small'),n_layers=self._asr_encoder_param.get('num_hidden_layers',3))
         self._asr_emb_dropout = self._init_emb_dropout()
         self._init_cls_layer()
         self._init_criterion()
