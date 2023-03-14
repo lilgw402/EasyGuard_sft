@@ -820,14 +820,6 @@ class DebertaModel(DebertaBare, ModelBase):
             omit_other_output=omit_other_output,
             **option,
         )
-        # # DebertaBare.__init__(
-        # #     self,
-        # #     use_fast=use_fast,
-        # #     layernorm_fp16=layernorm_fp16,
-        # #     omit_other_output=omit_other_output,
-        # #     **option,
-        # # )
-        ModelBase.__init__(self)
 
         if abs_pos_embedding:
             self.ape = nn.Embedding(max_len, option["dim"])
