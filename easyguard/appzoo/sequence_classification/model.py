@@ -18,7 +18,6 @@ except ImportError:
     )
 
 from ...core.optimizers import build_optimizer, build_scheduler
-from ...modelzoo.modeling_utils import load_pretrained
 from ...utils import logging
 from ...utils.losses import LearnableNTXentLoss, cross_entropy
 

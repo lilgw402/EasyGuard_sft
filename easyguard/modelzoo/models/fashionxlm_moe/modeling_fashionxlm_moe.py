@@ -1469,7 +1469,7 @@ class DebertaV2Model(DebertaV2PreTrainedModel):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForMaskedLM with Deberta->DebertaV2
-class FashionxlmMoEForMaskedLMMoE(DebertaV2PreTrainedModel):
+class FashionxlmMoEForMaskedLMMoE(DebertaV2PreTrainedModel, ModelBase):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [
         r"position_ids",
@@ -1627,7 +1627,9 @@ class DebertaV2OnlyMLMHead(nn.Module):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
-class FashionxlmMoEForSequencelCassificationMoE(DebertaV2PreTrainedModel):
+class FashionxlmMoEForSequencelCassificationMoE(
+    DebertaV2PreTrainedModel, ModelBase
+):
     def __init__(self, config):
         super().__init__(config)
 

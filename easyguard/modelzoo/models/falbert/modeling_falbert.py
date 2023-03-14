@@ -7,11 +7,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import yaml
 
+from ...modeling_utils import ModelBase
 from . import albert
 from .swin import SwinTransformer
 
 
-class FrameALBert(nn.Module):
+class FalBertModel(nn.Module, ModelBase):
     """Frame + ALBert"""
 
     def __init__(self, config, **kwargs):
@@ -33,19 +34,20 @@ class FrameALBert(nn.Module):
 
         """
         super().__init__()
+        ModelBase.__init__(self)
         self.config = config
         self.visual_type = config.visual_type
         if self.visual_type == "SwinB224":
             self.visual = SwinTransformer(
-                img_size=224,
-                num_classes=512,
-                embed_dim=128,
-                depths=[2, 2, 18, 2],
-                num_heads=[4, 8, 16, 32],
+                img_size=config.get("img_size", 224),
+                num_classes=config.get("num_classes", 512),
+                embed_dim=config.get("embed_dim", 128),
+                depths=config.get("depths", [2, 2, 18, 2]),
+                num_heads=config.get("num_heads", [4, 8, 16, 32]),
             )
 
         # 映射
-        self.middle_size = 128  # TODO: 写死了
+        self.middle_size = config.get("middle_size", 128)
         self.v_projector = torch.nn.Sequential(
             torch.nn.Linear(config.visual_dim, self.middle_size),
             torch.nn.Tanh(),

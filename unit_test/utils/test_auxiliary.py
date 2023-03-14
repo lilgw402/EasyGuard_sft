@@ -1,6 +1,6 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
 TEST_FLAGS = ["all"]
 
@@ -25,9 +25,16 @@ class TestAuxiliary(unittest.TestCase):
         print(
             cache_file(
                 "test",
-                set(["vocab.txt", "vocab1.txt", "vocab2.txt"]),
+                set(
+                    [
+                        "pytorch_model.bin",
+                        "pytorch_model.ckpt",
+                        "pytorch_model.pt",
+                        "pytorch_model.th",
+                    ]
+                ),
                 model_type="deberta",
-                remote_url="hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/",
+                remote_url="hdfs://haruna/home/byte_ecom_govern/easyguard/models/bert_base_uncased",
             )
         )
 
@@ -60,8 +67,8 @@ class TestAuxiliary(unittest.TestCase):
     def test_convert_model_weight(self):
         from easyguard.utils.auxiliary_utils import convert_model_weights
 
-        path = "/root/.cache/easyguard/models/fashionxlm_moe/6c2f5988fb7ea932b4914cf0fc6c1acb2460de2ee93f2a31370fa9d45f070f37/pytorch_model_old.bin"
-        # convert_model_weights(path, "backbone.", remove_old=False)
+        path = "/mnt/bn/ecom-govern-maxiangqian/dongjunwei/cache/epoch=9-step=970000-val_loss=0.749.ckpt"
+        convert_model_weights(path, "backbone.", remove_old=False)
 
 
 if __name__ == "__main__":

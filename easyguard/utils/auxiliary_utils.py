@@ -1,8 +1,12 @@
 import hashlib
 import os
+import sys
+import time
 from typing import Any, Dict, List, Optional, OrderedDict, Union
+from xml.parsers.expat import model
 
 import torch
+from prettytable import PrettyTable
 
 from ..modelzoo.config import MODEL_ARCHIVE_PATH
 from . import (
@@ -17,7 +21,35 @@ from .logging import get_logger
 from .type_utils import typecheck
 from .yaml_utils import file_read
 
+PRINT_HELP = []
+# hdfs may fail to download target file, wo we use this variable to control the number of download
+RETYR_TIMES = 5
+FILE_TEMP = ".temp_{}"
+
+
 logger = get_logger(__name__)
+
+
+class HiddenPrints:
+    def __init__(self, activated=True):
+        self.activated = activated
+        self.original_stdout = None
+
+    def open(self):
+        sys.stdout.close()
+        sys.stdout = self.original_stdout
+
+    def close(self):
+        self.original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __enter__(self):
+        if self.activated:
+            self.close()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.activated:
+            self.open()
 
 
 def file_exist(prefix: str, choices: Union[str, set]) -> Optional[str]:
@@ -56,6 +88,7 @@ def cache_file(
     file_name: Optional[Union[str, set]] = None,
     remote_url: Optional[str] = None,
     model_type: Optional[str] = None,
+    download_retry_number: Optional[int] = RETYR_TIMES,
     *args,
     **kwargs,
 ) -> str:
@@ -91,12 +124,31 @@ def cache_file(
         return model_name_path
     elif model_type is not None:
         hash_ = sha256(model_name_path)
+        hash_file = (
+            sha256(file_name)
+            if isinstance(file_name, str)
+            else sha256("-".join(sorted(file_name)))
+        )
+
+        file_temp_ = FILE_TEMP.format(hash_file)
         model_path_local = os.path.join(
             EASYGUARD_MODEL_CACHE, model_type, hash_
         )
+        # a temp file to indicate whether the download is in progress
+        file_temp_path = os.path.join(model_path_local, file_temp_)
+
+        if os.path.exists(file_temp_path):
+            logger.info(
+                f"there is a another process which is downloading the target file {file_name}"
+            )
+            while os.path.exists(file_temp_path):
+                time.sleep(2)
+
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
-            logger.info(f"obtain the local file `{model_file_local}`")
+            if model_file_local not in PRINT_HELP:
+                logger.info(f"obtain the local file `{model_file_local}`")
+            PRINT_HELP.append(model_file_local)
             return model_file_local
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
@@ -125,20 +177,40 @@ def cache_file(
                         model_file_path_remote = remote_path_
                         break
                 if model_file_path_remote:
-                    logger.info(
-                        f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
-                    )
-                    hmget([model_file_path_remote], model_path_local)
-                    # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
-                    model_file_path_local = os.path.join(
-                        model_path_local,
-                        model_file_path_remote.split(REMOTE_PATH_SEP)[-1],
-                    )
-                    if os.path.getsize(model_file_path_local) == 0:
-                        os.remove(model_file_path_local)
-                        logger.warning(
-                            f"fail to download `{model_file_path_remote}`, please check the network or the remote file path"
+                    if model_file_path_remote not in PRINT_HELP:
+                        logger.info(
+                            f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
                         )
+                    try:
+                        # if start to download, create a temp file to indicate
+                        file_temp_f = open(file_temp_path, "w")
+                        file_temp_f.close()
+                        retry_number = 2
+                        while download_retry_number > 0:
+                            hmget([model_file_path_remote], model_path_local)
+                            # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
+                            model_file_path_local = os.path.join(
+                                model_path_local,
+                                model_file_path_remote.split(REMOTE_PATH_SEP)[
+                                    -1
+                                ],
+                            )
+                            if os.path.exists(model_file_path_local):
+                                if os.path.getsize(model_file_path_local) == 0:
+                                    os.remove(model_file_path_local)
+                                    logger.warning(
+                                        f"fail to download `{model_file_path_remote}`, please check the network or the remote file path, we are trying to download the {retry_number}th time"
+                                    )
+                                    download_retry_number -= 1
+                                    retry_number += 1
+                                else:
+                                    PRINT_HELP.append(model_file_path_remote)
+                                    break
+                    finally:
+                        # just delete the temp file whether the download is successful or not
+                        if os.path.exists(file_temp_path):
+                            os.remove(file_temp_path)
+
                 else:
                     raise FileNotFoundError(
                         f"`{model_file_remote_list}` can not be found in remote server"
@@ -242,18 +314,23 @@ def hf_name_or_path_check(
 
 def list_pretrained_models() -> None:
     """list all pretrained models from archive.yaml"""
-    from prettytable import PrettyTable
-
     model_archive = file_read(MODEL_ARCHIVE_PATH)
     model_archive_table = PrettyTable()
     filed_names = list()
     for key_, value_ in model_archive.items():
         filed_names += list(value_.keys())
-    filed_names = list(set(filed_names))
+    filed_names = list(sorted(set(filed_names)))
     model_archive_table.field_names = ["model_name"] + filed_names
+    model_info_list = []
     for key_, value_ in model_archive.items():
         temp_ = [key_] + [value_.get(_, None) for _ in filed_names]
-        model_archive_table.add_row(temp_)
+        model_info_list.append(temp_)
+    # model_info_list = sorted(model_info_list, key=lambda x: x[0])
+    model_archive_table.add_rows(model_info_list)
+    # setting
+    model_archive_table.sortby = "model_name"
+    model_archive_table.align["model_name"] = "l"
+    model_archive_table.align["description"] = "l"
     logger.info("\n" + str(model_archive_table))
 
 
@@ -389,6 +466,7 @@ def load_pretrained_model_weights(
     model_path: str,
     strict: Optional[bool] = False,
     rm_prefix: Optional[str] = None,
+    change_prefix: Optional[List[tuple]] = None,
     **kwargs,
 ):
     """load pretrained model weights
@@ -426,16 +504,45 @@ def load_pretrained_model_weights(
             if key_.startswith(rm_prefix):
                 key_new = key_.replace(rm_prefix, "", 1)
                 state_dict[key_new] = state_dict.pop(key_)
+    # if change_prefix:
 
-    keys = model.load_state_dict(state_dict, strict=strict)
+    with HiddenPrints():
+        keys = model.load_state_dict(state_dict, strict=strict)
+
+    @typecheck(list, list, dict)
+    def table_formatter(
+        field_names: List[str],
+        values: List[List[str]],
+        align: Dict[str, str],
+        sortby: Optional[int] = 0,
+    ):
+        table = PrettyTable()
+        table.field_names = field_names
+        table.add_rows(values)
+        for key_ in field_names:
+            if key_ in align:
+                table.align[key_] = align[key_]
+        table.sortby = field_names[sortby]
+        return str(table)
 
     if len(keys.missing_keys) > 0:
+        field_names = ["missing_keys"]
+        values = list(map(lambda x: [x], keys.missing_keys))
+        align = {"missing_keys": "l"}
+
         logger.warning(
-            f"=> Pretrained: missing_keys [{', '.join(keys.missing_keys)}]"
+            f"=> Pretrained: missing_keys: \n{table_formatter(field_names, values, align)}\n"
         )
+    else:
+        logger.info(f"Pretrained: no missing_keys.")
     if len(keys.unexpected_keys) > 0:
+        field_names = ["unexpected_keys"]
+        values = list(map(lambda x: [x], keys.unexpected_keys))
+        align = {"unexpected_keys": "l"}
         logger.warning(
-            f"=> Pretrained: unexpected_keys ["
-            f"{', '.join(keys.unexpected_keys)}]"
+            f"=> Pretrained: unexpected_keys: \n{table_formatter(field_names, values, align)}\n"
         )
+    else:
+        logger.info(f"Pretrained: no unexpected_keys.")
+
     logger.info(f"=> Pretrained: load pretrained model with strict={strict}")

@@ -1,0 +1,3 @@
+# /mnt/bn/ecom-govern-maxiangqian/doushihan/mariana_bloom176b/tasks/gpt2/zero_shot_eval/scripts/run-play-file-load-from-cruise.sh bloom_7b1_finetune
+/mnt/bn/ecom-govern-maxiangqian/doushihan/mariana_bloom176b/tasks/gpt2/zero_shot_eval/scripts/run-play-file-load-from-hf.sh bloom_7b1
+# /mnt/bn/ecom-govern-maxiangqian/doushihan/mariana_bloom176b/tasks/gpt2/zero_shot_eval/scripts/run-play-file-load-from-hf.sh bloom_560m

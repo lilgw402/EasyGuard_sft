@@ -19,6 +19,11 @@ fashion-deberta-asr:
   type: deberta
   description: 风险预测task, 6层deberta
   region: CN
+fashion-deberta-asr-small:
+  server: hdfs
+  type: deberta
+  description: 风险预测task, 3层deberta
+  region: CN
 fashion-deberta-ccr-order:
   server: hdfs
   type: deberta
@@ -36,10 +41,11 @@ xlmr-base:
   server: hdfs
   type: xlmr
   region: CN
-falbert-hq-live:
+falbert-no-weights:
   server: hdfs
   type: falbert
   region: CN
+  description: no pretrained weights
 bert-base-uncased:
   server: hdfs
   type: bert
@@ -50,3 +56,19 @@ google/vit-base-patch16-224:
   type: vit
 openai/clip-vit-base-patch32:
   type: clip
+fashion-deberta-ner:
+  server: hdfs
+  type: deberta_erlangshen
+  description: 短视频+直播ASR,2亿,MLM(卖点词entity mask)
+  region: CN
+fashion-swin-base-224-fashionvtp:
+  type: fashion_swin
+  server: hdfs
+  region: CN
+  description: fashionvtp的多模态视觉backbone
+fashionbert-base:
+  type: fashionbert
+  server: hdfs
+  region: CN
+
+

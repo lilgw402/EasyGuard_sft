@@ -139,6 +139,7 @@ sample
 wandb/*
 *wandb
 cruise_logs/*
+launch_logs/*
 
 .idea
 
@@ -154,6 +155,15 @@ events.out*
 
 # model
 *.model
+*.th
+*.bin
+*.pt
+*.ckpt
+*.pth
 
 # cruise
 *cruise_logs/
+
+# output
+*.stderr
+*.stdout

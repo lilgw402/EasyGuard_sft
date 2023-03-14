@@ -1,6 +1,6 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
 TEST_FLAGS = ["all"]
 
@@ -10,7 +10,7 @@ class TestImageProcessor(unittest.TestCase):
         "all" in TEST_FLAGS or "hf_model" in TEST_FLAGS, "just do it"
     )
     def test_hf_model(self):
-        from easyguard.core import AutoImageProcessor, AutoModel
+        from easyguard import AutoImageProcessor, AutoModel
 
         extractor = AutoImageProcessor.from_pretrained(
             "google/vit-base-patch16-224"

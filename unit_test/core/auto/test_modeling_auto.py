@@ -1,8 +1,8 @@
 import unittest
 
-from unit_test import TEST_FLAGS
+# test module
 
-TEST_FLAGS = ["default_model"]
+TEST_FLAGS = ["all"]
 
 
 class TestModelAuto(unittest.TestCase):
@@ -12,8 +12,8 @@ class TestModelAuto(unittest.TestCase):
     def test_hf_model(self):
         from easyguard import AutoModel, AutoTokenizer
 
-        archive = "bert-base-uncased"
-        # archive = "hfl/chinese-roberta-wwm-ext"
+        # archive = "bert-base-uncased"
+        archive = "hfl/chinese-roberta-wwm-ext"
         tokenizer = AutoTokenizer.from_pretrained(archive)
         model = AutoModel.from_pretrained(archive)
         inputs = tokenizer("Hello world!", return_tensors="pt")

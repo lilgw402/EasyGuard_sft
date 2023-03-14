@@ -1,5 +1,5 @@
 trainer:
-  default_root_dir: examples/framealbert/save_model/v1_train1k_videoclip_synbn_false
+  default_root_dir: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/save_model/v1_train1k_videoclip_synbn_false
   default_hdfs_dir: null
   logger: true
   log_every_n_steps: 50
@@ -36,10 +36,43 @@ trainer:
   experiment_name: baseline_1k_videoclip_synbn_false
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
+  strategy: ddp
+  enable_qat: false
+  qat_kwargs: {}
+  optimizer_kwargs:
+    optimizer:
+      type: torch.optim.AdamW
+      params:
+        lr: 0.0001
+        betas:
+        - 0.9
+        - 0.999
+        eps: 1.0e-06
+        weight_decay: 0.01
+        correct_bias: true
+        correct_bias_eps: false
+        bias_correction: true
+        adam_w_mode: true
+        amsgrad: false
+        set_grad_none: true
+        momentum: 0.0
+        nesterov: false
+    scheduler:
+      type: torch.optim.lr_scheduler.LinearLR
+      total_steps_param_name: total_iters
+      warmup_steps_param_name: num_warmup_steps
+      params:
+        warmup_step_rate: 0.005
+        start_factor: 0.3333333333333333
+        end_factor: 1.0
+        num_cycles: 0.5
+        lr_end: 1.0e-07
+        power: 1.0
+  grad_norm_layers: []
 model:
-  config_backbone: examples/framealbert/config/config_backbone.yaml
-  config_fusion: examples/framealbert/config/config_fusion.yaml
-  config_optim: examples/framealbert/config/config_optim.yaml
+  config_backbone: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_backbone.yaml
+  config_fusion: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_fusion.yaml
+  config_optim: /mnt/bn/ecom-govern-maxiangqian/dongjunwei/EasyGuard/examples/framealbert/config/config_optim.yaml
   load_pretrained: null
 data:
   train_files: /mnt/bn/ecom-govern-maxiangqian/liuzeyu/hq_live/packed_data/20221001_20221102/v1_1/train_balance_1k

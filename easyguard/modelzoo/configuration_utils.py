@@ -38,6 +38,10 @@ class ConfigBase(ABC):
         """like a dict class"""
         return self.__dict__[key]
 
+    @typecheck(object, str)
+    def get(self, key: str, default):
+        return self.__dict__.get(key, default)
+
     def asdict(self) -> Dict[str, Any]:
         return asdict(self)
 

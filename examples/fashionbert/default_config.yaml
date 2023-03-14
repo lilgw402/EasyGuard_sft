@@ -35,16 +35,12 @@ trainer:
   project_name: null
   enable_trace: false
 model:
-  config_text: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_text.yaml
-  config_visual: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_visual.yaml
-  config_fusion: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_fusion.yaml
   learning_rate: 0.0001
   betas:
   - 0.9
   - 0.999
   eps: 1.0e-08
   weight_decay: 0.02
-  load_pretrained: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/model_state_epoch_83332.th
 data:
   train_batch_size: 64
   val_batch_size: 64
