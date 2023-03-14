@@ -1,20 +1,56 @@
-""" Fusion model """
+""" ALBERT + Visual """
+
+from types import SimpleNamespace
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import yaml
 
 from easyguard.modelzoo.models.falbert import albert
+from easyguard.modelzoo.models.falbert.swin import SwinTransformer
 
 
-class ALBertFusion(nn.Module):
+class FrameALBert(nn.Module):
     """Frame + ALBert"""
 
     def __init__(self, config):
+        """
+        n层的Transformer + resnet的结构
+
+        多帧享有一个resnet，每帧单独用resnet编码后，再过n层共享的Transformer
+
+        如果是单独文本编码： [CLS] w1, ..., wm [SEP]
+        如果是单独多帧编码： [IMG] v1, ..., vn
+        如果是图文共同编码
+            如果视频放前面：[IMG] v1, ..., vn [CLS] w1, ..., wm [SEP] (default)
+            如果文本放前面：[CLS] w1, ..., wm [SEP] [IMG] v1, ..., vn
+
+        文本的[CLS] 和 [SEP] 由输入来控制
+        图片的[IMG] 在模型里判断，如果有多帧输入，则总是在多帧前面增加[IMG]这个token
+
+        多帧端的embedding = [IMG]; resent embedding + position embedding。 无segment embedding
+
+        """
         super().__init__()
         self.config = config
+        self.visual_type = config.visual_type
+        if self.visual_type == "SwinB224":
+            self.visual = SwinTransformer(
+                img_size=224,
+                num_classes=512,
+                embed_dim=128,
+                depths=[2, 2, 18, 2],
+                num_heads=[4, 8, 16, 32],
+            )
+
         # 映射
         self.middle_size = 128  # TODO: 写死了
-        self.tv_projector = torch.nn.Linear(config.hidden_size, config.embedding_size)
+        self.v_projector = torch.nn.Sequential(
+            torch.nn.Linear(config.visual_dim, self.middle_size),
+            torch.nn.Tanh(),
+            torch.nn.Linear(self.middle_size, config.embedding_size),
+        )
 
         # embedding
         self.embedding = VEmbedding(config, padding_index=2)
@@ -51,23 +87,34 @@ class ALBertFusion(nn.Module):
         """
         if mode == "tv":
             return self.text_visual_forward(*args, **kwargs)
+        elif mode == "t":
+            return self.text_only_forward(*args, **kwargs)
+        elif mode == "v":
+            return self.visual_only_forward(*args, **kwargs)
 
     def text_visual_forward(
         self,
-        input_embs,
+        input_ids,
         input_segment_ids,
         input_mask,
+        frames=None,
         frames_mask=None,
         visual_embeds=None,
         *args,
         **kwargs,
     ):
-
-        frames_emb = self.tv_projector(visual_embeds)
-        text_emb = self.tv_projector(input_embs)
-
+        """
+        先两个模态一起拼接过 encoder
+        如果 visual_embs 不为空，就直接用，否则会用frames 来现算
+        注意：这里没有做frames为空的检查。其实不太好。
+        """
+        if visual_embeds is None:
+            visual_embeds = self.encode_frames(frames)
+        if visual_embeds.shape[-1] != self.middle_size:
+            visual_embeds = self.v_projector[0](visual_embeds)
+        frames_emb = self.project_frames_to_emb_size(visual_embeds)
         embeddings, m_input_mask = self.embedding(
-            input_embs=text_emb,
+            input_ids=input_ids,
             token_type_ids=input_segment_ids,
             input_mask=input_mask,
             visual_embeds=frames_emb,
@@ -106,6 +153,88 @@ class ALBertFusion(nn.Module):
             "attention_probs": attention_probs,
         }
 
+    def text_only_forward(
+        self, input_ids, input_segment_ids, input_mask, *args, **kwargs
+    ):
+        """文本 only 的 forward"""
+        embeddings, input_mask = self.embedding(
+            input_ids=input_ids,
+            token_type_ids=input_segment_ids,
+            input_mask=input_mask,
+            mode="t",
+        )
+        out = self.encoder(embeddings, input_mask)
+        if isinstance(out, tuple):
+            encoded_layers, attention_probs = out
+        else:
+            encoded_layers, attention_probs = out, None
+        sequence_output = encoded_layers[-1]
+        pooled_output = (
+            self.pooler(sequence_output) if self.config.with_pooler else None
+        )
+        return {
+            "encoded_layers": encoded_layers,
+            "pooled_output": pooled_output,
+            "embeddings": embeddings,
+            "embedding_masks": input_mask,
+            "attention_probs": attention_probs,
+        }
+
+    def visual_only_forward(
+        self, frames, frames_mask, visual_embeds=None, *args, **kwargs
+    ):
+        """
+        frames: [bsz, frame_num, c, h, w]
+        frames_mask: [bsz, frame_num]
+        """
+        if visual_embeds is None:
+            visual_embeds = self.encode_frames(frames)
+        if visual_embeds.shape[-1] != self.middle_size:
+            visual_embeds = self.v_projector[0](visual_embeds)
+        frames_emb = self.project_frames_to_emb_size(visual_embeds)
+        embeddings, input_mask = self.embedding(
+            visual_embeds=frames_emb, visual_mask=frames_mask, mode="v"
+        )
+
+        out = self.encoder(embeddings, input_mask)
+        if isinstance(out, tuple):
+            encoded_layers, attention_probs = out
+        else:
+            encoded_layers, attention_probs = out, None
+        sequence_output = encoded_layers[-1]
+        pooled_output = (
+            self.pooler(sequence_output) if self.config.with_pooler else None
+        )
+        return {
+            "tower_output": visual_embeds,
+            "frames_emb": frames_emb,
+            "encoded_layers": encoded_layers,
+            "pooled_output": pooled_output,
+            "embeddings": embeddings,
+            "embedding_masks": input_mask,
+            "attention_probs": attention_probs,
+        }
+
+    def encode_frames(self, frames):
+        """encode 到 128 维度"""
+        N, F, C, H, W = frames.shape
+        frames = torch.reshape(frames, [N * F, C, H, W])
+        if self.visual_type == "RN50":
+            img_feats = self.resnet(frames)["body5"]
+            emb_itm = torch.mean(img_feats, dim=[-1, -2])  # 对 HW 求mean
+        else:
+            emb_itm = self.visual(frames)
+        emb_itm = emb_itm.reshape([N, F, -1])  # [N, F, dim]
+        emb = self.v_projector[0](emb_itm)
+        return emb
+
+    def project_frames_to_emb_size(self, emb):
+        """
+        把 128 的 frame embedding 映射到 word embedding size"""
+        emb = self.v_projector[1](emb)
+        emb = self.v_projector[2](emb)
+        return emb
+
 
 class VEmbedding(nn.Module):
     """
@@ -122,7 +251,9 @@ class VEmbedding(nn.Module):
             if self.project_embedding_first
             else config.embedding_size
         )
-
+        self.token_embedder_tokens = torch.nn.Embedding(
+            config.vocab_size, config.embedding_size, padding_idx=padding_index
+        )
         self.token_embedder_positions = torch.nn.Embedding(
             config.max_position_embeddings, dim
         )
@@ -156,7 +287,7 @@ class VEmbedding(nn.Module):
 
     def forward(
         self,
-        input_embs=None,
+        input_ids=None,
         token_type_ids=None,
         position_ids=None,
         input_mask=None,
@@ -173,10 +304,18 @@ class VEmbedding(nn.Module):
         1. 两个模态的position embedding和 segment embedding是分开的
         2. 视觉端总是会在最开始加一个 IMG 表示整体多帧的表示
         """
-        if mode == "tv":
+        if mode == "t":
+            embeddings = self.text_forward(
+                input_ids, token_type_ids, position_ids
+            )
+        elif mode == "v":
+            embeddings, input_mask = self.visual_forward(
+                visual_embeds, visual_mask
+            )
+        elif mode == "tv":
             # 文本
             embeddings = self.text_forward(
-                input_embs, token_type_ids, position_ids
+                input_ids, token_type_ids, position_ids
             )
             # 视觉
             v_embeddings, v_input_mask = self.visual_forward(
@@ -200,13 +339,13 @@ class VEmbedding(nn.Module):
 
         return embeddings, input_mask
 
-    def text_forward(self, input_embs, token_type_ids, position_ids=None):
-        inputs_embeds = input_embs
+    def text_forward(self, input_ids, token_type_ids, position_ids=None):
+        inputs_embeds = self.token_embedder_tokens(input_ids)
         # position
         bsz, length = inputs_embeds.size()[:2]
         if position_ids is None:
             position_ids = torch.arange(
-                0, length, dtype=torch.long, device=input_embs.device
+                0, length, dtype=torch.long, device=input_ids.device
             ).expand(bsz, length)
         position_embeddings = self.token_embedder_positions(position_ids)
         # segment
@@ -263,3 +402,37 @@ class VEmbedding(nn.Module):
         img_token = torch.zeros((bsz, 1), device=device, dtype=torch.long)
         img_embeds = self.img_embedder_tokens(img_token)
         return img_embeds
+
+
+if __name__ == "__main__":
+    from collections import OrderedDict
+
+    from cruise.utilities.cloud_io import load
+
+    with open("easyguard/modelzoo/models/falbert/falbert.yaml") as fp:
+        config = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+    print(config.hidden_dropout_prob)
+    model = FrameALBert(config)
+    print(model)
+    state_dict_ori = model.state_dict()
+    backbone = load(
+        "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/videoclip_swin_dy_20211206/model.th",
+        map_location="cpu",
+    )
+    state_dict_new = OrderedDict()
+    print(backbone.keys())
+    for key, value in backbone.items():
+        if key.startswith("falbert"):
+            trimmed_key = key[len("falbert.") :]
+        else:
+            trimmed_key = key
+        if (
+            trimmed_key in state_dict_ori
+            and state_dict_ori[trimmed_key].shape == backbone[key].shape
+        ):
+            state_dict_new[trimmed_key] = value
+    missing_keys, unexpected_keys = model.load_state_dict(
+        state_dict_new, strict=False
+    )
+    print("missing_keys: ", missing_keys)
+    print("unexpected_keys: ", unexpected_keys)

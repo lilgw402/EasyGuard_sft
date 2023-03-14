@@ -24,7 +24,7 @@ from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
 from cruise.utilities.hdfs_io import hexists, hopen
 
-from easyguard.modelzoo.models.falbert import FrameALBert
+from .falbert import FrameALBert
 from .module_fuse import ALBertFusion
 
 
