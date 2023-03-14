@@ -67,9 +67,12 @@ class MMClsModel(CruiseModule):
         Initialize modules
         """
         self.text_visual_and_fuse_model = FashionVTP(self.config_model)
-        self.reduc = nn.Linear(768 * 3, 768)
+        self.fashion_bert_model = AutoModel.from_pretrained("fashionbert-base")
+
+        # self.reduc = nn.Linear(768 * 3, 768)
+        self.reduc = nn.Linear(768+512, 768)
         self.classifier = torch.nn.Linear(768, self.config_optim.class_num)
-        # self.arc = ArcMarginProduct(in_features=768, out_features=self.config_optim.class_num)
+
         """
         Initialize loss
         """
@@ -107,7 +110,7 @@ class MMClsModel(CruiseModule):
                 ):
                     state_dict_new[key] = value
             info = self.load_state_dict(state_dict_new, strict=False)
-            print("load info: ", info, file=sys.stderr)
+            # print("load info: ", info, file=sys.stderr)
 
 
     def freeze_params(self, freeze_prefix):
@@ -139,15 +142,22 @@ class MMClsModel(CruiseModule):
                                     images_mask=frames_mask
                                     )
 
-        product_i_out = self.text_visual_and_fuse_model.encode_image(images=product_images, images_mask=product_images_mask)
-        product_t_out = self.text_visual_and_fuse_model.encode_text(input_ids=product_ids, input_segment_ids=product_segment_ids, input_mask=product_mask)
+        # product_i_out = self.text_visual_and_fuse_model.encode_image(images=product_images, images_mask=product_images_mask)
+        # product_t_out = self.text_visual_and_fuse_model.encode_text(input_ids=product_ids, input_segment_ids=product_segment_ids, input_mask=product_mask)
 
-        product_t_emb = product_t_out['pooled_output']
-        product_i_emb = product_i_out['pooled_output']
+        # product_t_emb = product_t_out['pooled_output']
+        # product_i_emb = product_i_out['pooled_output']
 
-        product_emb = torch.cat((product_t_emb, product_i_emb), dim=-1)
+        # product_emb = torch.cat((product_t_emb, product_i_emb), dim=-1)
+
+        b,t,c,h,w = product_images.size()
+        product_image = product_images.view(b*t, c, h, w)
+
+        product_emb = self.fashion_bert_model(product_ids, product_image)['fuse_rep'] #512
+        # print("product_emb: ", product_emb.size())
 
         emb = torch.cat((mm_emb, product_emb), dim=-1)
+
         final_emb = self.reduc(emb)
         logits = self.classifier(final_emb)
 
