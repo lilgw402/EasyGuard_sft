@@ -34,7 +34,7 @@ class FashionBert(ModelBase):
             depths=self.config_visual.depths,
             num_heads=self.config_visual.num_heads,
         )
-        self.visual_feat = nn.Linear(1024, self.config_visual.output_dim)
+        self.visual_feat = nn.Linear(self.config_visual.last_hidden_dim, self.config_visual.output_dim)
         self.visual_pos = nn.Embedding(256, self.config_visual.output_dim)
         self.visual_fuse = nn.TransformerEncoder(
             encoder_layer=nn.TransformerEncoderLayer(
@@ -150,17 +150,17 @@ class FashionBert(ModelBase):
 
         # self.initialize_weights()
 
-    def load_pretrained_weights(self, weight_file_path, **kwargs):
-        state_dict_ori = self.state_dict()
-        state_dict = torch.load(weight_file_path, map_location="cpu")
-        state_dict_new = OrderedDict()
-        for key, value in state_dict.items():
-            if (
-                key in state_dict_ori
-                and state_dict_ori[key].shape == state_dict[key].shape
-            ):
-                state_dict_new[key] = value
-        self.load_state_dict(state_dict_new, strict=False)
+    # def load_pretrained_weights(self, weight_file_path, **kwargs):
+    #     state_dict_ori = self.state_dict()
+    #     state_dict = torch.load(weight_file_path, map_location="cpu")
+    #     state_dict_new = OrderedDict()
+    #     for key, value in state_dict.items():
+    #         if (
+    #             key in state_dict_ori
+    #             and state_dict_ori[key].shape == state_dict[key].shape
+    #         ):
+    #             state_dict_new[key] = value
+    #     self.load_state_dict(state_dict_new, strict=False)
 
     def forward_text(self, token_ids: torch.Tensor):
         text_masks = (token_ids != self.PAD).long()

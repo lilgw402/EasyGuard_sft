@@ -209,17 +209,17 @@ class FashionProduct(ModelBase):
     #             ):
     #                 state_dict_new[key] = value
     #         self.load_state_dict(state_dict_new, strict=False)
-    def load_pretrained_weights(self, weight_file_path, **kwargs):
-        state_dict_ori = self.state_dict()
-        state_dict = torch.load(weight_file_path, map_location="cpu")
-        state_dict_new = OrderedDict()
-        for key, value in state_dict.items():
-            if (
-                key in state_dict_ori
-                and state_dict_ori[key].shape == state_dict[key].shape
-            ):
-                state_dict_new[key] = value
-        self.load_state_dict(state_dict_new, strict=False)
+    # def load_pretrained_weights(self, weight_file_path, **kwargs):
+    #     state_dict_ori = self.state_dict()
+    #     state_dict = torch.load(weight_file_path, map_location="cpu")
+    #     state_dict_new = OrderedDict()
+    #     for key, value in state_dict.items():
+    #         if (
+    #             key in state_dict_ori
+    #             and state_dict_ori[key].shape == state_dict[key].shape
+    #         ):
+    #             state_dict_new[key] = value
+    #     self.load_state_dict(state_dict_new, strict=False)
 
     def encode_text(self, input_ids: torch.Tensor):
         batch_size, num_text, text_length = input_ids.shape
@@ -349,13 +349,17 @@ class FashionProduct(ModelBase):
         fuse_inputs = self.fuse_dropout(fuse_inputs)
         fuse_emb = self.fuse(fuse_inputs)  # [B, 1 + 38, d_f]
 
-        fuse_mp = self.fuse_pooler(self.fuse_max_pooler(fuse_emb.transpose(1, 2)).squeeze())
+        fuse_cls = self.fuse_pooler(fuse_emb[:, 0])  # [B, d_f]
+        fuse_mp = self.fuse_pooler(self.fuse_max_pooler(fuse_emb.transpose(1, 2)).squeeze())  # [B, d_f]
+        fuse_att = self.fuse_pooler(self.fuse_att_pooler(fuse_emb))  # [B, d_f]
 
         res = {
             "fuse_image": fuse_image,
             "fuse_text": fuse_text,
             "fuse_emb": fuse_emb,
             "fuse_mp": fuse_mp,
+            "fuse_cls": fuse_cls,
+            "fuse_att": fuse_att,
             # "fuse_rep": fuse_rep,
             # "fuse_cat": fuse_cat,
         }
