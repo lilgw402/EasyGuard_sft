@@ -408,7 +408,6 @@ class MMDataset(Dataset):
         for text_type in self.text_types:
             text = texts[text_type][:self.max_len[text_type] - 2]
             tokens += self.tokenizer.tokenize(text) + ['[SEP]']
-        print("Debug tokens: ", tokens)
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         return token_ids
 
