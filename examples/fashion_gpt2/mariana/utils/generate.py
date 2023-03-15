@@ -346,7 +346,6 @@ def play_file_qa(fname, tokenizer, model, output_file_path,  trial_num=5,
                  decay_lambda=0.9, until_n_eos=1, limit_samples=-1):
     print(f"Generating by prompts from {fname}...")
     full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
-    # with hopen(fname) as f, open(output_file_path, mode='w', encoding='utf-8') as fw:
     with open(fname, mode='r', encoding='utf-8') as fr, \
         open(output_file_path, mode='w', encoding='utf-8') as fw:
         for i, line in enumerate(tqdm(fr, desc=f"PROCESSING FILE: {fname}")):

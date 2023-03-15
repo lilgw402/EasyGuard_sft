@@ -2,15 +2,24 @@ import math
 from typing import Dict, List, Optional
 
 import torch
+from torch import nn
 from cruise import CruiseCLI, CruiseConfig, CruiseModule, last_cli
 from cruise.utilities.distributed import DIST_ENV
-from mariana.data.gpt.datamodule.qa_finetune import QAFinetuneGPTDatamodule
-from mariana.models.gpt2 import Conv1D, GPT2LMHeadModel, get_subsequent_mask
-from mariana.optim import mariana_optimizer_kwargs_defaults
-from mariana.utils.checkpoint_utils import is_zero3, load_zero3_state_dict
-from mariana.utils.exp_helper import ExpHelper
-from mariana.utils.generate import play_console, play_file
-from torch import nn
+
+try:
+    from mariana.data.gpt.datamodule.qa_finetune import QAFinetuneGPTDatamodule
+    from mariana.models.gpt2 import Conv1D, GPT2LMHeadModel, get_subsequent_mask
+    from mariana.optim import mariana_optimizer_kwargs_defaults
+    from mariana.utils.checkpoint_utils import is_zero3, load_zero3_state_dict
+    from mariana.utils.exp_helper import ExpHelper
+    from mariana.utils.generate import play_console, play_file
+except:
+    from examples.fashion_gpt2.mariana.data.gpt.datamodule.qa_finetune import QAFinetuneGPTDatamodule
+    from examples.fashion_gpt2.mariana.models.gpt2 import Conv1D, GPT2LMHeadModel, get_subsequent_mask
+    from examples.fashion_gpt2.mariana.optim import mariana_optimizer_kwargs_defaults
+    from examples.fashion_gpt2.mariana.utils.checkpoint_utils import is_zero3, load_zero3_state_dict
+    from examples.fashion_gpt2.mariana.utils.exp_helper import ExpHelper
+    from examples.fashion_gpt2.mariana.utils.generate import play_console, play_file
 
 # Config adapter
 network_config = {
