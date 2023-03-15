@@ -71,7 +71,6 @@ class GandalfCruiseModule(TemplateCruiseModule):
             for k, v in flat_gathered_reduced_output.items():
                 if isinstance(v[0], np.ndarray):
                     final_result[k] = np.concatenate(v, axis=0)
-                    print(k,final_result[k].shape)
                 elif isinstance(v[0], (list, tuple)):
                     final_result[k] = [vvv for vv in v for vvv in vv]
                 else:

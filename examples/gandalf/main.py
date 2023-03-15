@@ -11,6 +11,7 @@ from cruise import CruiseTrainer, CruiseCLI
 from easyguard.utils.arguments import print_cfg
 from utils.config import config
 from utils.registry import get_model_module,get_data_module
+from utils.driver import init_device, DIST_CONTEXT
 from utils.util import load_conf, load_from_yaml,load_from_tcc,load_from_bbc,check_config,update_config,init_seeds
 from utils.file_util import hmkdir, check_hdfs_exist
 
@@ -38,7 +39,7 @@ def prepare_common_trainer_defaults():
     trainer_defaults = {
                         'seed':42,
                         'precision':16,
-                        'summarize_model_depth':3,
+                        'summarize_model_depth':5,
                         'enable_checkpoint': True,
                         'checkpoint_monitor': 'loss',
                         'checkpoint_mode': 'min'}
@@ -51,6 +52,7 @@ def prepare_trainer_components(config):
 
 def main():
     config = prepare_gandalf_args()
+    init_seeds(42 + DIST_CONTEXT.global_rank, cuda_deterministic=True)
     model_module, data_module = prepare_trainer_components(config)
     trainer_defaults = prepare_common_trainer_defaults()
     cli = CruiseCLI(model_module,data_module,trainer_class=CruiseTrainer,trainer_defaults=trainer_defaults)
