@@ -211,8 +211,13 @@ class MMDataset(Dataset):
             if not os.path.exists(video_path):
                 continue
 
-            frame_names = filter(lambda s: os.path.splitext(s)[-1] in self.extensions, os.listdir(video_path))
-            frame_names = sorted(frame_names, key=lambda x: int(str(x).split('.')[0]))
+            frame_names = []
+            with os.scandir(video_path) as it:
+                for file in it:
+                    frame_names.append(file.name)
+
+            # frame_names = filter(lambda s: os.path.splitext(s)[-1] in self.extensions, os.listdir(video_path))
+            # frame_names = sorted(frame_names, key=lambda x: int(str(x).split('.')[0]))
 
             if len(frame_names) <= 0:
                 continue
@@ -229,7 +234,6 @@ class MMDataset(Dataset):
             self.verify_results.append(verify_result)
 
             self.vids.append(frame_paths)
-            # label = fin[self.label_key][index]
             self.label_array.append(label)
 
             product_info_dict = eval(fin['product_info'][index])

@@ -7,6 +7,7 @@ __version__ = "0.0.2"
 # for local cache
 EASYGUARD_CACHE = os.path.join(f"{os.environ['HOME']}/.cache", "easyguard")
 EASYGUARD_MODEL_CACHE = os.path.join(EASYGUARD_CACHE, "models")
+EASYGUARD_CONFIG_CACHE = os.path.join(EASYGUARD_CACHE, "config")
 REMOTE_PATH_SEP = "/"
 os.environ["EASYGUARD_CACHE"] = EASYGUARD_CACHE
 os.environ["EASYGUARD_HOME"] = os.path.dirname(os.path.dirname(__file__))

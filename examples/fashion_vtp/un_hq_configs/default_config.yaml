@@ -1,6 +1,6 @@
 trainer:
-  default_root_dir: /mnt/bn/multimodel-pretrain/scripts/cruise_logs/un_hq_product_0314
-  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/cruise_checkpoints/un_hq_product_0314
+  default_root_dir: /mnt/bn/multimodel-pretrain/scripts/cruise_logs/un_hq_product_fashionbert_0315
+  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/cruise_checkpoints/un_hq_product_fashion_bert_0315
   logger: true
   log_every_n_steps: 20
   benchmark: false
@@ -36,7 +36,7 @@ trainer:
   dataloader_retry_persistent_limit: 5
   find_unused_parameters: true
   project_name: null
-  experiment_name: un_hq_with_product_1
+  experiment_name: un_hq_with_fashionbert_1
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
   strategy: ddp
@@ -79,13 +79,12 @@ model:
   load_pretrained: hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/weights/fashionvtp3-model-20230109.th
 data:
   train_path: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v2/unauthentic_data_live_20230213_all/unauthentic_data_0213.csv
-  # val_path: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/dev.csv
-  val_path: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/test.csv
-  predict_path: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/test.csv
+  val_path: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/unauthentic_data_product.csv
+  predict_path: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/unauthentic_data_product.csv
   train_frame_root: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v2/unauthentic_data_live_20230213_all
   val_frame_root: /mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process
   vocab_file: hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab
-  train_batch_size: 8
+  train_batch_size: 4
   # train_batch_size: 8
   val_batch_size: 8
   test_batch_size: 8
