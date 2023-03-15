@@ -372,7 +372,7 @@ class MMClsModel(CruiseModule):
         for n, p in self.named_parameters():
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
-            elif n.startswith('text_visual_and_fuse_model'):
+            elif n.startswith('text_visual_and_fuse_model') or n.startswith('fashion_bert_model'):
                 low_lr_params_dict["params"].append(p)
             else:
                 normal_params_dict["params"].append(p)
