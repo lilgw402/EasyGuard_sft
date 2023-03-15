@@ -99,10 +99,10 @@ data:
     train_max_iteration: -1
     val_max_iteration: -1
     test_max_iteration: -1
-    batch_size: 128
+    batch_size: 196
     batch_size_val: -1
-    num_parallel_reads: 5
-    num_workers: 4
+    num_parallel_reads: 4
+    num_workers: 6
   type: EcomLiveGandalfParquetAutoDisCruiseDataModule
 model:
   type: EcomLiveGandalfAutoDisNNAsrCruiseModel
@@ -146,12 +146,13 @@ model:
       warmup_steps": 1000
 trainer:
   default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs
-  default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps_tmp
+  default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_0
+  enable_versions: false
   logger: tracking
   max_epochs: 25
   find_unused_parameters: true
   limit_val_batches: -1
   limit_train_batches: -1
-  val_check_interval: 500
+  val_check_interval: 1000
   project_name: gandalf
   experiment_name: augutus/auto_dis_nn_asr_demo
