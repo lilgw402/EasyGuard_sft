@@ -395,12 +395,21 @@ class MMDataset(Dataset):
                "verify_results": verify_results}
         return res
 
+    # def text_preprocess(self, texts):
+    #     tokens = ['[CLS]']
+    #     for text_type in self.text_types:
+    #         text = texts[text_type]
+    #         tokens += self.tokenizer.tokenize(text)[:self.max_len[text_type] - 2] + ['[SEP]']
+    #     token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
+    #     return token_ids
+
     def text_preprocess(self, texts):
         tokens = ['[CLS]']
         for text_type in self.text_types:
-            text = texts[text_type]
-            tokens += self.tokenizer.tokenize(text)[:self.max_len[text_type] - 2] + ['[SEP]']
-        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)    
+            text = texts[text_type][:self.max_len[text_type] - 2]
+            tokens += self.tokenizer.tokenize(text) + ['[SEP]']
+        print("Debug tokens: ", tokens)
+        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         return token_ids
 
     def product_text_preprocess(self, text):
