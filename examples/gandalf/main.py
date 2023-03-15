@@ -39,8 +39,8 @@ def prepare_common_trainer_defaults():
     trainer_defaults = {
                         'seed':42,
                         'precision':16,
+                        'enable_checkpoint': (10,100),
                         'summarize_model_depth':5,
-                        'enable_checkpoint': True,
                         'checkpoint_monitor': 'loss',
                         'checkpoint_mode': 'min'}
     return trainer_defaults

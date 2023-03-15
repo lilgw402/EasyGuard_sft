@@ -99,10 +99,10 @@ data:
     train_max_iteration: -1
     val_max_iteration: -1
     test_max_iteration: -1
-    batch_size: 128
+    batch_size: 196
     batch_size_val: -1
-    num_parallel_reads: 5
-    num_workers: 4
+    num_parallel_reads: 4
+    num_workers: 6
   type: EcomLiveGandalfParquetAutoDisCruiseDataModule
 model:
   type: EcomLiveGandalfAutoDisNNAsrCruiseModel
