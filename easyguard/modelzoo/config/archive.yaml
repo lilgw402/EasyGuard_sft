@@ -19,6 +19,11 @@ fashion-deberta-asr:
   type: deberta
   description: 风险预测task, 6层deberta
   region: CN
+fashion-deberta-asr-small:
+  server: hdfs
+  type: deberta
+  description: 风险预测task, 3层deberta
+  region: CN
 fashion-deberta-ccr-order:
   server: hdfs
   type: deberta
@@ -65,4 +70,5 @@ fashionbert-base:
   type: fashionbert
   server: hdfs
   region: CN
+
 
