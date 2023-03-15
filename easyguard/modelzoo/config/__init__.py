@@ -10,9 +10,12 @@ YAML_DEEP = 3
 
 import importlib
 
+from ... import EASYGUARD_CONFIG_CACHE
 from ...core.auto import EASYGUARD_PATH
-from ...utils import YamlConfig, _LazyModule, load_yaml
+from ...utils import HDFS_HUB_CN, YamlConfig, _LazyModule, hmget, load_yaml
 
+MODEL_ARCHIVE_PATH = os.path.join(EASYGUARD_CONFIG_CACHE, "archive.yaml")
+MODEL_ARCHIVE_PATH_REMOTE = os.path.join(HDFS_HUB_CN, "config", "archive.yaml")
 """
 config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多操作就可以借助models.yaml来进行简化,
 例如:
@@ -187,5 +190,10 @@ class ModelZooYaml(YamlConfig):
 
 
 MODELZOO_CONFIG = ModelZooYaml.yaml_reader(MODEL_CONFIG_PATH)
+if os.path.exists(MODEL_ARCHIVE_PATH):
+    os.remove(MODEL_ARCHIVE_PATH)
+# TODO (junwei.Dong): 修改archive的加载逻辑
+os.makedirs(EASYGUARD_CONFIG_CACHE, exist_ok=True)
+hmget([MODEL_ARCHIVE_PATH_REMOTE], EASYGUARD_CONFIG_CACHE)
 MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH)
 MODELZOO_CONFIG.initialize()
