@@ -33,13 +33,15 @@ def prepare_gandalf_args():
     else:
         raise FileNotFoundError('config file option must be specified')
     config.update({'fit':args.fit,'val':args.val, 'trace':args.trace})
+    # print(config)
     return Dict(config)
 
-def prepare_common_trainer_defaults():
+def prepare_common_trainer_defaults(config):
     trainer_defaults = {
                         'seed':42,
                         'precision':16,
-                        'enable_checkpoint': (20,20),
+                        'enable_checkpoint': (30,30),
+                        'resume_ckpt_path': 'auto',
                         'summarize_model_depth':5,
                         'checkpoint_monitor': 'loss',
                         'checkpoint_mode': 'min'}
@@ -54,7 +56,7 @@ def main():
     config = prepare_gandalf_args()
     init_seeds(42 + DIST_CONTEXT.global_rank, cuda_deterministic=True)
     model_module, data_module = prepare_trainer_components(config)
-    trainer_defaults = prepare_common_trainer_defaults()
+    trainer_defaults = prepare_common_trainer_defaults(config)
     cli = CruiseCLI(model_module,data_module,trainer_class=CruiseTrainer,trainer_defaults=trainer_defaults)
     cfg, trainer, model, datamodule = cli.parse_args()
     print_cfg(cfg)
