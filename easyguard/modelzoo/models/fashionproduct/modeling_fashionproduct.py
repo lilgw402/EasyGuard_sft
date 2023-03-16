@@ -13,17 +13,19 @@ class FashionProduct(ModelBase):
             config_text: dict,
             config_visual: dict,
             config_fusion: dict,
+            config_deberta: dict,
             # load_pretrained: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_product_v2/model_state_epoch_44444.th",
-            remote_deberta_path: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720",
-            local_deberta_dir: str = "/opt/tiger/deberta/",
+            # remote_deberta_path: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720",
+            # local_deberta_dir: str = "/opt/tiger/deberta/",
             **kwargs,
     ):
         super().__init__()
         self.config_text = config_text
         self.config_visual = config_visual
         self.config_fusion = config_fusion
-        self.remote_deberta_path = remote_deberta_path
-        self.local_deberta_dir = local_deberta_dir
+        self.config_deberta = config_deberta
+        self.remote_deberta_path = self.config_deberta.remote_deberta_path
+        self.local_deberta_dir = self.config_deberta.local_deberta_dir
 
         """
         Used for loading Deberta model from ptx.
@@ -48,7 +50,7 @@ class FashionProduct(ModelBase):
             depths=self.config_visual.depths,
             num_heads=self.config_visual.num_heads,
         )
-        self.visual_feat = nn.Linear(1024, self.config_visual.output_dim)
+        self.visual_feat = nn.Linear(self.config_visual.last_hidden_dim, self.config_visual.output_dim)
         self.visual_pos = nn.Embedding(256, self.config_visual.output_dim)
         """
         Fusion
