@@ -162,6 +162,9 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
 class FashionBertv2(CruiseModule):
     def __init__(
             self,
+            config_text: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_text.yaml",
+            config_visual: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_visual.yaml",
+            config_fusion: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_fusion.yaml",
             learning_rate: float = 1e-4,
             betas: Tuple[float, float] = (0.9, 0.999),
             eps: float = 1e-8,
@@ -173,22 +176,34 @@ class FashionBertv2(CruiseModule):
     def setup(self, stage) -> None:
         self.model = AutoModel.from_pretrained("fashionbert-base")
 
+        assert (
+                hexists(self.hparams.config_text)
+                and hexists(self.hparams.config_visual)
+                and hexists(self.hparams.config_fusion)
+        )
+        with hopen(self.hparams.config_text) as fp:
+            self.config_text = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        with hopen(self.hparams.config_visual) as fp:
+            self.config_visual = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        with hopen(self.hparams.config_fusion) as fp:
+            self.config_fusion = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+
         """
         Initialize loss
         """
         self.calc_nce_loss_vt = LearnableNTXentLoss(
-            init_tau=self.model.config_fusion.init_tau,
-            clamp=self.model.config_fusion.tau_clamp,
+            init_tau=self.config_fusion.init_tau,
+            clamp=self.config_fusion.tau_clamp,
         )  # 底层图-文CLIP损失
         self.calc_pcl_loss_ff = LearnablePCLLoss(
-            init_tau=self.model.config_fusion.init_tau,
-            clamp=self.model.config_fusion.tau_clamp,
-            num_labels=self.model.config_fusion.category_logits_level1 + 1,
+            init_tau=self.config_fusion.init_tau,
+            clamp=self.config_fusion.tau_clamp,
+            num_labels=self.config_fusion.category_logits_level1 + 1,
         )  # 上层融合-融合CLIP损失，使用一级标签
         self.category_pred_loss = SCELoss(
             alpha=1.0,
             beta=0.5,
-            num_classes=self.model.config_fusion.category_logits_level2 + 1,
+            num_classes=self.config_fusion.category_logits_level2 + 1,
         )  # 融合表征的预测损失
 
         self.fuse_category = nn.Sequential(
@@ -316,6 +331,8 @@ class AttMaxPooling(nn.Module):
 class FashionProduct(CruiseModule):
     def __init__(
             self,
+            config_visual: str = "./examples/fashionproduct/configs/config_visual.yaml",
+            config_fusion: str = "./examples/fashionproduct/configs/config_fusion.yaml",
             learning_rate: float = 1e-4,
             betas: Tuple[float, float] = (0.9, 0.999),
             eps: float = 1e-8,
@@ -324,26 +341,17 @@ class FashionProduct(CruiseModule):
         super(FashionProduct, self).__init__()
         self.save_hparams()
 
-        # """
-        # Used for loading Deberta model from ptx.
-        # """
-        # suffix = self.hparams.pretrained_model_dir.strip("/").split("/")[-1]
-        # self.local_pretrained_model_dir = (
-        #     f"{self.hparams.local_pretrained_model_dir_prefix}/{suffix}"
-        # )
-
-    # def local_rank_zero_prepare(self) -> None:
-    #     # download the tokenizer once per node
-    #     if not os.path.exists(self.local_pretrained_model_dir):
-    #         os.makedirs(
-    #             self.hparams.local_pretrained_model_dir_prefix, exist_ok=True
-    #         )
-    #         os.system(
-    #             f"hdfs dfs -copyToLocal {self.hparams.pretrained_model_dir} {self.local_pretrained_model_dir}"
-    #         )
-
     def setup(self, stage) -> None:
         self.model = AutoModel.from_pretrained("fashionproduct-base")
+
+        assert (
+                hexists(self.hparams.config_visual)
+                and hexists(self.hparams.config_fusion)
+        )
+        with hopen(self.hparams.config_visual) as fp:
+            self.config_visual = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        with hopen(self.hparams.config_fusion) as fp:
+            self.config_fusion = SimpleNamespace(**yaml.load(fp, yaml.Loader))
 
         """
         Pretraining mode, prepare loss functions
