@@ -142,6 +142,11 @@ models:
     backend: default
     modeling_fashionbert: 
       model: FashionBert
+  fashionproduct:
+    name: FashionProduct
+    backend: default
+    modeling_fashionproduct:
+      model: FashionProduct
     
 
     
