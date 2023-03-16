@@ -1,6 +1,6 @@
 trainer:
-  default_root_dir: /mnt/bn/multimodel-pretrain/scripts/cruise_logs/un_hq_product_fashionbert_0315
-  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/cruise_checkpoints/un_hq_product_fashion_bert_0315
+  default_root_dir: /mnt/bn/multimodel-pretrain/scripts/cruise_logs/un_hq_fashionbert_0315_local1
+  default_hdfs_dir: hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/cruise_checkpoints/un_hq_fashionbert_0315_local1
   logger: true
   log_every_n_steps: 20
   benchmark: false
