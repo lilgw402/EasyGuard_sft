@@ -1,12 +1,8 @@
 import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from .swin import SwinTransformer
-from collections import OrderedDict
-
-from ....utils.losses import LearnableNTXentLoss, LearnablePCLLoss, SCELoss
 from ...modeling_utils import ModelBase
 from ptx.model import Model
 
@@ -143,7 +139,7 @@ class FashionProduct(ModelBase):
                 self.local_deberta_dir, exist_ok=True
             )
             os.system(
-                f"hdfs dfs -copyToLocal {self.pretrained_model_dir} {self.local_deberta_path}"
+                f"hdfs dfs -copyToLocal {self.remote_deberta_path} {self.local_deberta_path}"
             )
 
     def encode_text(self, input_ids: torch.Tensor):
