@@ -80,7 +80,7 @@ model:
   - 0.999
   eps: 1.0e-08
   weight_decay: 0.02
-  load_pretrained: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_product_v2/model_state_epoch_44444.th
+#  load_pretrained: hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_product_v2/model_state_epoch_44444.th
   pretrained_model_dir: hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720
   local_pretrained_model_dir_prefix: /opt/tiger/liuyuhang/ckpt/
 data:

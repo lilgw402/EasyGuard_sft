@@ -47,15 +47,15 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
     """
 
     def __init__(
-        self,
-        optimizer: torch.optim.Optimizer,
-        first_cycle_steps: int,
-        cycle_mult: float = 1.0,
-        max_lr: float = 0.1,
-        min_lr: float = 0.001,
-        warmup_steps: int = 0,
-        gamma: float = 1.0,
-        last_epoch: int = -1,
+            self,
+            optimizer: torch.optim.Optimizer,
+            first_cycle_steps: int,
+            cycle_mult: float = 1.0,
+            max_lr: float = 0.1,
+            min_lr: float = 0.001,
+            warmup_steps: int = 0,
+            gamma: float = 1.0,
+            last_epoch: int = -1,
     ):
         assert warmup_steps < first_cycle_steps
 
@@ -98,12 +98,12 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
                 base_lr
                 + (self.max_lr - base_lr)
                 * (
-                    1
-                    + math.cos(
-                        math.pi
-                        * (self.step_in_cycle - self.warmup_steps)
-                        / (self.cur_cycle_steps - self.warmup_steps)
-                    )
+                        1
+                        + math.cos(
+                    math.pi
+                    * (self.step_in_cycle - self.warmup_steps)
+                    / (self.cur_cycle_steps - self.warmup_steps)
+                )
                 )
                 / 2
                 for base_lr in self.base_lrs
@@ -117,11 +117,11 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
                 self.cycle += 1
                 self.step_in_cycle = self.step_in_cycle - self.cur_cycle_steps
                 self.cur_cycle_steps = (
-                    int(
-                        (self.cur_cycle_steps - self.warmup_steps)
-                        * self.cycle_mult
-                    )
-                    + self.warmup_steps
+                        int(
+                            (self.cur_cycle_steps - self.warmup_steps)
+                            * self.cycle_mult
+                        )
+                        + self.warmup_steps
                 )
         else:
             if epoch >= self.first_cycle_steps:
@@ -132,10 +132,10 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
                     n = int(
                         math.log(
                             (
-                                epoch
-                                / self.first_cycle_steps
-                                * (self.cycle_mult - 1)
-                                + 1
+                                    epoch
+                                    / self.first_cycle_steps
+                                    * (self.cycle_mult - 1)
+                                    + 1
                             ),
                             self.cycle_mult,
                         )
@@ -143,17 +143,17 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
                     self.cycle = n
                     self.step_in_cycle = epoch - int(
                         self.first_cycle_steps
-                        * (self.cycle_mult**n - 1)
+                        * (self.cycle_mult ** n - 1)
                         / (self.cycle_mult - 1)
                     )
                     self.cur_cycle_steps = (
-                        self.first_cycle_steps * self.cycle_mult ** (n)
+                            self.first_cycle_steps * self.cycle_mult ** (n)
                     )
             else:
                 self.cur_cycle_steps = self.first_cycle_steps
                 self.step_in_cycle = epoch
 
-        self.max_lr = self.base_max_lr * (self.gamma**self.cycle)
+        self.max_lr = self.base_max_lr * (self.gamma ** self.cycle)
         self.last_epoch = math.floor(epoch)
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
             param_group["lr"] = lr
@@ -161,11 +161,11 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
 
 class FashionBertv2(CruiseModule):
     def __init__(
-        self,
-        learning_rate: float = 1e-4,
-        betas: Tuple[float, float] = (0.9, 0.999),
-        eps: float = 1e-8,
-        weight_decay: float = 0.02,
+            self,
+            learning_rate: float = 1e-4,
+            betas: Tuple[float, float] = (0.9, 0.999),
+            eps: float = 1e-8,
+            weight_decay: float = 0.02,
     ):
         super(FashionBertv2, self).__init__()
         self.save_hparams()
@@ -244,6 +244,228 @@ class FashionBertv2(CruiseModule):
 
     def validation_step(self, batch, idx):
         return self.training_step(batch, idx)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(
+            self.parameters(),
+            lr=self.hparams.learning_rate,
+            betas=self.hparams.betas,
+            eps=self.hparams.eps,
+            weight_decay=self.hparams.weight_decay,
+        )
+
+        lr_scheduler = CosineAnnealingWarmupRestarts(
+            optimizer,
+            first_cycle_steps=self.trainer.total_steps,
+            cycle_mult=1.0,
+            max_lr=self.hparams.learning_rate,
+            min_lr=0,
+            warmup_steps=2000,
+        )
+
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+
+
+class AttentionPooler(nn.Module):
+    def __init__(self, input_dim):
+        super(AttentionPooler, self).__init__()
+
+        self.mlp = nn.Sequential(
+            nn.Linear(input_dim, input_dim // 2),
+            nn.GELU(),
+            nn.Linear(input_dim // 2, 1)
+        )
+
+    def forward(self, x):
+        alpha = F.softmax(self.mlp(x), dim=-2)
+        out = (alpha * x).sum(-2)
+
+        return out
+
+
+class AttMaxPooling(nn.Module):
+    """
+    使用Attention Aggregation + Max Pooling来聚合多个特征，得到一个融合特征；
+    使用FC层映射到新的空间，用于对比学习；
+    """
+
+    def __init__(self, input_dim, output_dim, dropout=0.1):
+        super(AttMaxPooling, self).__init__()
+
+        self.att_pool = AttentionPooler(input_dim)
+        self.max_pool = nn.AdaptiveMaxPool1d(output_size=1)
+
+        self.fc = nn.Sequential(
+            nn.Linear(input_dim * 2, input_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(input_dim, output_dim)
+        )
+
+    def forward(self, x):
+        """
+        :param x: [B, N, d_h]
+        """
+        x_att = self.att_pool(x)  # [B, d_h]
+        x_max = self.max_pool(x.transpose(1, 2)).squeeze()  # [B, d_h]
+        x_out = self.fc(torch.cat([x_att, x_max], dim=-1))
+
+        return x_out
+
+
+class FashionProduct(CruiseModule):
+    def __init__(
+            self,
+            learning_rate: float = 1e-4,
+            betas: Tuple[float, float] = (0.9, 0.999),
+            eps: float = 1e-8,
+            weight_decay: float = 0.02,
+    ):
+        super(FashionProduct, self).__init__()
+        self.save_hparams()
+
+        # """
+        # Used for loading Deberta model from ptx.
+        # """
+        # suffix = self.hparams.pretrained_model_dir.strip("/").split("/")[-1]
+        # self.local_pretrained_model_dir = (
+        #     f"{self.hparams.local_pretrained_model_dir_prefix}/{suffix}"
+        # )
+
+    # def local_rank_zero_prepare(self) -> None:
+    #     # download the tokenizer once per node
+    #     if not os.path.exists(self.local_pretrained_model_dir):
+    #         os.makedirs(
+    #             self.hparams.local_pretrained_model_dir_prefix, exist_ok=True
+    #         )
+    #         os.system(
+    #             f"hdfs dfs -copyToLocal {self.hparams.pretrained_model_dir} {self.local_pretrained_model_dir}"
+    #         )
+
+    def setup(self, stage) -> None:
+        self.model = AutoModel.from_pretrained("fashionproduct-base")
+
+        """
+        Pretraining mode, prepare loss functions
+        """
+        # (1) 1 modality-level clip loss
+        init_tau = self.config_fusion.init_tau
+        tau_clamp = self.config_fusion.tau_clamp
+        self.modality_clip = LearnableNTXentLoss(init_tau, tau_clamp)
+
+        # (2) 1 category-level loss
+        self.category_logits = nn.Sequential(
+            nn.Linear(self.config_fusion.hidden_size, self.config_fusion.hidden_size * 2),
+            nn.GELU(),
+            nn.Dropout(self.config_fusion.embd_pdrop),
+            nn.Linear(self.config_fusion.hidden_size * 2, self.config_fusion.category_logits_level2 + 1)
+        )  # 预测二级类目
+        self.category_sce = SCELoss(
+            alpha=1.0,
+            beta=0.5,
+            num_classes=self.config_fusion.category_logits_level2 + 1
+        )  # 二级类目预测损失
+
+        # (3) 1 property prediction loss. Use following properties as targets.
+        ner_tasks = self.config_fusion.ner_tasks
+        ner_task_dict = self.config_fusion.ner_task_dict
+        self.ner_task_dict = None
+        self.ner_tasks = ner_tasks
+        self.ner_heads = None
+        self.ner_kl = nn.KLDivLoss(reduction="batchmean")
+        if len(ner_tasks) > 0:
+            assert hexists(ner_task_dict), "ner task dict {} does not exist!".format(ner_task_dict)
+            with hopen(ner_task_dict, "r") as fp:
+                self.ner_task_dict = json.load(fp)
+            for task in ner_tasks:
+                assert task in self.ner_task_dict, "task {} is not supported in ner tasks.".format(task)
+            self.ner_heads = nn.ModuleList([
+                AttMaxPooling(self.config_fusion.hidden_size, len(self.ner_task_dict[task]["label2idx"]) + 1) for
+                task in ner_tasks])
+
+    def allgather(self, x):
+        return self.all_gather(x.contiguous()).flatten(0, 1)
+
+    def forward_pretrain(self,
+                         main_images,
+                         desc_images,
+                         sku_images,
+                         main_ocrs,
+                         desc_ocrs,
+                         sku_ocrs,
+                         product_name,
+                         other_text,
+                         **kwargs
+                         ):
+        """
+        :param main_images: [B, num_main_images, 3, 244, 244]
+        :param desc_images: [B, num_desc_images, 3, 244, 244]
+        :param sku_images: [B, num_sku_images, 3, 244, 244]
+        :param main_ocrs: [B, num_main_ocrs, max_main_len]
+        :param desc_ocrs: [B, num_desc_ocrs, max_desc_len]
+        :param sku_ocrs: [B, num_sku_ocrs, max_sku_len]
+        :param product_name: [B, max_product_len]
+        :param other_text: [B, max_other_len]
+        :param fuse_mask: [B, num_segments], 1 indicates valid segment, 0 indicates mask
+        """
+
+        rep_dict = self.model.forward_fuse(
+            main_images,
+            desc_images,
+            sku_images,
+            main_ocrs,
+            desc_ocrs,
+            sku_ocrs,
+            product_name,
+            other_text,
+            **kwargs
+        )
+
+        fuse_image = rep_dict["fuse_image"]
+        fuse_text = rep_dict["fuse_text"]
+        fuse_image, fuse_text = self.allgather(fuse_image), self.allgather(fuse_text)
+        loss_clip_modality = self.modality_clip(fuse_image, fuse_text)
+
+        """
+        3. Category-level loss.
+        """
+        fuse_emb = rep_dict["fuse_emb"]         # [B, 1 + 38, d_f]
+        logits_cat = self.category_logits(fuse_emb[:, 0])  # [B, num_categories + 1]
+        loss_sce = self.category_sce(logits_cat, kwargs["label"])
+
+        """
+        4. Property prediction loss.
+        """
+        # KLDiv Loss for ner
+        loss_ner = 0.
+        if len(self.ner_tasks) > 0:
+            for i in range(len(self.ner_tasks)):
+                key = "ner_{}".format(i)
+                logits = self.ner_heads[i](fuse_emb)
+                label = kwargs[key]
+                loss_ner = loss_ner + self.ner_kl(F.log_softmax(logits, dim=-1), label)
+            loss_ner = loss_ner / len(self.ner_tasks)
+
+        """
+        5. Gather all losses.
+        """
+        loss = loss_clip_modality + loss_sce + loss_ner
+
+        return {
+            "loss": loss,
+            "loss_clip_modality": loss_clip_modality,
+            "loss_sce": loss_sce,
+            "loss_ner": loss_ner,
+            "logits": logits_cat,
+            "label": kwargs["label"]
+        }
+
+    def training_step(self, batch, idx):
+        return self.forward_pretrain(**batch)
+
+    @torch.no_grad()
+    def validation_step(self, batch, idx):
+        return self.forward_pretrain(**batch)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
