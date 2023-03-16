@@ -249,7 +249,6 @@ class FashionProduct(ModelBase):
 
         fuse_cls = self.fuse_pooler(fuse_emb[:, 0])  # [B, d_f]
         fuse_mp = self.fuse_pooler(self.fuse_max_pooler(fuse_emb.transpose(1, 2)).squeeze())  # [B, d_f]
-        fuse_att = self.fuse_pooler(self.fuse_att_pooler(fuse_emb))  # [B, d_f]
 
         res = {
             "fuse_image": fuse_image,
@@ -257,7 +256,6 @@ class FashionProduct(ModelBase):
             "fuse_emb": fuse_emb,
             "fuse_mp": fuse_mp,
             "fuse_cls": fuse_cls,
-            "fuse_att": fuse_att,
         }
 
         return res
