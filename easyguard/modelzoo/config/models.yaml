@@ -142,6 +142,11 @@ models:
     backend: default
     modeling_fashionbert: 
       model: FashionBert
+  fashionvtp:
+    name: FashionVTP
+    backend: default
+    modeling_fashionvtp: 
+      model: FashionVTP
     
 
     
