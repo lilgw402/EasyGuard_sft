@@ -437,7 +437,7 @@ class FashionProduct(CruiseModule):
         """
         3. Category-level loss.
         """
-        fuse_emb = rep_dict["fuse_emb"]         # [B, 1 + 38, d_f]
+        fuse_emb = rep_dict["fuse_emb"]  # [B, 1 + 38, d_f]
         logits_cat = self.category_logits(fuse_emb[:, 0])  # [B, num_categories + 1]
         loss_sce = self.category_sce(logits_cat, kwargs["label"])
 
