@@ -333,7 +333,7 @@ class WordpieceTokenizer(object):
         greedy_sharp=True,
         unk_token="[UNK]",
         # max_input_chars_per_word=100,
-        max_input_chars_per_word=360,
+        max_input_chars_per_word=512,
     ):
         self.vocab = vocab
         self.greedy_sharp = greedy_sharp
