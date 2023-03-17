@@ -20,7 +20,12 @@ class MyModel(CruiseModule):
 
     def setup(self, stage) -> None:
         ...
-
+        """
+            FashionVTP includes: 
+                "fashionvtp-base", 
+                "fashionvtp-base-c",
+                "fashionvtp-base-s"
+        """
         self.fashionvtp_model = AutoModel.from_pretrained("fashionvtp-base")
         self.fashionbert_model = AutoModel.from_pretrained("fashionbert-base")
 
