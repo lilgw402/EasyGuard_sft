@@ -29,8 +29,8 @@ trainer:
   resume_loader_state: false
   callbacks: null
   enable_checkpoint: true
-  checkpoint_monitor: loss
-  checkpoint_mode: min
+  checkpoint_monitor: recall
+  checkpoint_mode: max
   dataloader_timeout: -1
   dataloader_retry_limit: 100
   dataloader_retry_persistent_limit: 5
