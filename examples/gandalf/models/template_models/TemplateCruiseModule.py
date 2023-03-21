@@ -39,18 +39,16 @@ class TemplateCruiseModule(CruiseModule):
         optimizer_config = self.kwargs.get("optimizer",dict())
         optimizer = build_optimizer_instance([self.trainer.model], optimizer_config)
         lr_scheduler_config = self.kwargs.get("lr_scheduler", dict())
-        lr_scheduler_config["total_step"] = self.trainer.max_steps
-        lr_scheduler_config["warmup_steps"] = (
-                lr_scheduler_config.get("warmup_steps") or 0
-        )
+        lr_scheduler_config["last_epoch"] = self.trainer.current_epoch
+        lr_scheduler_config["last_step"] = self.trainer.current_step
+        lr_scheduler_config.update()
         lr_scheduler = build_lr_scheduler_instance(optimizer, lr_scheduler_config)
         return [optimizer], [lr_scheduler]
 
     def lr_scheduler_step(self, schedulers, **kwargs) -> None:
-        # lr_schedulers has no step method, but update_lr method
         for scheduler in schedulers:
-            scheduler.update_lr(self.trainer.global_step)
-            self._tk_log_dict("monitors/learning_rate", {"lr": scheduler.get_lr()})
+            scheduler.step(self.trainer.current_epoch)
+            self._tk_log_dict("monitors/learning_rate", {"lr": scheduler.get_lr()[0]})
 
     def track_logging_info(self,training_info_dict,test_info_dict,prefix,hidden_keys:set = None,is_loss_item:bool=True):
         if training_info_dict:

@@ -13,8 +13,33 @@ import torch
 import functools
 import numpy as np
 from utils.registry import SCHEDULERS
-from .util import with_warm_up as raw_with_warm_up
 
+
+def raw_with_warm_up(learning_rate, warmup_steps=0):
+    def decorator(func):
+        r"""
+        func: python function
+            args:
+                - step
+                    current step count.
+                - total_step
+                    step amount during this training.
+            kw args:
+                whatever, customized args.
+        """
+
+        def warm_up(*args, **kw):
+            step = args[0]
+            total_step = kw.get("_total_step", -1)
+            if warmup_steps > 0 and step <= warmup_steps:
+                return learning_rate * np.min(((step / warmup_steps), 1.0))
+            else:
+                total_step = np.max((0, total_step - warmup_steps))
+                return func(step - warmup_steps, np.max((total_step, warmup_steps + 1)))
+
+        return warm_up
+
+    return decorator
 
 class BaseLrScheduler(object):
     def __init__(
@@ -80,7 +105,6 @@ class BaseLrScheduler(object):
         self.update_lr(step)
         return self._latest_lr
 
-
 @SCHEDULERS.register_module()
 class ConstLrScheduler(BaseLrScheduler):
     def __init__(self, optimizer, total_step=-1, warmup_steps=0, **kwargs):
@@ -96,7 +120,6 @@ class ConstLrScheduler(BaseLrScheduler):
             return self._base_lr
 
         self._lr_decay_func = functools.partial(f, _total_step=total_step)
-
 
 @SCHEDULERS.register_module()
 class LinearDecayLrScheduler(BaseLrScheduler):
@@ -126,7 +149,6 @@ class LinearDecayLrScheduler(BaseLrScheduler):
 
         self._lr_decay_func = functools.partial(f, _total_step=total_step)
 
-
 @SCHEDULERS.register_module()
 class CosineDecayLrScheduler(BaseLrScheduler):
     def __init__(self, optimizer, total_step=-1, warmup_steps=0, min_lr=0.0, **kwargs):
@@ -154,7 +176,6 @@ class CosineDecayLrScheduler(BaseLrScheduler):
             )
 
         self._lr_decay_func = functools.partial(f, _total_step=total_step)
-
 
 @SCHEDULERS.register_module()
 class ExpDecayLrScheduler(BaseLrScheduler):

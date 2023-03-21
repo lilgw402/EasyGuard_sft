@@ -75,9 +75,8 @@ METRICS = Registry("metric")
 SCHEDULERS = Registry("lr_scheduler")
 OPTIMIZERS = Registry("optimizer")
 
-
-DEFAULT_SCHEDULER = "ConstLrScheduler"
 DEFAULT_OPTIMIZER = "AdamW"
+DEFAULT_SCHEDULER = "LinearLrSchedulerWithWarmUp"
 
 def get_model_module(model_type):
     model = MODELS.get(model_type)
@@ -87,30 +86,6 @@ def get_data_module(data_module):
     dataset = DATASETS.get(data_module)
     return dataset
 
-def get_module(root_module, module_path):
-    module_names = module_path.split('.')
-    module = root_module
-    for module_name in module_names:
-        if not hasattr(module, module_name):
-            if isinstance(module, (DataParallel, DistributedDataParallel)):
-                module = module.module
-                if not hasattr(module, module_name):
-                    if isinstance(module, Sequential) and module_name.isnumeric():
-                        module = module[int(module_name)]
-                    else:
-                        get_logger().info('`{}` of `{}` could not be reached in `{}`'.format(module_name, module_path,
-                                                                                       type(root_module).__name__))
-                else:
-                    module = getattr(module, module_name)
-            elif isinstance(module, Sequential) and module_name.isnumeric():
-                module = module[int(module_name)]
-            else:
-                get_logger().info('`{}` of `{}` could not be reached in `{}`'.format(module_name, module_path,
-                                                                               type(root_module).__name__))
-                return None
-        else:
-            module = getattr(module, module_name)
-    return module
 
 def get_metric_instance(metric_type, arg_dict):
     metric = METRICS.get(metric_type)(**arg_dict)
@@ -122,6 +97,6 @@ def build_lr_scheduler_instance(optimizer, arg_dict):
     return lr_scheduler
 
 def build_optimizer_instance(model_list, arg_dict):
-    optimizer_type = arg_dict.get("optimizer_name",DEFAULT_SCHEDULER)
+    optimizer_type = arg_dict.get("optimizer_name",DEFAULT_OPTIMIZER)
     optimizer = OPTIMIZERS.get(optimizer_type)(model_list, **arg_dict).get_optimizer()
     return optimizer
