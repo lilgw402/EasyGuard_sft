@@ -2,7 +2,7 @@ import unittest
 
 # test module
 
-TEST_FLAGS = ["all"]
+TEST_FLAGS = ["fashion_swin"]
 
 
 class TestFashionSwin(unittest.TestCase):
