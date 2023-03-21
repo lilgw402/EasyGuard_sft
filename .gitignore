@@ -36,6 +36,7 @@ wheels/
 *.egg
 MANIFEST
 .idea
+.DS_Store
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -141,7 +142,7 @@ wandb/*
 cruise_logs/*
 launch_logs/*
 
-.idea
+.idea/*
 
 # npm modules
 node_modules/
@@ -155,6 +156,11 @@ events.out*
 
 # model
 *.model
+*.th
+*.bin
+*.pt
+*.ckpt
+*.pth
 
 # cruise
 *cruise_logs/
@@ -162,6 +168,6 @@ events.out*
 # output
 *.stderr
 *.stdout
-.idea
+.idea/
 
 examples/fashion_gpt2/tasks/gpt2/ccr_experiments/data

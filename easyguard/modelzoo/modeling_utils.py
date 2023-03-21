@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from modulefinder import Module
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -19,7 +20,7 @@ logger = logging.get_logger(__name__)
 # EasyGuard Model base class
 
 
-class ModelBase(AutoHubClass):
+class ModelBase(nn.Module, AutoHubClass):
     def __init__(self, **kargs) -> None:
         super().__init__()
 

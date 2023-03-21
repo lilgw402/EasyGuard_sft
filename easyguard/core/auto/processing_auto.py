@@ -85,9 +85,7 @@ class AutoProcessor:
             server_name = model_archive.get("server", None)
 
             is_local = False
-        elif os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
-            pretrained_model_name_or_path
-        ):
+        elif os.path.isdir(pretrained_model_name_or_path):
             model_config_path = file_exist(
                 pretrained_model_name_or_path, MODEL_CONFIG_NAMES
             )
