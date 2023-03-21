@@ -163,3 +163,5 @@ events.out*
 *.stderr
 *.stdout
 .idea
+
+examples/fashion_gpt2/tasks/gpt2/ccr_experiments/data

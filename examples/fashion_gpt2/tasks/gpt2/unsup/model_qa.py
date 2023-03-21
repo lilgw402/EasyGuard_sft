@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 import math
 from typing import Dict, List, Optional
 
 import torch
-from torch import nn
 from cruise import CruiseCLI, CruiseConfig, CruiseModule, last_cli
 from cruise.utilities.distributed import DIST_ENV
+from torch import nn
 
 try:
     from mariana.data.gpt.datamodule.qa_finetune import QAFinetuneGPTDatamodule
@@ -133,7 +134,8 @@ class GPT2Model(CruiseModule):
     @torch.no_grad()
     def decode(self, input_ids: torch.Tensor, input_mask: torch.Tensor, *args, **kwargs):
         """For generation task"""
-        model_out = self.gpt(input_ids=input_ids, attention_mask=input_mask)
+        model_out = self.gpt(input_ids=input_ids,
+                             attention_mask=input_mask)
         return model_out
 
     def configure_optimizers(self, optimizer_kwargs):
@@ -214,26 +216,25 @@ if __name__ == '__main__':
                              save_weights_only=True,
                              save_on_train_epoch_end=True,
                              enable_trace=False)
-    cli = CruiseCLI(
-        GPT2Model,
-        datamodule_class=QAFinetuneGPTDatamodule,
-        trainer_defaults={
-            'precision'             : 16,
-            'enable_versions'       : False,
-            'log_every_n_steps'     : 100,
-            'find_unused_parameters': False,
-            'max_epochs'            : 10,
-            'resume_ckpt_path'      : None,
-            "default_hdfs_dir"      : helper.hdfs_prefix,
-            "project_name"          : helper.project_name,
-            'val_check_interval'    : -1,
-            'summarize_model_depth' : 2,
-            'gradient_clip_val'     : 1.0,
-            'checkpoint_monitor'    : 'step',
-            'checkpoint_mode'       : 'max',
-            'callbacks'             : [ckpter],
-            'optimizer_kwargs'      : mariana_optimizer_kwargs_defaults,
-        })
+    cli = CruiseCLI(GPT2Model,
+                    datamodule_class=QAFinetuneGPTDatamodule,
+                    trainer_defaults={
+                        'precision'             : 16,
+                        'enable_versions'       : False,
+                        'log_every_n_steps'     : 100,
+                        'find_unused_parameters': False,
+                        'max_epochs'            : 10,
+                        'resume_ckpt_path'      : None,
+                        "default_hdfs_dir"      : helper.hdfs_prefix,
+                        "project_name"          : helper.project_name,
+                        'val_check_interval'    : -1,
+                        'summarize_model_depth' : 2,
+                        'gradient_clip_val'     : 1.0,
+                        'checkpoint_monitor'    : 'step',
+                        'checkpoint_mode'       : 'max',
+                        'callbacks'             : [ckpter],
+                        'optimizer_kwargs'      : mariana_optimizer_kwargs_defaults,
+                    })
     cli.add_argument('--val-only', default=False, action='store_true', dest='val_only')
     cli.add_argument('--play', default=False, action='store_true', dest='play')
     cli.add_argument('--play-file', default='', type=str, help='generate by samples loaded from file')
@@ -261,14 +262,27 @@ if __name__ == '__main__':
         model.setup()
         if cfg.play_file:
             print("\nFile play mode.")
-            play_file(cfg.play_file, tokenizer, model.cuda(), cfg.generate_trial_num,
-                      steps=cfg.generate_steps, temperature=cfg.generate_temp, do_sample=cfg.generate_do_sample,
-                      top_k=cfg.generate_topk, top_p=cfg.generate_topp, until_n_eos=cfg.generate_n_eos,
+            play_file(cfg.play_file,
+                      tokenizer,
+                      model.cuda(),
+                      cfg.generate_trial_num,
+                      steps=cfg.generate_steps,
+                      temperature=cfg.generate_temp,
+                      do_sample=cfg.generate_do_sample,
+                      top_k=cfg.generate_topk,
+                      top_p=cfg.generate_topp,
+                      until_n_eos=cfg.generate_n_eos,
                       limit_samples=cfg.play_file_limit)
         else:
             print("\nConsole play mode.")
-            play_console(tokenizer, model.cuda(), cfg.generate_trial_num,
-                         steps=cfg.generate_steps, temperature=cfg.generate_temp, do_sample=cfg.generate_do_sample,
-                         top_k=cfg.generate_topk, top_p=cfg.generate_topp, until_n_eos=cfg.generate_n_eos)
+            play_console(tokenizer,
+                         model.cuda(),
+                         cfg.generate_trial_num,
+                         steps=cfg.generate_steps,
+                         temperature=cfg.generate_temp,
+                         do_sample=cfg.generate_do_sample,
+                         top_k=cfg.generate_topk,
+                         top_p=cfg.generate_topp,
+                         until_n_eos=cfg.generate_n_eos)
     else:
         trainer.fit(model, datamodule)

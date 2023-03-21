@@ -18,8 +18,10 @@ try:
     from promptsource.templates import DatasetTemplates, Template
 except ImportError:
     warnings.warn('failed to load prompt source', ImportWarning)
-
-from mariana.utils.processor import ocnli_processor, rte_processor, lambada_processor
+try:
+    from mariana.utils.processor import ocnli_processor, rte_processor, lambada_processor
+except:
+    from examples.fashion_gpt2.mariana.utils.processor import ocnli_processor, rte_processor, lambada_processor
 
 
 @torch.no_grad()
@@ -49,11 +51,11 @@ def sample(model_decode_func, x, steps, temperature=1.0, do_sample=False, top_k=
 
     """
     if top_k is not None and top_p is not None:
-        raise ValueError('Either Top-K or Top-P, cannot chooes both')
+        raise ValueError('Either Top-K or Top-P, cannot choose both')
     if top_p is not None and dynamic_top_p is not None:
-        raise ValueError('Either Top-P or Dynamic_Top-P, cannot chooes both')
+        raise ValueError('Either Top-P or Dynamic_Top-P, cannot choose both')
     if top_k is not None and dynamic_top_p is not None:
-        raise ValueError('Either Top-K or Dynamic_Top-P, cannot chooes both')
+        raise ValueError('Either Top-K or Dynamic_Top-P, cannot choose both')
 
     meet_eos_count = 0
     k_w_reset = 0
@@ -253,8 +255,7 @@ def sample_generate(model, input_ids,
                               decay_lambda=decay_lambda,
                               eos=eos,
                               until_n_eos=until_n_eos,
-                              full_stop_input_ids=full_stop_input_ids,
-                              )
+                              full_stop_input_ids=full_stop_input_ids)
     return decoded_sentence.tolist()[0]
 
 
@@ -347,19 +348,19 @@ def play_file_qa(fname, tokenizer, model, output_file_path,  trial_num=5,
     print(f"Generating by prompts from {fname}...")
     full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
     with open(fname, mode='r', encoding='utf-8') as fr, \
-        open(output_file_path, mode='w', encoding='utf-8') as fw:
+            open(output_file_path, mode='w', encoding='utf-8') as fw:
         for i, line in enumerate(tqdm(fr, desc=f"PROCESSING FILE: {fname}")):
             try:
                 jl = json.loads(line)
                 text = jl['page_info']['query'].strip()
                 label = jl['page_info']['answer']
-                # print('tokens           : ', tokenizer.tokenize(text))
-                # print('label:           :', jl['answer'])
                 input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
-                for i in range(trial_num):
+                for _ in range(trial_num):
                     y = sample_generate(model,
                                         input_ids=input_ids.to(model.device),
-                                        steps=steps, temperature=temperature, do_sample=do_sample,
+                                        steps=steps,
+                                        temperature=temperature,
+                                        do_sample=do_sample,
                                         top_k=top_k,
                                         top_p=top_p,
                                         dynamic_top_p=dynamic_top_p,
