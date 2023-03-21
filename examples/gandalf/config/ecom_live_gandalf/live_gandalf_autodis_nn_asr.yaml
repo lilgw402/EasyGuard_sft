@@ -123,7 +123,7 @@ model:
       - 148
       - 149
   asr_encoder:
-    encoder_name: fashion-deberta-asr-small
+    encoder_name: /mnt/bn/renaisance/mlx/models/pretrain/fashion_deberta_asr_small
     emb_dropout_prob: 0.3
     emb_mode: pool
     embedding_dim: 768
@@ -146,7 +146,7 @@ model:
       start_factor: 1
       end_factor: 0.2
 trainer:
-  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs
+  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_0
   default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_0
   enable_versions: false
   logger: tracking
