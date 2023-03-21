@@ -157,4 +157,3 @@ trainer:
   val_check_interval: 1000
   project_name: gandalf
   experiment_name: augutus/auto_dis_nn_asr_demo
-  optimizer_kwargs:
