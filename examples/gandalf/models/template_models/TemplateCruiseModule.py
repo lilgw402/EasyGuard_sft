@@ -41,7 +41,6 @@ class TemplateCruiseModule(CruiseModule):
         lr_scheduler_config = self.kwargs.get("lr_scheduler", dict())
         lr_scheduler_config["last_epoch"] = self.trainer.current_epoch
         lr_scheduler_config["last_step"] = self.trainer.current_step
-        lr_scheduler_config.update()
         lr_scheduler = build_lr_scheduler_instance(optimizer, lr_scheduler_config)
         return [optimizer], [lr_scheduler]
 

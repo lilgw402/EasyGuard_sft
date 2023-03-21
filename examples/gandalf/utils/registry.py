@@ -92,7 +92,7 @@ def get_metric_instance(metric_type, arg_dict):
     return metric
 
 def build_lr_scheduler_instance(optimizer, arg_dict):
-    lr_scheduler_type = arg_dict.get("scheduler_name", DEFAULT_SCHEDULER)
+    lr_scheduler_type = arg_dict.pop("scheduler_name", DEFAULT_SCHEDULER)
     lr_scheduler = SCHEDULERS.get(lr_scheduler_type)(optimizer, **arg_dict)
     return lr_scheduler
 
