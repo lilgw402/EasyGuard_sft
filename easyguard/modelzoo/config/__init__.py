@@ -4,7 +4,9 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
-MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
+MODEL_ARCHIVE_PATH_BACKUP = os.path.join(
+    os.path.dirname(__file__), "archive.yaml"
+)
 MODELZOO_NAME = "models"
 YAML_DEEP = 3
 
@@ -12,7 +14,14 @@ import importlib
 
 from ... import EASYGUARD_CONFIG_CACHE
 from ...core.auto import EASYGUARD_PATH
-from ...utils import HDFS_HUB_CN, YamlConfig, _LazyModule, hmget, load_yaml
+from ...utils import (
+    HDFS_HUB_CN,
+    YamlConfig,
+    _LazyModule,
+    hmget,
+    load_yaml,
+    logging,
+)
 
 MODEL_ARCHIVE_PATH = os.path.join(EASYGUARD_CONFIG_CACHE, "archive.yaml")
 MODEL_ARCHIVE_PATH_REMOTE = os.path.join(HDFS_HUB_CN, "config", "archive.yaml")
@@ -23,6 +32,8 @@ config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多�
 模型开发: 在模型的__init__函数里只需要利用typing.TYPE_CHECKING来辅助代码提示即可,无需手动lazyimport, 可参照deberta模型进行开发
 模型懒加载: 不再需要各种mapping的存在, 因为models.yaml已经把各自模型的配置归类在一起了, 所以直接借助models.yaml即可轻松完成模块按需懒加载使用
 """
+
+logger = logging.get_logger(__name__)
 
 
 class ModelZooYaml(YamlConfig):
@@ -192,8 +203,16 @@ class ModelZooYaml(YamlConfig):
 MODELZOO_CONFIG = ModelZooYaml.yaml_reader(MODEL_CONFIG_PATH)
 if os.path.exists(MODEL_ARCHIVE_PATH):
     os.remove(MODEL_ARCHIVE_PATH)
-# TODO (junwei.Dong): 修改archive的加载逻辑
+
 os.makedirs(EASYGUARD_CONFIG_CACHE, exist_ok=True)
 hmget([MODEL_ARCHIVE_PATH_REMOTE], EASYGUARD_CONFIG_CACHE)
-MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH)
+MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH_BACKUP
+if (
+    os.path.exists(MODEL_ARCHIVE_PATH)
+    and os.path.getsize(MODEL_ARCHIVE_PATH) != 0
+):
+    MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH
+logger.info(f"the path of the loaded archive file: {MODEL_ARCHIVE_PATH_}")
+
+MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_)
 MODELZOO_CONFIG.initialize()
