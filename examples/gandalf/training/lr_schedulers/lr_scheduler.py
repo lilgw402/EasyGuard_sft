@@ -8,15 +8,13 @@ from torch.optim.lr_scheduler import _LRScheduler,LambdaLR
 from utils.registry import SCHEDULERS
 
 class WarmUpLrScheduler(_LRScheduler):
-    def __int__(self,optimizer:torch.optim.Optimizer, last_epoch=-1, verbose=False,warmup_steps=0):
-        super(WarmUpLrScheduler,self).__init__(optimizer, last_epoch=-1, verbose=False)
+    def __init__(self,optimizer:torch.optim.Optimizer, last_epoch, verbose,warmup_steps):
+        self.optimizer = optimizer
         self.last_epoch = last_epoch
         self.warmup_steps = warmup_steps
-        if last_epoch == -1:
-            for group in optimizer.param_groups:
-                group.setdefault('initial_lr', group['lr'])
-        self.base_lrs = [group["init_lr"] for group in self.optimizer.param_groups]
-        self._last_lr = [group["init_lr"] for group in self.optimizer.param_groups]
+        self.base_lrs = [group["lr"] for group in optimizer.param_groups]
+        for group in optimizer.param_groups:
+            group.setdefault('init_lr', group['lr'])
         self._step_count = 0
 
     def get_lr(self):
@@ -30,7 +28,7 @@ class WarmUpLrScheduler(_LRScheduler):
 @SCHEDULERS.register_module()
 class ConstantLrSchedulerWithWarmUp(WarmUpLrScheduler):
     def __init__(self,optimizer,warmup_steps, last_epoch=-1,verbose=False,**kwargs):
-        super(ConstantLrSchedulerWithWarmUp,self).__int__(optimizer,last_epoch,verbose,warmup_steps)
+        super(ConstantLrSchedulerWithWarmUp,self).__init__(optimizer,last_epoch,verbose,warmup_steps)
 
     def get_lr(self):
         if  0 < self._step_count < self.warmup_steps:
@@ -40,7 +38,7 @@ class ConstantLrSchedulerWithWarmUp(WarmUpLrScheduler):
 
 @SCHEDULERS.register_module()
 class LinearLrSchedulerWithWarmUp(WarmUpLrScheduler):
-    def __init__(self,optimizer,warmup_steps, last_epoch=-1,verbose=False,start_factor=1.0, end_factor=1.0/3, total_iters=5,**kwargs):
+    def __init__(self,optimizer,warmup_steps=1000, last_epoch=-1,verbose=False,start_factor=1.0, end_factor=1.0/3, total_iters=5,**kwargs):
         super(LinearLrSchedulerWithWarmUp,self).__init__(optimizer,last_epoch,verbose,warmup_steps)
         self.start_factor = start_factor
         self.end_factor = end_factor

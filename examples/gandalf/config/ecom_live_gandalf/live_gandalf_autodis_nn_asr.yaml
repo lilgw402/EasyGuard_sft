@@ -138,16 +138,17 @@ model:
     dropout: 0.3
     optimizer:
       optimizer_name: AdamW
-      lr: 0.00001
-    scheduler:
+      learning_rate: 0.00001
+    lr_scheduler:
       scheduler_name: LinearLrSchedulerWithWarmUp
-      warmup_steps: 1000
+      last_epoch: -1
       total_iters: 5
       start_factor: 1
       end_factor: 0.2
+      warmup_steps: 1000
 trainer:
-  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_0
-  default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_0
+  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1
+  default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_1
   enable_versions: false
   logger: tracking
   max_epochs: 25
