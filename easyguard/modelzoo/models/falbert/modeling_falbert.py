@@ -12,7 +12,7 @@ from . import albert
 from .swin import SwinTransformer
 
 
-class FalBertModel(nn.Module, ModelBase):
+class FalBertModel(ModelBase):
     """Frame + ALBert"""
 
     def __init__(self, config, **kwargs):

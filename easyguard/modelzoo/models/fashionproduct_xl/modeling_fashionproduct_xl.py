@@ -12,9 +12,9 @@ class FashionProductXL(ModelBase):
     def __init__(
             self,
             config_backbone,
+            **kwargs,
     ):
-        super(FashionProductXL, self).__init__()
-
+        super().__init__()
         self.config_backbone = config_backbone
         self.falbert = FrameALBert(self.config_backbone)
 
