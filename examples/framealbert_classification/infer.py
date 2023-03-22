@@ -2,8 +2,8 @@
 import io
 import os
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-import cv2
+# os.environ["TOKENIZERS_PARALLELISM"] = "false"
+# import cv2
 import json
 import torch
 import base64
@@ -28,8 +28,8 @@ gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=
 pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
 # tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
-default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
-default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
+# default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
+# default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
 
 def image_preprocess(image_str):
@@ -159,6 +159,7 @@ if __name__ == "__main__":
     # load ckpt
     model.setup("val")
     model.cuda()
+    model.eval()
 
     # jit load infer
     # model = torch.jit.load('./traced_model/FrameAlbertClassify.ts')
@@ -210,7 +211,8 @@ if __name__ == "__main__":
             else:
                 # print(gec[sample['leaf_cid']]['label'], labels)
                 pass
-
+            if num_all % 2000 == 0:
+                print(f'{country} top1 acc is {num_top1 / num_all}, with samples: {num_all}')
         print(f'{country} top1 acc is {num_top1 / num_all}, top5 acc is {num_top5 / num_all}')
 
 # python3 examples/framealbert_classification/infer.py --config examples/framealbert_classification/default_config.yaml

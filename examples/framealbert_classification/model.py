@@ -34,7 +34,7 @@ from .optimization import AdamW
 class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
-            config_backbone,
+            # config_backbone,
             config_fusion,
             config_optim,
             low_lr_prefix: list = [],
@@ -49,8 +49,8 @@ class FrameAlbertClassify(CruiseModule):
         """
         Load yaml file as config class
         """
-        with open(self.hparams.config_backbone) as fp:
-            self.config_backbone = SimpleNamespace(**yaml.load(fp, yaml.Loader))
+        # with open(self.hparams.config_backbone) as fp:
+        #     self.config_backbone = SimpleNamespace(**yaml.load(fp, yaml.Loader))
         with open(self.hparams.config_fusion) as fp:
             self.config_fusion = SimpleNamespace(**yaml.load(fp, yaml.Loader))
         with open(self.hparams.config_optim) as fp:
@@ -64,7 +64,7 @@ class FrameAlbertClassify(CruiseModule):
         Initialize output layer
         """
         feat_emb_size = self.config_fusion.feat_emb_size
-        if self.use_multihead:
+        if self.hparams.use_multihead:
             self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
                                                self.config_fusion.head_num * self.config_fusion.class_num)
         else:
@@ -74,7 +74,7 @@ class FrameAlbertClassify(CruiseModule):
         """
         Initialize some fixed parameters.
         """
-        self.init_weights()
+
         if self.hparams.load_pretrained:
             prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
             rename_params = {pretrain_prefix: new_prefix for pretrain_prefix, new_prefix in prefix_changes}
@@ -85,17 +85,17 @@ class FrameAlbertClassify(CruiseModule):
             )
         # self.freeze_params(self.config_backbone.freeze_prefix)
 
-    def init_weights(self):
-        def init_weight_module(module):
-            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
-                torch.nn.init.xavier_uniform_(module.weight)
-            elif isinstance(module, (torch.nn.BatchNorm2d, torch.nn.LayerNorm)):
-                module.bias.data.zero_()
-                module.weight.data.fill_(1.0)
-            if isinstance(module, torch.nn.Linear) and module.bias is not None:
-                module.bias.data.zero_()
-
-        self.apply(init_weight_module)
+    # def init_weights(self):
+    #     def init_weight_module(module):
+    #         if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
+    #             torch.nn.init.xavier_uniform_(module.weight)
+    #         elif isinstance(module, (torch.nn.BatchNorm2d, torch.nn.LayerNorm)):
+    #             module.bias.data.zero_()
+    #             module.weight.data.fill_(1.0)
+    #         if isinstance(module, torch.nn.Linear) and module.bias is not None:
+    #             module.bias.data.zero_()
+    #
+    #     self.apply(init_weight_module)
 
     def freeze_params(self, freeze_prefix):
         for name, param in self.named_parameters():
