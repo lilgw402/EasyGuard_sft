@@ -10,7 +10,7 @@ import torch.nn as nn
 from typing import Optional
 from easyguard.core import AutoModel,AutoTokenizer
 from models.template_models.GandalfCruiseModule import GandalfCruiseModule
-from models.modules.encoders import AutodisBucketEncoder
+from models.modules.encoders import AutoDisBucketEncoder
 from models.modules.losses import BCEWithLogitsLoss
 from models.modules.running_metrics import GeneralClsMetric
 from utils.util import count_params
@@ -113,7 +113,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         
     def init_encoders(self):
         #Init bucket encoder
-        self._auto_dis_bucket_encoder = AutodisBucketEncoder(
+        self._auto_dis_bucket_encoder = AutoDisBucketEncoder(
                                         feature_num=self._feature_input_num,
                                         bucket_num=self._bucket_num,
                                         bucket_dim=self._bucket_dim,

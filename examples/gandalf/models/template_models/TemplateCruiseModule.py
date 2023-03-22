@@ -1,5 +1,4 @@
 import numpy as np
-from torch.nn import functional as F
 from cruise import CruiseModule
 from cruise.utilities.distributed import DIST_ENV
 from utils.registry import get_metric_instance,build_optimizer_instance,build_lr_scheduler_instance
