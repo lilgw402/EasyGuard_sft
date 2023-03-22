@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import io
+import os
 import json
 from typing import List, Union
 
@@ -25,11 +26,11 @@ from .downloads import get_real_url, download_url_with_exception
 
 class ImageTextProcessor:
     def __init__(
-        self,
-        mode,
-        vocab_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/zh_old_cut_145607.vocab",
-        max_len=256,
-        category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
+            self,
+            mode,
+            vocab_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/zh_old_cut_145607.vocab",
+            max_len=256,
+            category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
     ):
         self.image_process = ImageProcess(mode)
         self.text_process = TextProcess(vocab_file=vocab_path, max_len=max_len)
@@ -94,16 +95,16 @@ class ImageTextProcessor:
 
 class MMDataModule(CruiseDataModule):
     def __init__(
-        self,
-        train_batch_size: int = 64,
-        val_batch_size: int = 64,
-        paths: Union[
-            str, List[str]
-        ] = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/pretrain_20220802_20220808_train_url",
-        data_size: int = 140000000,
-        val_step: int = 20,
-        num_workers: int = 24,
-        max_len: int = 256,
+            self,
+            train_batch_size: int = 64,
+            val_batch_size: int = 64,
+            paths: Union[
+                str, List[str]
+            ] = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/pretrain_20220802_20220808_train_url",
+            data_size: int = 140000000,
+            val_step: int = 20,
+            num_workers: int = 24,
+            max_len: int = 256,
     ):
         super().__init__()
         self.save_hparams()
@@ -135,8 +136,8 @@ class MMDataModule(CruiseDataModule):
             decode_fn_list=[[]],
             processor=ImageTextProcessor("train"),
             predefined_steps=self.hparams.data_size
-            // self.hparams.train_batch_size
-            // self.trainer.world_size,
+                             // self.hparams.train_batch_size
+                             // self.trainer.world_size,
             source_types=["jsonl"],
             shuffle=True,
         )
@@ -159,20 +160,22 @@ class MMDataModule(CruiseDataModule):
 """
 Text/Image Processor for FashionProduct
 """
+
+
 class FPImageTextProcessor:
     def __init__(
-        self,
-        mode,
-        vocab_path="/opt/tiger/liuyuhang/zh_deberta_base_l6_emd_20210720/vocab.txt",
-        cutter_enable=False,
-        cutter="/opt/tiger/liuyuhang/libcut_data_zh_20200827fix2",
-        max_len=256,
-        category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
-        ner_task_dict="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/ner_format_statistics/ner_task_dict.json", 
-        ner_tasks=["商品", "颜色", "风格", "材质", "样式"],
-        max_main=3,
-        max_desc=5,
-        max_sku=3
+            self,
+            mode,
+            vocab_path="/opt/tiger/liuyuhang/zh_deberta_base_l6_emd_20210720/vocab.txt",
+            cutter_enable=False,
+            cutter="/opt/tiger/liuyuhang/libcut_data_zh_20200827fix2",
+            max_len=256,
+            category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
+            ner_task_dict="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/ner_format_statistics/ner_task_dict.json",
+            ner_tasks=["商品", "颜色", "风格", "材质", "样式"],
+            max_main=3,
+            max_desc=5,
+            max_sku=3
     ):
         """
         Prepare text tokenizer
@@ -183,7 +186,7 @@ class FPImageTextProcessor:
         self.PAD = self.vocab['[PAD]']
         self.SEP = self.vocab['[SEP]']
         self.MASK = self.vocab['[MASK]']
-        
+
         self.cutter_enable = cutter_enable
         if cutter_enable:
             self.cutter = Cutter("CRF_LARGE", cutter)
@@ -194,7 +197,7 @@ class FPImageTextProcessor:
                                        do_lower_case=False,
                                        tokenize_emoji=False,
                                        greedy_sharp=True)
-        
+
         """
         Load category dict for pretraining.
         """
@@ -224,11 +227,11 @@ class FPImageTextProcessor:
         self.max_main = max_main
         self.max_desc = max_desc
         self.max_sku = max_sku
-    
+
     @property
     def empty_image(self):
         return b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00C\x00\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\xff\xdb\x00C\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\xff\xc0\x00\x11\x08\x00\x02\x00\x02\x03\x01"\x00\x02\x11\x01\x03\x11\x01\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\n\xff\xc4\x00\x14\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x14\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01\x00\x02\x11\x03\x11\x00?\x00\xbf\x80\x01\xff\xd9'
-    
+
     def prepare_single_image(self, image, is_url=True):
         is_valid = 0
         try:
@@ -252,7 +255,7 @@ class FPImageTextProcessor:
         except:
             image_str = self.empty_image
             image = Image.open(io.BytesIO(image_str)).convert("RGB")
-        
+
         image = self.img_transform(image)
 
         return image, is_valid
@@ -342,13 +345,13 @@ class FPImageTextProcessor:
 
         if len(self.ner_tasks) > 0:
             other_text = "sku名称：" + data_dict["product_sku"] + ";" + \
-                "商店名称：" + data_dict["shop_name"]
+                         "商店名称：" + data_dict["shop_name"]
         else:
             other_text = "sku名称：" + data_dict["product_sku"] + ";" + \
-                            "商店名称：" + data_dict["shop_name"] + ";" + \
-                            "商品属性：" + ",".join(
+                         "商店名称：" + data_dict["shop_name"] + ";" + \
+                         "商品属性：" + ",".join(
                 ["{}:{}".format(k, v) for k, v in data_dict["product_format_new"].items()]) + ";" + \
-                            "ner：" + ",".join(["{}:{}".format(k, v) for k, v in data_dict["ner"].items()])
+                         "ner：" + ",".join(["{}:{}".format(k, v) for k, v in data_dict["ner"].items()])
         other_text, other_text_masks = self.prepare_single_text(other_text, self.max_len)
 
         # Category label
@@ -387,7 +390,8 @@ class FPImageTextProcessor:
         # there must be single format labels
         for ner_index, task in enumerate(self.ner_tasks):
             ner_key = "ner_{}".format(ner_index)
-            ner_label = np.zeros(shape=(len(self.ner_task_dict[task]["label2idx"]) + 1, ), dtype=np.float32)  # index 0 denotes other labels
+            ner_label = np.zeros(shape=(len(self.ner_task_dict[task]["label2idx"]) + 1,),
+                                 dtype=np.float32)  # index 0 denotes other labels
             if task not in data_dict["ner"]:
                 ner_label[0] = 1.0
             else:
@@ -422,32 +426,35 @@ class FPImageTextProcessor:
 
         return batch
 
+
 """
 DataModule for FashionProduct
 """
+
+
 class FPDataModule(CruiseDataModule):
     def __init__(
-        self,
-        train_batch_size: int = 8,
-        val_batch_size: int = 8,
-        paths: Union[
-            str, List[str]
-        ] = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/product_pretrain_train_url",
-        data_size: int = 64000000,
-        val_step: int = 20,
-        num_workers: int = 24,
-        max_len: int = 128,
-        pretrained_model_dir: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720",
-        local_pretrained_model_dir_prefix="/opt/tiger/liuyuhang/ckpt/",
-        cutter_enable: bool = False,
-        cutter_resource_dir: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/libcut_data_zh_20200827fix2/",
-        local_cutter_dir_prefix: str = "/opt/tiger/liuyuhang/cutter/",
-        category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
-        ner_task_dict="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/ner_format_statistics/ner_task_dict.json", 
-        ner_tasks=["商品", "颜色", "风格", "材质", "样式"],
-        max_main=3,
-        max_desc=5,
-        max_sku=3
+            self,
+            train_batch_size: int = 8,
+            val_batch_size: int = 8,
+            paths: Union[
+                str, List[str]
+            ] = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/product_pretrain_train_url",
+            data_size: int = 64000000,
+            val_step: int = 20,
+            num_workers: int = 24,
+            max_len: int = 128,
+            pretrained_model_dir: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720",
+            local_pretrained_model_dir_prefix="/opt/tiger/liuyuhang/ckpt/",
+            cutter_enable: bool = False,
+            cutter_resource_dir: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/libcut_data_zh_20200827fix2/",
+            local_cutter_dir_prefix: str = "/opt/tiger/liuyuhang/cutter/",
+            category_path="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/category_dict_pt.json",
+            ner_task_dict="hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/ner_format_statistics/ner_task_dict.json",
+            ner_tasks=["商品", "颜色", "风格", "材质", "样式"],
+            max_main=3,
+            max_desc=5,
+            max_sku=3
     ):
         super().__init__()
         self.save_hparams()
@@ -479,12 +486,12 @@ class FPDataModule(CruiseDataModule):
                 os.system(
                     f"hdfs dfs -copyToLocal {self.hparams.cutter_resource_dir} {self.local_cutter_dir}"
                 )
-    
+
     def setup(self, stage) -> None:
         paths = self.hparams.paths
         if isinstance(paths, str):
             paths = [paths]
-        
+
         """
         Split data into train/val
         """
@@ -493,7 +500,7 @@ class FPDataModule(CruiseDataModule):
             raise RuntimeError(
                 f"No valid files can be found matching `paths`: {train_paths}"
             )
-        
+
         # use the last file as validation
         self.train_files = files
         self.val_files = files
@@ -513,14 +520,14 @@ class FPDataModule(CruiseDataModule):
                 cutter=self.local_cutter_dir,
                 max_len=self.hparams.max_len,
                 category_path=self.hparams.category_path,
-                ner_task_dict=self.hparams.ner_task_dict, 
+                ner_task_dict=self.hparams.ner_task_dict,
                 ner_tasks=self.hparams.ner_tasks,
                 max_main=self.hparams.max_main,
                 max_desc=self.hparams.max_desc,
                 max_sku=self.hparams.max_sku),
             predefined_steps=self.hparams.data_size
-            // self.hparams.train_batch_size
-            // self.trainer.world_size,
+                             // self.hparams.train_batch_size
+                             // self.trainer.world_size,
             source_types=["jsonl"],
             shuffle=True,
         )
@@ -540,7 +547,7 @@ class FPDataModule(CruiseDataModule):
                 cutter=self.local_cutter_dir,
                 max_len=self.hparams.max_len,
                 category_path=self.hparams.category_path,
-                ner_task_dict=self.hparams.ner_task_dict, 
+                ner_task_dict=self.hparams.ner_task_dict,
                 ner_tasks=self.hparams.ner_tasks,
                 max_main=self.hparams.max_main,
                 max_desc=self.hparams.max_desc,

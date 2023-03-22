@@ -719,7 +719,7 @@ class PatchMerging(nn.Module):
         return flops
 
 
-class FashionSwinModel(nn.Module, ModelBase):
+class FashionSwinModel(ModelBase):
     r"""Swin Transformer
         A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
           https://arxiv.org/pdf/2103.14030
@@ -768,7 +768,6 @@ class FashionSwinModel(nn.Module, ModelBase):
         **kwargs,
     ):
         super().__init__()
-        ModelBase.__init__(self)
 
         self.num_classes = num_classes
         self.num_layers = len(depths)

@@ -52,11 +52,11 @@ log = logging.getLogger(__name__)
 class UnHqDataModule(CruiseDataModule):
     def __init__(
         self,
-        train_path: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v2/unauthentic_data_live_20230213/unauthentic_data_product.csv",
-        val_path: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/test.csv",
-        predict_path: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/test.csv",
-        train_frame_root: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v2/unauthentic_data_live_20230213/",
-        val_frame_root: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/",
+        train_path: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v2/unauthentic_data_live_20230213_all/unauthentic_data_0213.csv",
+        val_path: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/unauthentic_data_product.csv",
+        predict_path: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process/unauthentic_data_product.csv",
+        train_frame_root: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v2/unauthentic_data_live_20230213_all",
+        val_frame_root: str = "/mnt/bn/ecom-tianke-lq/data/unauthentic_data_live/v1/unauthentic_data_live_process",
         vocab_file: str = "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab",
         train_batch_size: int = 8,
         val_batch_size: int = 8,
@@ -67,7 +67,7 @@ class UnHqDataModule(CruiseDataModule):
         product_max_len: int = 30,
         asr_max_len: int = 360,
         frame_len: int = 10,
-        product_image_len: int = 2,
+        product_image_len: int = 1,
     ):
         super().__init__()
         self.save_hparams()
