@@ -17,8 +17,9 @@ import warnings
 from collections import OrderedDict
 from typing import Any, Mapping, Optional
 
+from transformers.configuration_utils import PretrainedConfig
+
 from ....utils import TensorType, is_torch_available, logging
-from ...configuration_utils import PretrainedConfig
 
 logger = logging.get_logger(__name__)
 

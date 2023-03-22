@@ -1,15 +1,30 @@
 import os
+import sys
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
-MODEL_ARCHIVE_PATH = os.path.join(os.path.dirname(__file__), "archive.yaml")
-MODEL_REMOTE_ZOO = "hdfs://haruna/home/byte_ecom_govern/easyguard/models"
+MODEL_ARCHIVE_PATH_BACKUP = os.path.join(
+    os.path.dirname(__file__), "archive.yaml"
+)
 MODELZOO_NAME = "models"
 YAML_DEEP = 3
 
-from ...utils.yaml_utils import YamlConfig, load_yaml
+import importlib
 
+from ... import EASYGUARD_CONFIG_CACHE
+from ...core.auto import EASYGUARD_PATH
+from ...utils import (
+    HDFS_HUB_CN,
+    YamlConfig,
+    _LazyModule,
+    hmget,
+    load_yaml,
+    logging,
+)
+
+MODEL_ARCHIVE_PATH = os.path.join(EASYGUARD_CONFIG_CACHE, "archive.yaml")
+MODEL_ARCHIVE_PATH_REMOTE = os.path.join(HDFS_HUB_CN, "config", "archive.yaml")
 """
 config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多操作就可以借助models.yaml来进行简化,
 例如:
@@ -17,6 +32,8 @@ config: tokenizer, vocab, model全都通过models.yaml来连接, 因此, 很多�
 模型开发: 在模型的__init__函数里只需要利用typing.TYPE_CHECKING来辅助代码提示即可,无需手动lazyimport, 可参照deberta模型进行开发
 模型懒加载: 不再需要各种mapping的存在, 因为models.yaml已经把各自模型的配置归类在一起了, 所以直接借助models.yaml即可轻松完成模块按需懒加载使用
 """
+
+logger = logging.get_logger(__name__)
 
 
 class ModelZooYaml(YamlConfig):
@@ -143,17 +160,59 @@ class ModelZooYaml(YamlConfig):
 
         return OrderedDict(mapping_list)
 
+    def initialize(self):
+        self.check()
+        self.model_detail_config()
+        self.sys_register()
+
+    def sys_register(self):
+        """该函数基于models.yaml对easyguard里的所有模型实现了一次懒加载，代替了hf每个模型的__init__里的懒加载功能，
+        即只要在models.yaml里对想要暴露的模块加以声明，那么在模型模块的__init__里只需要通过TYPE_CHECKING来进行伪加载【方便写代码的时候有提示】就行了，
+        example:
+        old version:
+        >>> from easyguard.models.bert.configuration_bert import BertConfig
+        now:
+        >>> from easyguard.models.bert import BertConfig
+        这样之后对于hf的支持就更加彻底了，在注入hf模型的时候，可以把__init__里除了TYPING_CHECKING以外的代码全部剔除
+        """
+        for model_name_, model_info_ in self.config["models"].items():
+            import_structure_ = {}
+            name_ = ".".join([EASYGUARD_PATH, model_name_])
+            file_ = os.path.join(
+                os.environ["EASYGUARD_HOME"],
+                name_.replace(".", os.path.sep),
+                "__init__.py",
+            )
+            for key_, value_ in model_info_.items():
+                if isinstance(value_, dict):
+                    import_structure_[key_] = list(value_.values())
+            sys.modules[name_] = _LazyModule(name_, file_, import_structure_)
+        ...
+
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         return self.models_.get(key, default)
 
     def __getitem__(self, key: str):
         if not hasattr(self, "models"):
             self.model_detail_config()
-        if self.models.get(key, None) is not None:
+        if self.models.get(key, None):
             return self.models[key]
         raise KeyError(key)
 
 
 MODELZOO_CONFIG = ModelZooYaml.yaml_reader(MODEL_CONFIG_PATH)
-MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH)
-MODELZOO_CONFIG.check()
+if os.path.exists(MODEL_ARCHIVE_PATH):
+    os.remove(MODEL_ARCHIVE_PATH)
+
+os.makedirs(EASYGUARD_CONFIG_CACHE, exist_ok=True)
+hmget([MODEL_ARCHIVE_PATH_REMOTE], EASYGUARD_CONFIG_CACHE)
+MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH_BACKUP
+if (
+    os.path.exists(MODEL_ARCHIVE_PATH)
+    and os.path.getsize(MODEL_ARCHIVE_PATH) != 0
+):
+    MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH
+logger.info(f"the path of the loaded archive file: {MODEL_ARCHIVE_PATH_}")
+
+MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_)
+MODELZOO_CONFIG.initialize()

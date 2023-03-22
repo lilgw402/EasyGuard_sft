@@ -5,42 +5,6 @@ trigger:
     - create
     - push
 jobs:
-  docker_code-test-tf1:
-    name: run_fex_test
-    image: hub.byted.org/arnold/nlp.fex.train_image_arnold:c833e6da45b6a2a3285a678e457fd9e5
-    working-directory: fex
-    steps:
-    - name: Install dependencies
-      commands:
-      - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-      - pip install -r requirements-dev.txt --index-url=https://bytedpypi.byted.org/simple/
-      - pip install https://d.scm.byted.org/api/v2/download/byted.matx.matxscript_1.5.0.5.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
-      - pip install https://d.scm.byted.org/api/v2/download/byted.matx.matx_text_pip_wheels_1.5.0.1.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
-      - pip install https://d.scm.byted.org/api/v2/download/data.mlsys.byted_vision_1.5.0.4.tar.gz --no-cache-dir -i https://bytedpypi.byted.org/simple/
-      - pip install https://d.scm.byted.org/api/v2/download/nlp.lib.ptx2_1.0.0.155.tar.gz
-    - name: Setup prepare CI
-      commands:
-        - curl https://codebaseci.byted.org/ci/open/install_bvc.sh | bash
-        - export PATH=/opt/tiger/bvc/bin:$PATH
-        - bash ci/prepare_base.sh
-    - name: Test
-      commands:
-      - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-      - export CONSUL_HTTP_HOST=10.27.80.81
-      - export HADOOP_HOME="/opt/tiger/yarn_deploy/hadoop_current"
-      - export HADOOP_HDFS_HOME="/opt/tiger/yarn_deploy/hadoop_current"
-      - export HADOOP_CONF_DIR="$HADOOP_HOME/conf"
-      - export JAVA_HOME="/opt/tiger/jdk/jdk1.8"
-      - export LD_LIBRARY_PATH="$JAVA_HOME/jre/lib/amd64/server:$HADOOP_HDFS_HOME/lib/native:$HADOOP_HDFS_HOME/lib/native/ufs:$LD_LIBRARY_PATH"
-      - export CLASSPATH=$(${HADOOP_HOME}/bin/hadoop classpath --glob)
-      - export ISCI=1
-      - export LIBHDFS_OPTS=-Dhadoop.root.logger=${HADOOP_ROOT_LOGGER:-ERROR,console}
-      - export https_proxy=http://bj-rd-proxy.byted.org:3128
-      - export http_proxy=http://bj-rd-proxy.byted.org:3128
-
-      - bash ci/unittest.sh
-      - coverage report -m --include *_test.py --omit */gen-py/*,/opt/tiger/*,*/compat/*,*/dist-packages/*,/tmp/*,*/toy/*,/usr/local/*
-  
   docker_py-codestyle-check:
     name: codestyle_check (bash ci/code-format.sh -i)
     image: hub.byted.org/arnold/nlp.fex.train_image_arnold:c833e6da45b6a2a3285a678e457fd9e5

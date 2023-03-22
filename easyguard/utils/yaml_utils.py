@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from .re_exp import E_STR
+from .type_utils import typecheck
+from easydict import EasyDict
 
 """Operators for yaml"""
 
@@ -48,7 +50,7 @@ def load_yaml(path: str) -> Dict[str, Any]:
         data = yaml.full_load(yaml_file)
     yaml_check(data)
 
-    return data
+    return EasyDict(data)
 
 
 def load_json(path: str) -> Dict[str, Any]:
@@ -67,9 +69,10 @@ def load_json(path: str) -> Dict[str, Any]:
     with open(path, "r") as json_file:
         data = json.load(json_file)
 
-    return data
+    return EasyDict(data)
 
 
+@typecheck(str)
 def file_read(path: str) -> Dict[str, Any]:
     """支持json和yaml的读写
 
@@ -114,7 +117,7 @@ class YamlConfig(ABC):
 
     @abstractmethod
     def check(self):
-        raise NotImplementedError()
+        ...
 
     @classmethod
     def yaml_reader(

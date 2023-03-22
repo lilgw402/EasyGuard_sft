@@ -12,6 +12,7 @@ logger = logging.get_logger(__name__)
 @dataclass
 class DeBERTaConfig(ConfigBase):
     model_name: str
+    model_type: str
     vocab_size: int
     dim: int
     dim_ff: int

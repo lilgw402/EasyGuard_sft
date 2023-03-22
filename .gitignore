@@ -36,6 +36,7 @@ wheels/
 *.egg
 MANIFEST
 .idea
+.DS_Store
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -135,12 +136,13 @@ Makefile
 dict
 sample
 
+*.wandb
 wandb/*
+*wandb
 cruise_logs/*
+launch_logs/*
 
-.idea
-
-.DS_Store
+.idea/*
 
 # npm modules
 node_modules/
@@ -149,4 +151,20 @@ node_modules/
 # train weight
 *.ckpt
 events.out*
-xlm-roberta-base-torch/
+
+*.attach_pid*
+
+# model
+*.model
+*.th
+*.bin
+*.pt
+*.ckpt
+*.pth
+
+# cruise
+*cruise_logs/
+
+# output
+*.stderr
+*.stdout

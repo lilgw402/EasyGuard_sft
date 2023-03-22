@@ -30,7 +30,6 @@ from .configuration_auto import CONFIG_MAPPING_NAMES
 
 logger = logging.get_logger(__name__)
 
-
 MODEL_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("model")
 
 MODEL_FOR_CAUSAL_LM_MAPPING_NAMES = OrderedDict(
@@ -92,14 +91,14 @@ MODEL_FOR_CAUSAL_LM_MAPPING = _LazyAutoMapping(
 
 class AutoModel(_BaseAutoModelClass):
     _model_mapping = MODEL_MAPPING
-    _model_key = "model"
+    _model_key = None
 
 
-AutoModel = auto_class_update(AutoModel)
+# AutoModel = auto_class_update(AutoModel)
 
 
 class AutoModelForCausalLM(_BaseAutoModelClass):
     _model_mapping = MODEL_FOR_CAUSAL_LM_MAPPING
 
 
-AutoModelForCausalLM = auto_class_update(AutoModelForCausalLM)
+# AutoModelForCausalLM = auto_class_update(AutoModelForCausalLM)

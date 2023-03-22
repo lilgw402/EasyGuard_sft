@@ -28,11 +28,12 @@ from types import ModuleType
 from typing import Any
 
 from packaging import version
+
 from transformers.utils.versions import importlib_metadata
 
-from . import logging
+from .logging import get_logger
 
-logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+logger = get_logger(__name__)  # pylint: disable=invalid-name
 
 ENV_VARS_TRUE_VALUES = {"1", "ON", "YES", "TRUE"}
 ENV_VARS_TRUE_AND_AUTO_VALUES = ENV_VARS_TRUE_VALUES.union({"AUTO"})
@@ -92,14 +93,14 @@ else:
                 except importlib_metadata.PackageNotFoundError:
                     pass
             _tf_available = _tf_version is not None
-        if _tf_available:
-            if version.parse(_tf_version) < version.parse("2"):
-                logger.info(
-                    f"TensorFlow found but with version {_tf_version}. Transformers requires version 2 minimum."
-                )
-                _tf_available = False
-            else:
-                logger.info(f"TensorFlow version {_tf_version} available.")
+        # if _tf_available:
+        #     if version.parse(_tf_version) < version.parse("2"):
+        #         logger.info(
+        #             f"TensorFlow found but with version {_tf_version}. Transformers requires version 2 minimum."
+        #         )
+        #         _tf_available = False
+        #     else:
+        #         logger.info(f"TensorFlow version {_tf_version} available.")
     else:
         logger.info("Disabling Tensorflow because USE_TORCH is set")
         _tf_available = False
@@ -1239,6 +1240,7 @@ class OptionalDependencyNotAvailable(BaseException):
 EASYGUARD_PATH = "easyguard.modelzoo"
 
 EASYGUARD_PACKAGES = OrderedDict()
+# TODO (junwei.Dong): 实现一个基于easyguard注册机制的懒加载来彻底对接hf模型，让hf模型的__init__只需要基于typing即可完成懒加载
 
 
 class _LazyPackage(ModuleType):
@@ -1263,8 +1265,8 @@ class _LazyPackage(ModuleType):
             if isinstance(values, list):
                 for value in values:
                     self._class_to_module[value] = key
-            else:
-                self._class_to_module[values] = key
+            # else:
+            #     self._class_to_module[values] = key
         # Needed for autocompletion in an IDE
         self.__all__ = list(import_structure.keys()) + list(
             chain(
@@ -1312,7 +1314,8 @@ class _LazyPackage(ModuleType):
 
     def _get_module(self, module_name: str):
         try:
-            if not isinstance(self._import_structure[module_name], list):
+            # if not isinstance(self._import_structure[module_name], list):
+            if not importlib.util.find_spec("." + module_name, self.__name__):
                 return self._import_structure[module_name]
             else:
                 return importlib.import_module("." + module_name, self.__name__)
@@ -1331,8 +1334,7 @@ class _LazyPackage(ModuleType):
 
 def lazy_model_import(package: str, module: str):
     # TODO (junwei.Dong): 之后可以变更为类, 用类的方式来处理更加合理, 扩展性更强
-    """配合models.yaml实现模块的的懒加载
-
+    """implement lazy module import associated with models.yaml
     Parameters
     ----------
     package : str
@@ -1346,7 +1348,7 @@ def lazy_model_import(package: str, module: str):
 
     Returns
     -------
-    _type_
+    Any
         module class
 
     Raises

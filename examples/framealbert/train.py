@@ -11,12 +11,12 @@ import random
 
 import numpy as np
 import torch
-from cruise import CruiseCLI, CruiseTrainer
-
 from easyguard.appzoo.high_quality_live.data import HighQualityLiveDataModule
 from easyguard.appzoo.high_quality_live.model_videoclip import (
     HighQualityLiveVideoCLIP,
 )
+
+from cruise import CruiseCLI, CruiseTrainer
 
 rand_seed = 42
 
