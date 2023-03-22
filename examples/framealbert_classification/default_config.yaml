@@ -77,7 +77,7 @@ data:
   download_files:
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/GEC_cat.npy->/opt/tiger/easyguard
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/second_map.npy->/opt/tiger/easyguard
-#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
-    - hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/backbone/xlm-roberta-base-torch->./examples/framealbert_classification
+    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
+#    - hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/backbone/xlm-roberta-base-torch->./examples/framealbert_classification
 #    - hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg->/opt/tiger/easyguard
 log_level: INFO

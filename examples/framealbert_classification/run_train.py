@@ -15,8 +15,8 @@ import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
 
-from easyguard.appzoo.framealbert_classification.data import FacDataModule
-from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassify
+from examples.framealbert_classification.data import FacDataModule
+from examples.framealbert_classification.model import FrameAlbertClassify
 
 rand_seed = 42
 

@@ -3,7 +3,6 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import cv2
 import json
-import time
 import torch
 import base64
 import numpy as np
@@ -15,11 +14,11 @@ from transformers import AutoTokenizer
 # ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
-from cruise.utilities.hdfs_io import hopen, hlist_files
-from easyguard.appzoo.framealbert_classification.data import FacDataModule
-from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassify
+from cruise.utilities.hdfs_io import hopen
+from examples.framealbert_classification.data import FacDataModule
+from examples.framealbert_classification.model import FrameAlbertClassify
 
-from easyguard.appzoo.framealbert_classification.data import text_concat
+from examples.framealbert_classification.data import text_concat
 # from easyguard.appzoo.framealbert_classification.data import get_transform
 
 max_len = 128

@@ -16,11 +16,11 @@ from cruise.data_module import (
     create_cruise_loader,
     customized_processor,
 )
-# from ptx.matx.pipeline import Pipeline
+from ptx.matx.pipeline import Pipeline
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-from transformers import AutoTokenizer
+# from transformers import AutoTokenizer
 
 from cruise.utilities.hdfs_io import hopen
 from .dist_dataset import DistLineReadingDataset
@@ -91,8 +91,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.cid2label = np.load('./examples/framealbert_classification/tags.npy',
                                  allow_pickle=True).item()['cid2label']
 
-        # self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
-        self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
+        self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
+        # self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
         self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
         self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
@@ -208,26 +208,26 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if drop == 'drop_text' and frames:
                     text = ''
 
-                # token_ids = self.pipe.preprocess([text])[0]
-                # token_ids = token_ids.asnumpy()
-                # token_ids = torch.from_numpy(token_ids)
+                token_ids = self.pipe.preprocess([text])[0]
+                token_ids = token_ids.asnumpy()
+                token_ids = torch.from_numpy(token_ids)
 
-                tokens = self.tokenizer(
-                    [text],
-                    padding='max_length',
-                    max_length=self.text_len,
-                    truncation=True,
-                    return_tensors='pt'
-                )
-                token_ids = tokens['input_ids']
-                attention_mask = tokens['attention_mask']
+                # tokens = self.tokenizer(
+                #     [text],
+                #     padding='max_length',
+                #     max_length=self.text_len,
+                #     truncation=True,
+                #     return_tensors='pt'
+                # )
+                # token_ids = tokens['input_ids']
+                # attention_mask = tokens['attention_mask']
 
                 input_dict = {
                     'frames': frames,
                     'label': label,
                     'country_idx': country_idx,
                     'input_ids': token_ids,
-                    'attention_mask': attention_mask,
+                    # 'attention_mask': attention_mask,
                     # 'weight': weight,
                 }
 
@@ -253,10 +253,10 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             head[ibatch["country_idx"]] = 1
             head_mask.append(head)
             input_ids.append(ibatch['input_ids'])
-            # input_mask_id = ibatch['input_ids'].clone()
-            # input_mask_id[input_mask_id != 0] = 1
-            # input_mask.append(input_mask_id)
-            input_mask.append(ibatch['attention_mask'])
+            input_mask_id = ibatch['input_ids'].clone()
+            input_mask_id[input_mask_id != 0] = 1
+            input_mask.append(input_mask_id)
+            # input_mask.append(ibatch['attention_mask'])
             input_segment_ids.append([0] * self.text_len)
             # weights.append(ibatch['weight'])
 

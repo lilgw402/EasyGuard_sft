@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from cruise import CruiseCLI, CruiseTrainer
-from easyguard.appzoo.framealbert_classification.data import FacDataModule
-from easyguard.appzoo.framealbert_classification.model import FrameAlbertClassify
+from examples.framealbert_classification.data import FacDataModule
+from examples.framealbert_classification.model import FrameAlbertClassify
 
 if __name__ == "__main__":
     cli = CruiseCLI(FrameAlbertClassify,

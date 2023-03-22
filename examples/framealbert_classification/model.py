@@ -23,14 +23,13 @@ except ImportError:
 from cruise import CruiseModule
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
-# from cruise.utilities.hdfs_io import hexists, hopen
-# from sklearn.metrics import roc_auc_score
+from easyguard.core import AutoModel
 
 # from easyguard.appzoo.authentic_modeling.utils import (
 #     CosineAnnealingWarmupRestarts,
 #     accuracy,
 # )
-from easyguard.modelzoo.models.falbert import FrameALBert
+from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
 
 # from ...utils.losses import (
 #     LearnableNTXentLoss,
@@ -70,14 +69,11 @@ class FrameAlbertClassify(CruiseModule):
         """
         Initialize modules
         """
-        self.falbert = FrameALBert(self.config_backbone)
+        # self.falbert = FrameALBert(self.config_backbone)
+        self.backbone = AutoModel.from_pretrained('fashionproduct-xl-general-v1')
         """
         Initialize output layer
         """
-        # fuse_emb_size = 768
-        # self.classifier = torch.nn.Linear(
-        #     fuse_emb_size, self.config_fusion.class_num
-        # )
         feat_emb_size = self.config_fusion.feat_emb_size
         self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.class_num)
         self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
@@ -116,9 +112,6 @@ class FrameAlbertClassify(CruiseModule):
             for prefix in freeze_prefix:
                 if name.startswith(prefix):
                     param.requires_grad = False
-        # for name, param in self.named_parameters():
-        #     if 'token_embedder_tokens.weight' not in name:
-        #         param.requires_grad = False
 
     def criterion(self, logits, label, use_gather=False):
         if use_gather:
