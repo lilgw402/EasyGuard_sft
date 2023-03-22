@@ -17,6 +17,9 @@ from cruise.data_module import (
     customized_processor,
 )
 # from ptx.matx.pipeline import Pipeline
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
 from transformers import AutoTokenizer
 
 from cruise.utilities.hdfs_io import hopen
@@ -45,11 +48,11 @@ def text_preprocess(text):
     if text is None:
         return text
 
-    text = collapse_whitespace(rmRepeat(rmEmoji(text)))
-
     try:
-        return re.sub(r"\<.*?\>", "", text).replace("\n", "").replace("\t", "").replace("\"", "").replace("\\",
-                                                                                                          "").strip()
+        text = text.replace("\n", " ").replace("\t", " ").replace("\"", "").replace("\\", "").strip()
+        text = re.sub(r"\<.*?\>", " ", text)
+        text = collapse_whitespace(rmRepeat(rmEmoji(text)))
+        return text
     except Exception:
         return text
 
@@ -64,11 +67,6 @@ def text_concat(title, desc=None):
         return desc
 
     text = title + ". " + desc
-
-    # if len(desc) > 5:
-    #     text = title + ". " + desc
-    # else:
-    #     text = title
 
     return text
 
@@ -88,13 +86,10 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
         self.head_num = config.head_num
-        # if 'maplabel' in config.exp:
-        #     self.second_map = np.load('/opt/tiger/easyguard/second_map.npy', allow_pickle=True).item()
-        #     print(f'=============== apply label map to finetune on high risk map ===============')
-        # else:
-        #     self.second_map = None
+
         self.gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()
-        self.cid2label = np.load('./examples/framealbert_classification/tags.npy', allow_pickle=True).item()['cid2label']
+        self.cid2label = np.load('./examples/framealbert_classification/tags.npy',
+                                 allow_pickle=True).item()['cid2label']
 
         # self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
         self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
