@@ -25,18 +25,8 @@ from cruise import CruiseModule
 from cruise.utilities.distributed import DIST_ENV
 from easyguard import AutoModel
 
-# from easyguard.appzoo.authentic_modeling.utils import (
-#     CosineAnnealingWarmupRestarts,
-#     accuracy,
-# )
 from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
 
-# from ...utils.losses import (
-#     LearnableNTXentLoss,
-#     LearnablePCLLoss,
-#     SCELoss,
-#     cross_entropy,
-# )
 from .optimization import *
 from .optimization import AdamW
 
@@ -49,7 +39,6 @@ class FrameAlbertClassify(CruiseModule):
             config_optim,
             low_lr_prefix: list = [],
             use_multihead: bool = True,
-            all_gather: bool = False,
             load_pretrained: str = None,
             prefix_changes: list = [],
     ):
@@ -75,11 +64,12 @@ class FrameAlbertClassify(CruiseModule):
         Initialize output layer
         """
         feat_emb_size = self.config_fusion.feat_emb_size
-        self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.class_num)
-        self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
-                                           self.config_fusion.head_num * self.config_fusion.class_num)
-        # self.softmax = nn.Softmax(dim=1)
-        # self.criterion = torch.nn.CrossEntropyLoss()
+        if self.use_multihead:
+            self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
+                                               self.config_fusion.head_num * self.config_fusion.class_num)
+        else:
+            self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.class_num)
+
         self.ce = torch.nn.CrossEntropyLoss()
         """
         Initialize some fixed parameters.
@@ -93,7 +83,7 @@ class FrameAlbertClassify(CruiseModule):
                 map_location='cpu',
                 rename_params=rename_params
             )
-        self.freeze_params(self.config_backbone.freeze_prefix)
+        # self.freeze_params(self.config_backbone.freeze_prefix)
 
     def init_weights(self):
         def init_weight_module(module):
@@ -113,24 +103,26 @@ class FrameAlbertClassify(CruiseModule):
                 if name.startswith(prefix):
                     param.requires_grad = False
 
-    def criterion(self, logits, label, use_gather=False):
-        if use_gather:
-            # gather_logits = self.all_gather(logits.contiguous(), self.trainer.rank, self.trainer.world_size)
-            # gather_label = self.all_gather(label.contiguous(), self.trainer.rank, self.trainer.world_size)
-            # loss = self.ce(gather_logits, gather_label)
-            loss = self.ce(logits, label)
-            return loss
-        else:
-            loss = self.ce(logits, label)
-            return loss
+    def criterion(self, logits, label):
+        loss = self.ce(logits, label)
+        return loss
 
-    def maxpooling_with_mask(self, hidden_state, attention_mask):
-        mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_state.size()).half()
-        mask_expanded = 1e4 * (mask_expanded - 1)
-        hidden_masked = hidden_state + mask_expanded  # sum instead of multiple
-        max_pooling = torch.max(hidden_masked, dim=1)[0]
+    # def maxpooling_with_mask(self, hidden_state, attention_mask):
+    #     mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_state.size()).half()
+    #     mask_expanded = 1e4 * (mask_expanded - 1)
+    #     hidden_masked = hidden_state + mask_expanded  # sum instead of multiple
+    #     max_pooling = torch.max(hidden_masked, dim=1)[0]
+    #
+    #     return max_pooling
 
-        return max_pooling
+    # def meanpooling_with_mask(self, hidden_state, attention_mask):
+    #     masked_last_hidden = hidden_state * attention_mask.unsqueeze(-1)
+    #     sum_last_hidden = torch.sum(masked_last_hidden, dim=1)
+    #     sum_mask = torch.sum(attention_mask, dim=1).unsqueeze(-1)
+    #     sum_mask = torch.clamp(sum_mask, min=1e-7).half()
+    #     mean_pooling = sum_last_hidden / sum_mask
+    #
+    #     return mean_pooling
 
     def multi_heads_with_mask(self, hidden_state, head_mask):
         x = self.multi_heads(hidden_state).reshape(-1, self.config_fusion.head_num, self.config_fusion.class_num)
@@ -147,22 +139,16 @@ class FrameAlbertClassify(CruiseModule):
             input_mask,
             frames=None,
             frames_mask=None,
-            visual_embeds=None,
             head_mask=None,
     ):
-        mmout = self.encode_multimodal(
-            input_ids=input_ids,
-            input_segment_ids=input_segment_ids,
-            input_mask=input_mask,
-            images=frames,
-            images_mask=frames_mask,
-            visual_embeds=visual_embeds,
-        )
-        cls_emb = mmout['pooled_output']
-        last_hidden_state = mmout['encoded_layers'][-1]
-        attention_mask = torch.cat(
-            [input_mask, torch.ones([frames_mask.shape[0], 1], device=frames_mask.device), frames_mask], dim=1)
-        max_pooling = self.maxpooling_with_mask(hidden_state=last_hidden_state, attention_mask=attention_mask)
+        rep_dict = self.backbone(input_ids=input_ids,
+                                 input_segment_ids=input_segment_ids,
+                                 input_mask=input_mask,
+                                 frames=frames,
+                                 frames_mask=frames_mask,
+                                 output_hidden=False, )
+        cls_emb = rep_dict['pooler']
+        max_pooling = rep_dict['max_pooling']
 
         concat_feat = torch.cat([cls_emb, max_pooling], dim=1)
 
@@ -172,39 +158,6 @@ class FrameAlbertClassify(CruiseModule):
             logits = self.classifier_concat(concat_feat)
 
         return {"feat": concat_feat, "logits": logits}
-
-    def encode_multimodal(
-            self,
-            input_ids,
-            input_segment_ids,
-            input_mask,
-            images=None,
-            images_mask=None,
-            visual_embeds=None,
-            *args,
-            **kwargs,
-    ):
-        if images_mask is None:
-            if visual_embeds is None:
-                images_mask = torch.ones(
-                    images.shape[0:2], device=images.device, dtype=torch.long
-                )
-            else:
-                images_mask = torch.ones(
-                    visual_embeds.shape[0:2],
-                    device=visual_embeds.device,
-                    dtype=torch.long,
-                )
-        mmout = self.falbert(
-            input_ids=input_ids,
-            input_segment_ids=input_segment_ids,
-            input_mask=input_mask,
-            frames=images,
-            frames_mask=images_mask,
-            visual_embeds=visual_embeds,
-            mode="tv",
-        )
-        return mmout
 
     def training_step(self, batch, idx):
         token_ids, segment_ids, attn_mask, image, image_mask, head_mask = (
@@ -224,7 +177,7 @@ class FrameAlbertClassify(CruiseModule):
             head_mask=head_mask,
         )
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=self.hparams.all_gather)
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
         res = {
             "loss": loss,
             "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
@@ -253,7 +206,7 @@ class FrameAlbertClassify(CruiseModule):
             head_mask=head_mask,
         )
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"], use_gather=self.hparams.all_gather)
+        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
         res = {"val_loss": loss}
 
         acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
