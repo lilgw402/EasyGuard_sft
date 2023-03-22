@@ -23,7 +23,7 @@ except ImportError:
 from cruise import CruiseModule
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
-from easyguard.core import AutoModel
+from easyguard import AutoModel
 
 # from easyguard.appzoo.authentic_modeling.utils import (
 #     CosineAnnealingWarmupRestarts,

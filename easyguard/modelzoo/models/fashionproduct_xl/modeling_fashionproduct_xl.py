@@ -3,20 +3,12 @@
 Fashionproduct_XL, feat extractor
 """
 import torch
-
-try:
-    import cruise
-except ImportError:
-    print(
-        "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
-    )
-
-from cruise import CruiseModule
+from ...modeling_utils import ModelBase
 
 from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
 
 
-class FashionProductXL(CruiseModule):
+class FashionProductXL(ModelBase):
     def __init__(
             self,
             config_backbone,
