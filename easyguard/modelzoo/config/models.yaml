@@ -152,4 +152,9 @@ models:
     backend: default
     modeling_fashionproduct:
       model: FashionProduct
+  fashionproduct_xl:
+    name: FashionProductXL
+    backend: default
+    modeling_fashionproduct:
+      model: FashionProductXL
   
