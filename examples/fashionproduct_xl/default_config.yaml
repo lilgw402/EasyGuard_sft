@@ -83,7 +83,7 @@ model:
   freeze_prefix: [ ]
   head_num: 5
   use_multihead: false
-  load_pretrained: null
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
   prefix_changes: [ ]
   download_files:
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
