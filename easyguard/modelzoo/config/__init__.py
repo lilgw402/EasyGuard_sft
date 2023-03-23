@@ -215,5 +215,5 @@ MODELZOO_CONFIG = ModelZooYaml.yaml_reader(MODEL_CONFIG_PATH)
 # logger.info(f"the path of the loaded archive file: {MODEL_ARCHIVE_PATH_}")
 
 # MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_)
-MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH)
+MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_BACKUP)
 MODELZOO_CONFIG.initialize()
