@@ -37,12 +37,19 @@ trainer:
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
 model:
-#  config_backbone: examples/framealbert_classification/config/config_backbone.yaml
   config_fusion: examples/framealbert_classification/config/config_fusion.yaml
   config_optim: examples/framealbert_classification/config/config_optim.yaml
   # config_backbone: config/config_backbone.yaml
   # config_fusion: config/config_fusion.yaml
   # config_optim: config/config_optim.yaml
+  class_num: 2100
+  feat_emb_size: 768
+  head_num: 5
+  optim: AdamW
+  learning_rate: 1.0e-4
+  weight_decay: 1.e-4
+  lr_schedule: linear
+  warmup_steps_factor: 4
   low_lr_prefix: # [ ]
     - falbert.visual.
   use_multihead: false

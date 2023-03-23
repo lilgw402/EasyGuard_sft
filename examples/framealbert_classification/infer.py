@@ -20,7 +20,6 @@ from cruise import CruiseCLI, CruiseTrainer
 from cruise.utilities.hdfs_io import hopen
 from examples.framealbert_classification.data import FacDataModule
 from examples.framealbert_classification.model import FrameAlbertClassify
-
 from examples.framealbert_classification.data import text_concat
 
 max_len = 128
@@ -166,6 +165,7 @@ if __name__ == "__main__":
     # model.cuda()
 
     countries = ['GB', 'TH', 'ID', 'VN', 'MY']
+    allres = dict()
     for country in countries:
         file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl'
         # file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country/{country}_1013.test.jsonl'
@@ -214,5 +214,8 @@ if __name__ == "__main__":
             if num_all % 2000 == 0:
                 print(f'{country} top1 acc is {num_top1 / num_all}, with samples: {num_all}')
         print(f'{country} top1 acc is {num_top1 / num_all}, top5 acc is {num_top5 / num_all}')
+        allres[country] = {'top1': num_top1 / num_all, 'top5': num_top5 / num_all}
 
+    for k, v in allres.items():
+        print(k, v)
 # python3 examples/framealbert_classification/infer.py --config examples/framealbert_classification/default_config.yaml

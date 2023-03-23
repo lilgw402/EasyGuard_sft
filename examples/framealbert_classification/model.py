@@ -34,9 +34,14 @@ from .optimization import AdamW
 class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
-            # config_backbone,
-            config_fusion,
-            config_optim,
+            class_num: int = 2100,
+            feat_emb_size: int = 768,
+            head_num: int = 5,
+            optim: str = 'AdamW',
+            learning_rate: float = 1.0e-4,
+            weight_decay: float = 1.e-4,
+            lr_schedule: str = 'linear',
+            warmup_steps_factor: int = 4,
             low_lr_prefix: list = [],
             use_multihead: bool = True,
             load_pretrained: str = None,
@@ -47,15 +52,6 @@ class FrameAlbertClassify(CruiseModule):
 
     def setup(self, stage) -> None:
         """
-        Load yaml file as config class
-        """
-        # with open(self.hparams.config_backbone) as fp:
-        #     self.config_backbone = SimpleNamespace(**yaml.load(fp, yaml.Loader))
-        with open(self.hparams.config_fusion) as fp:
-            self.config_fusion = SimpleNamespace(**yaml.load(fp, yaml.Loader))
-        with open(self.hparams.config_optim) as fp:
-            self.config_optim = SimpleNamespace(**yaml.load(fp, yaml.Loader))
-        """
         Initialize modules
         """
         # self.falbert = FrameALBert(self.config_backbone)
@@ -63,12 +59,12 @@ class FrameAlbertClassify(CruiseModule):
         """
         Initialize output layer
         """
-        feat_emb_size = self.config_fusion.feat_emb_size
+        feat_emb_size = self.hparams.feat_emb_size
         if self.hparams.use_multihead:
             self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
-                                               self.config_fusion.head_num * self.config_fusion.class_num)
+                                               self.hparams.head_num * self.hparams.class_num)
         else:
-            self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.config_fusion.class_num)
+            self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.hparams.class_num)
 
         self.ce = torch.nn.CrossEntropyLoss()
         """
@@ -125,7 +121,7 @@ class FrameAlbertClassify(CruiseModule):
     #     return mean_pooling
 
     def multi_heads_with_mask(self, hidden_state, head_mask):
-        x = self.multi_heads(hidden_state).reshape(-1, self.config_fusion.head_num, self.config_fusion.class_num)
+        x = self.multi_heads(hidden_state).reshape(-1, self.hparams.head_num, self.hparams.class_num)
         head_mask = head_mask.unsqueeze(-1).expand(x.size()).half()
         head_mask = 1e4 * (head_mask - 1)
         x = head_mask + x
@@ -281,12 +277,12 @@ class FrameAlbertClassify(CruiseModule):
         no_dacay_params_dict = {"params": [], "weight_decay": 0.0}
         low_lr_params_dict = {
             "params": [],
-            "weight_decay": self.config_optim.weight_decay,
-            "lr": self.config_optim.learning_rate * 0.1,
+            "weight_decay": self.hparams.weight_decay,
+            "lr": self.hparams.learning_rate * 0.1,
         }
         normal_params_dict = {
             "params": [],
-            "weight_decay": self.config_optim.weight_decay,
+            "weight_decay": self.hparams.weight_decay,
         }
 
         low_lr_keys = []
@@ -317,42 +313,42 @@ class FrameAlbertClassify(CruiseModule):
             normal_params_dict,
         ]
 
-        if self.config_optim.optim == "SGD":
+        if self.hparams.optim == "SGD":
             optm = torch.optim.SGD(
                 optimizer_grouped_parameters,
-                self.config_optim.learning_rate,
-                momentum=self.config_optim.momentum,
-                weight_decay=self.config_optim.weight_decay,
+                self.hparams.learning_rate,
+                momentum=self.hparams.momentum,
+                weight_decay=self.hparams.weight_decay,
             )
-        elif self.config_optim.optim == "AdamW":
+        elif self.hparams.optim == "AdamW":
             optm = AdamW(
                 optimizer_grouped_parameters,
-                lr=self.config_optim.learning_rate,
+                lr=self.hparams.learning_rate,
                 betas=(0.9, 0.999),
                 eps=1e-6,
-                weight_decay=self.config_optim.weight_decay,
+                weight_decay=self.hparams.weight_decay,
                 correct_bias=False,
             )
 
-        if self.config_optim.lr_schedule == "linear":
-            print(f'warmup: {self.config_optim.warmup_steps_factor * self.trainer.steps_per_epoch}')
+        if self.hparams.lr_schedule == "linear":
+            print(f'warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}')
             print(f'total step: {self.trainer.total_steps}')
             lr_scheduler = get_linear_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.config_optim.warmup_steps_factor
+                num_warmup_steps=self.hparams.warmup_steps_factor
                                  * self.trainer.steps_per_epoch,
                 num_training_steps=self.trainer.total_steps,
             )
-        elif self.config_optim.lr_schedule == "cosine":
+        elif self.hparams.lr_schedule == "cosine":
             lr_scheduler = get_cosine_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.config_optim.warmup_steps_factor * self.trainer.steps_per_epoch,
+                num_warmup_steps=self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch,
                 num_training_steps=self.trainer.total_steps,
             )
-        elif self.config_optim.lr_schedule == "onecycle":
+        elif self.hparams.lr_schedule == "onecycle":
             lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
                 optimizer=optm,
-                max_lr=self.config_optim.learning_rate,
+                max_lr=self.hparams.learning_rate,
                 total_steps=self.trainer.total_steps,
             )
 
