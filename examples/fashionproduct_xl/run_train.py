@@ -2,13 +2,13 @@
 print(f'==================================0')
 import os
 import sys
-
+print(f'==================================00')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+print(f'==================================000')
+# try:
+#     import easyguard
+# except ImportError:
+#     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import random
 print(f'==================================01')
