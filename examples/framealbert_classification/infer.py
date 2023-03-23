@@ -218,4 +218,5 @@ if __name__ == "__main__":
 
     for k, v in allres.items():
         print(k, v)
+
 # python3 examples/framealbert_classification/infer.py --config examples/framealbert_classification/default_config.yaml

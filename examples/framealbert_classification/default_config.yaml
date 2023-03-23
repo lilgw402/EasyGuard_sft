@@ -1,11 +1,11 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0311_cruise_tts
+  default_hdfs_dir: null
   logger: true
-  log_every_n_steps: 500
+  log_every_n_steps: 100
   benchmark: false
   enable_speedmonitor: true
-  enable_versions: true
+  enable_versions: false
   detect_anomaly: false
   deterministic: false
   accelerator: gpu
@@ -36,53 +36,65 @@ trainer:
   experiment_name: null
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
+  strategy: ddp
+  enable_qat: false
+  qat_kwargs: { }
+  optimizer_kwargs:
+    optimizer:
+      type: torch.optim.AdamW
+      params:
+        lr: 0.0001
+        betas:
+          - 0.9
+          - 0.999
+        eps: 1.0e-06
+        weight_decay: 0.01
+        correct_bias: true
+        correct_bias_eps: false
+        bias_correction: true
+        adam_w_mode: true
+        amsgrad: false
+        set_grad_none: true
+        momentum: 0.0
+        nesterov: false
+    scheduler:
+      type: torch.optim.lr_scheduler.LinearLR
+      total_steps_param_name: total_iters
+      warmup_steps_param_name: num_warmup_steps
+      params:
+        warmup_step_rate: 0.005
+        start_factor: 0.3333333333333333
+        end_factor: 1.0
+        num_cycles: 0.5
+        lr_end: 1.0e-07
+        power: 1.0
+  grad_norm_layers: [ ]
 model:
-  config_fusion: examples/framealbert_classification/config/config_fusion.yaml
-  config_optim: examples/framealbert_classification/config/config_optim.yaml
-  # config_backbone: config/config_backbone.yaml
-  # config_fusion: config/config_fusion.yaml
-  # config_optim: config/config_optim.yaml
   class_num: 2100
-  feat_emb_size: 768
-  head_num: 5
+  hidden_dim: 768
   optim: AdamW
-  learning_rate: 1.0e-4
-  weight_decay: 1.e-4
+  learning_rate: 0.0001
+  weight_decay: 0.0001
   lr_schedule: linear
   warmup_steps_factor: 4
-  low_lr_prefix: # [ ]
-    - falbert.visual.
+  low_lr_prefix: [ ]
+  freeze_prefix: [ ]
+  head_num: 5
   use_multihead: false
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0311_cruise_tts/version_2373481/checkpoints/epoch=4-step=36000-val_top1_acc=75.171.ckpt
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0304_cruise_tmall/version_2351017/checkpoints/epoch=1-step=16000-loss=2.067.ckpt
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0108_allcat_trans_visionlowlr/modified_multihead_38000.th
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0208_raw_prop_from4626_mh_tuneonrawandIDtrans_5e-6/modified_model_state_epoch_6640.th
-  prefix_changes:
-    - backbone.vision.->falbert.visual.
-    - backbone.->falbert.
-#    - classifier_concat->classifier_concat_banned
-#    - multi_heads->multi_heads_banned
+  load_pretrained: null
+  prefix_changes: [ ]
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_desc_jsonl/train_jsonl
-  # hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/train_translate_tmall_all_transform
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country,hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_labeled/labeled_hr_samples
-  train_size: 17320000
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl
+  train_size: 1500000
   val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country_slices
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_desc_jsonl/val_jsonl
-  # hdfs://harunava/home/byte_magellan_va/user/xuqi/data/multi_classfication_fex/tmall/val_translate_tmall_all_transform
-  # hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_hr_1013_country_slices
-  val_size: 250000
+  val_size: 16000
   train_batch_size: 64
-  val_batch_size: 64
+  val_batch_size: 32
   num_workers: 8
   text_len: 128
   frame_len: 1
   head_num: 5
-  exp: cruise_tts_drop
+  exp: 0322_cruise_exp
   download_files:
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
-#    - hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/backbone/xlm-roberta-base-torch->./examples/framealbert_classification
-#    - hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg->/opt/tiger/easyguard
 log_level: INFO

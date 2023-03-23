@@ -25,7 +25,7 @@ from cruise import CruiseModule
 from cruise.utilities.distributed import DIST_ENV
 from easyguard import AutoModel
 
-from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
+# from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
 
 from .optimization import *
 from .optimization import AdamW
@@ -35,14 +35,15 @@ class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
             class_num: int = 2100,
-            feat_emb_size: int = 768,
-            head_num: int = 5,
+            hidden_dim: int = 768,
             optim: str = 'AdamW',
             learning_rate: float = 1.0e-4,
             weight_decay: float = 1.e-4,
             lr_schedule: str = 'linear',
             warmup_steps_factor: int = 4,
             low_lr_prefix: list = [],
+            freeze_prefix: list = [],
+            head_num: int = 5,
             use_multihead: bool = True,
             load_pretrained: str = None,
             prefix_changes: list = [],
@@ -59,12 +60,12 @@ class FrameAlbertClassify(CruiseModule):
         """
         Initialize output layer
         """
-        feat_emb_size = self.hparams.feat_emb_size
+        hidden_dim = self.hparams.hidden_dim
         if self.hparams.use_multihead:
-            self.multi_heads = torch.nn.Linear(feat_emb_size * 2,
+            self.multi_heads = torch.nn.Linear(hidden_dim * 2,
                                                self.hparams.head_num * self.hparams.class_num)
         else:
-            self.classifier_concat = torch.nn.Linear(feat_emb_size * 2, self.hparams.class_num)
+            self.classifier_concat = torch.nn.Linear(hidden_dim * 2, self.hparams.class_num)
 
         self.ce = torch.nn.CrossEntropyLoss()
         """
@@ -79,7 +80,7 @@ class FrameAlbertClassify(CruiseModule):
                 map_location='cpu',
                 rename_params=rename_params
             )
-        # self.freeze_params(self.config_backbone.freeze_prefix)
+        self.freeze_params(self.hparams.freeze_prefix)
 
     # def init_weights(self):
     #     def init_weight_module(module):
