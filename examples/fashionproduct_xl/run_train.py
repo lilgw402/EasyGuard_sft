@@ -11,14 +11,15 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import random
-
+print(f'==================================01')
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
-
+print(f'==================================02')
 from examples.fashionproduct_xl.data import FacDataModule
+print(f'==================================03')
 from examples.fashionproduct_xl.model import FrameAlbertClassify
-
+print(f'==================================04')
 rand_seed = 42
 
 print(f'==================================1')
