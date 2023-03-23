@@ -20,7 +20,7 @@ from examples.fashionproduct_xl.model import FrameAlbertClassify
 
 rand_seed = 42
 
-
+print(f'==================================1')
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -34,7 +34,7 @@ def setup_seed(seed):
 
 # random seed
 setup_seed(rand_seed)
-
+print(f'==================================2')
 cli = CruiseCLI(
     FrameAlbertClassify,
     trainer_class=CruiseTrainer,
@@ -43,7 +43,7 @@ cli = CruiseCLI(
         "summarize_model_depth": 2,
     },
 )
-
+print(f'==================================3')
 cfg, trainer, model, datamodule = cli.parse_args()
-
+print(f'==================================4')
 trainer.fit(model, datamodule)
