@@ -101,7 +101,7 @@ data:
   frame_len: 1
   head_num: 5
   exp: 0322_cruise_exp
-  download_files:
-    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
-    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
+  download_files: [ ]
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
 log_level: INFO
