@@ -21,6 +21,7 @@ from easyguard.core.optimizers import AdamW
 class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
+            backbone='fashionproduct-xl-general-v1',
             class_num: int = 2100,
             hidden_dim: int = 768,
             optim: str = 'AdamW',
@@ -43,7 +44,7 @@ class FrameAlbertClassify(CruiseModule):
         Initialize modules
         """
         # self.falbert = FrameALBert(self.config_backbone)
-        self.backbone = AutoModel.from_pretrained('fashionproduct-xl-general-v1')
+        self.backbone = AutoModel.from_pretrained(self.hparams.backbone)
         """
         Initialize output layer
         """

@@ -70,6 +70,7 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
+  backbone: /opt/tiger/easyguard/fashionproduct_xl_general_v1
   class_num: 2100
   hidden_dim: 768
   optim: AdamW
@@ -97,6 +98,7 @@ data:
   head_num: 5
   exp: 0322_cruise_exp
   download_files:
+    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
 log_level: INFO
