@@ -85,6 +85,8 @@ model:
   use_multihead: false
   load_pretrained: null
   prefix_changes: [ ]
+  download_files:
+    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl
   train_size: 100000
@@ -98,7 +100,6 @@ data:
   head_num: 5
   exp: 0322_cruise_exp
   download_files:
-    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
     - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
 log_level: INFO

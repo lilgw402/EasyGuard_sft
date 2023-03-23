@@ -35,6 +35,7 @@ class FrameAlbertClassify(CruiseModule):
             use_multihead: bool = True,
             load_pretrained: str = None,
             prefix_changes: list = [],
+            download_files: list = [],
     ):
         super(FrameAlbertClassify, self).__init__()
         self.save_hparams()
@@ -69,6 +70,20 @@ class FrameAlbertClassify(CruiseModule):
                 rename_params=rename_params
             )
         self.freeze_params(self.hparams.freeze_prefix)
+
+    def local_rank_zero_prepare(self) -> None:
+        import os
+        if self.hparams.download_files:
+            to_download = [df.split('->') for df in self.hparams.download_files]
+            for src, tar in to_download:
+                if not os.path.exists(tar):
+                    os.makedirs(tar)
+                fdname = src.split('/')[-1]
+                if os.path.exists(f'{tar}/{fdname}'):
+                    print(f'{tar}/{fdname} already existed, pass!')
+                else:
+                    print(f'downloading {src} to {tar}')
+                    os.system(f"hdfs dfs -get {src} {tar}")
 
     # def init_weights(self):
     #     def init_weight_module(module):
@@ -294,7 +309,7 @@ class FrameAlbertClassify(CruiseModule):
                 normal_params_dict["params"].append(p)
 
         if low_lr_keys:
-            print(f'low_lr_keys: {low_lr_keys}')
+            print(f'low_lr_keys are: {low_lr_keys}')
 
         optimizer_grouped_parameters = [
             no_dacay_params_dict,
