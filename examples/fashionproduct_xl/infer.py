@@ -18,9 +18,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
 from cruise.utilities.hdfs_io import hopen
-from examples.framealbert_classification.data import FacDataModule
-from examples.framealbert_classification.model import FrameAlbertClassify
-from examples.framealbert_classification.data import text_concat
+from examples.fashionproduct_xl.data import FacDataModule
+from examples.fashionproduct_xl.model import FrameAlbertClassify
+from examples.fashionproduct_xl.data import text_concat
 
 max_len = 128
 gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()

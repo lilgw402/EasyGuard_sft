@@ -5,7 +5,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
 import random
 import re
-import cv2
+# import cv2
 import base64
 import emoji
 import numpy as np
@@ -17,8 +17,8 @@ from cruise.data_module import (
     customized_processor,
 )
 from ptx.matx.pipeline import Pipeline
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
+# import albumentations as A
+# from albumentations.pytorch import ToTensorV2
 
 # from transformers import AutoTokenizer
 
@@ -87,21 +87,21 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.frame_len = config.frame_len
         self.head_num = config.head_num
 
-        self.gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()
-        self.cid2label = np.load('./examples/framealbert_classification/tags.npy',
+        self.gec = np.load('./examples/fashionproduct_xl/GEC_cat.npy', allow_pickle=True).item()
+        self.cid2label = np.load('./examples/fashionproduct_xl/tags.npy',
                                  allow_pickle=True).item()['cid2label']
 
         self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
         # self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
-        self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
-        self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
+        # self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
+        # self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
-        # with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
-        #     self.black_frame = self.preprocess(self._load_image(f.read()))
+        with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
+            self.black_frame = self.preprocess(self._load_image(f.read()))
 
-        black_frame = cv2.imread('./examples/framealbert_classification/black_image.jpeg')
-        self.black_frame = self.cv2transform(black_frame, return_tensor=True)
+        # black_frame = cv2.imread('./examples/fashionproduct_xl/black_image.jpeg')
+        # self.black_frame = self.cv2transform(black_frame, return_tensor=True)
 
         self.country2idx = {
             'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4,
@@ -120,11 +120,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 data_item = json.loads(example)
 
                 # drop
-                if self.is_training:
-                    dropout_choice = ['drop_text', 'drop_img', 'nodrop']
-                    drop = np.random.choice(dropout_choice, p=[0.05, 0.1, 0.85])
-                else:
-                    drop = 'nodrop'
+                # if self.is_training:
+                #     dropout_choice = ['drop_text', 'drop_img', 'nodrop']
+                #     drop = np.random.choice(dropout_choice, p=[0.05, 0.1, 0.85])
+                # else:
+                #     drop = 'nodrop'
 
                 # label
                 cid = data_item['leaf_cid']
@@ -138,21 +138,12 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if 'image' in data_item:
                     # get image by b64
                     try:
-                        # image_tensor = self.image_preprocess(data_item['image'])
-                        image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
+                        image_tensor = self.image_preprocess(data_item['image'])
+                        # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
                         continue
-                # if 'img_base64' in data_item:
-                #     # get image by b64
-                #     try:
-                #         image_tensor = self.image_preprocess(data_item['img_base64'])
-                #         # image_tensor = self.cv2transform(self.load_image(data_item['img_base64']), return_tensor=True)
-                #         frames.append(image_tensor)
-                #     except:
-                #         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
-                #         continue
                 elif 'images' in data_item:
                     # get image by url
                     image_tensor = None
@@ -163,7 +154,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                             # image_str = download_image_to_base64(get_real_url(url), timeout=2)
                             if image_str != b'' and image_str != '':
                                 try:
-                                    image_tensor = self.cv2transform(self.load_image(image_str), return_tensor=True)
+                                    image_tensor = self.image_preprocess(data_item['image'])
+                                    # image_tensor = self.cv2transform(self.load_image(image_str), return_tensor=True)
                                     break
                                 except:
                                     continue
@@ -181,8 +173,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 else:
                     raise Exception(f'cannot find image or images')
 
-                if drop == 'drop_img':
-                    frames = []
+                # if drop == 'drop_img':
+                #     frames = []
 
                 # 文本
                 # title = data_item['title']
@@ -205,8 +197,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     country_idx = self.country2idx[country]
                 text = text_concat(title, desc)
 
-                if drop == 'drop_text' and frames:
-                    text = ''
+                # if drop == 'drop_text' and frames:
+                #     text = ''
 
                 token_ids = self.pipe.preprocess([text])[0]
                 token_ids = token_ids.asnumpy()
@@ -280,7 +272,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             frames_mask.append(frames_mask_cur)
 
         frames_mask = torch.tensor(frames_mask)  # [bsz, frame_num]
-        frames = torch.cat(frames, dim=0)  # [bsz * frame_num, c, h, w]
+        frames = torch.stack(frames, dim=0)  # [bsz * frame_num, c, h, w]
         _, c, h, w = frames.shape
         bsz, frame_num = frames_mask.shape
         frames = frames.reshape([bsz, frame_num, c, h, w])
@@ -302,32 +294,32 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                }
         return res
 
-    def load_image(self, image_str):
-        imgString = base64.b64decode(image_str)
-        image_data = np.fromstring(imgString, np.uint8)
-        image_byte = np.frombuffer(image_data, np.int8)
-        img_cv2 = cv2.imdecode(image_byte, cv2.IMREAD_COLOR)
-
-        return img_cv2
-
-    def cv2transform(self, img_cv2, output_half=False, return_tensor=True):
-        img_cv2resize = cv2.resize(img_cv2, (256, 256), interpolation=cv2.INTER_AREA)
-        img_crop = img_cv2resize[16:240, 16:240]
-        img_cv22np = np.asarray(img_crop)[np.newaxis, :, :, ::-1]
-        img_cv22np = (img_cv22np / 255.0 - self.default_mean) / self.default_std
-        img_cv22np_transpose = img_cv22np.transpose(0, 3, 1, 2)
-        if return_tensor:
-            if output_half:
-                img = torch.tensor(img_cv22np_transpose, dtype=torch.half)
-            else:
-                img = torch.tensor(img_cv22np_transpose, dtype=torch.float)
-            return img
-        else:
-            if output_half:
-                img = img_cv22np_transpose.astype(np.float16)
-            else:
-                img = img_cv22np_transpose.astype(np.float32)
-            return img
+    # def load_image(self, image_str):
+    #     imgString = base64.b64decode(image_str)
+    #     image_data = np.fromstring(imgString, np.uint8)
+    #     image_byte = np.frombuffer(image_data, np.int8)
+    #     img_cv2 = cv2.imdecode(image_byte, cv2.IMREAD_COLOR)
+    #
+    #     return img_cv2
+    #
+    # def cv2transform(self, img_cv2, output_half=False, return_tensor=True):
+    #     img_cv2resize = cv2.resize(img_cv2, (256, 256), interpolation=cv2.INTER_AREA)
+    #     img_crop = img_cv2resize[16:240, 16:240]
+    #     img_cv22np = np.asarray(img_crop)[np.newaxis, :, :, ::-1]
+    #     img_cv22np = (img_cv22np / 255.0 - self.default_mean) / self.default_std
+    #     img_cv22np_transpose = img_cv22np.transpose(0, 3, 1, 2)
+    #     if return_tensor:
+    #         if output_half:
+    #             img = torch.tensor(img_cv22np_transpose, dtype=torch.half)
+    #         else:
+    #             img = torch.tensor(img_cv22np_transpose, dtype=torch.float)
+    #         return img
+    #     else:
+    #         if output_half:
+    #             img = img_cv22np_transpose.astype(np.float16)
+    #         else:
+    #             img = img_cv22np_transpose.astype(np.float32)
+    #         return img
 
     def image_preprocess(self, image_str):
         image = self._load_image(self.b64_decode(image_str))
