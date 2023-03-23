@@ -70,7 +70,7 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
-  backbone: /opt/tiger/easyguard/fashionproduct_xl_general_v1
+  backbone: examples/fashionproduct_xl/local_general_v1/config.yaml   # fashionproduct-xl-general-v1
   class_num: 2100
   hidden_dim: 768
   optim: AdamW
@@ -84,9 +84,11 @@ model:
   head_num: 5
   use_multihead: false
   load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
-  prefix_changes: [ ]
-  download_files:
-    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
+  prefix_changes:
+    - backbone.vision.->backbone.falbert.visual.
+    - backbone.->backbone.falbert.
+  download_files: [ ]
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl
   train_size: 100000
