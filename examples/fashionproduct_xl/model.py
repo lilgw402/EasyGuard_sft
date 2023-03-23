@@ -2,16 +2,6 @@
 """
 FrameAlbert Classification
 """
-import math
-import os.path
-from collections import OrderedDict
-from types import SimpleNamespace
-
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import yaml
 
 try:
     import cruise
@@ -27,8 +17,8 @@ from easyguard import AutoModel
 
 # from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
 
-from .optimization import *
-from .optimization import AdamW
+from easyguard.core.optimizers import *
+from easyguard.core.optimizers import AdamW
 
 
 class FrameAlbertClassify(CruiseModule):
