@@ -91,7 +91,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.cid2label = np.load('./examples/fashionproduct_xl/tags.npy',
                                  allow_pickle=True).item()['cid2label']
 
-        self.pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
+        self.pipe = Pipeline.from_option(f'file:./examples/fashoinproduct_xl/m_albert_h512a8l12')
         # self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
         # self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
