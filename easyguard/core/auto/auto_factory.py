@@ -16,7 +16,7 @@
 import importlib
 import os
 from collections import OrderedDict
-from typing import Optional, Union, Any, Dict
+from typing import Any, Dict, Optional, Union
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
