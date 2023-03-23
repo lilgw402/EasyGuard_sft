@@ -2,26 +2,21 @@
 """
 FrameAlbert Classification
 """
-print(f'==================================10')
 try:
     import cruise
 except ImportError:
     print(
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
-print(f'==================================11')
+
 from cruise import CruiseModule
-print(f'==================================12')
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
-print(f'==================================13')
 from easyguard import AutoModel
-print(f'==================================14')
 # from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
-
 from easyguard.core.optimizers import *
 from easyguard.core.optimizers import AdamW
-print(f'==================================15')
+
 
 class FrameAlbertClassify(CruiseModule):
     def __init__(
