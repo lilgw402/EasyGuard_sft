@@ -173,4 +173,11 @@ class EcomLiveGandalfParquetAutoDisCruiseDataModule(GandalfParquetCruiseDataModu
 											 arg_dict=self.data_factory,
 											 mode='val')
 
+	def test_dataloader(self):
+		return self.create_cruise_dataloader(self.total_cfg,
+											 data_input_dir=self.dataset.test_input_dir,
+											 data_folder=self.dataset.test_folder,
+											 arg_dict=self.data_factory,
+											 mode='test')
+
 	

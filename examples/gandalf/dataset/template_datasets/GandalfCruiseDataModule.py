@@ -41,18 +41,5 @@ class GandalfParquetCruiseDataModule(TemplateCruiseDataModule):
 		self.data_factory = Dict(self.hparams.data_factory)
 		self.total_cfg = Dict({'dataset':self.dataset,'feature_provider':self.feature_provider,'data_factory':self.data_factory})
 
-	def train_dataloader(self):
-		return self.create_cruise_dataloader(self.total_cfg,
-											 data_input_dir=self.dataset.input_dir,
-											 data_folder=self.dataset.train_folder,
-											 arg_dict=self.data_factory,
-											 mode='train')
-
-	def val_dataloader(self):
-		return self.create_cruise_dataloader(self.total_cfg,
-											 data_input_dir=self.dataset.val_input_dir,
-											 data_folder=self.dataset.val_folder,
-											 arg_dict=self.data_factory,
-											 mode='val')
 
 	
