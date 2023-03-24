@@ -17,7 +17,7 @@ class TestFashionSwin(unittest.TestCase):
         archive = "fashion-swin-base-224-fashionvtp"
         image_processor = AutoImageProcessor.from_pretrained(archive)
         inputs = image_processor(dummy_input)
-        model = AutoModel.from_pretrained(archive)
+        model = AutoModel.from_pretrained(archive, if_cache=True)
         model.eval()
         ouputs = model(inputs)
         print(ouputs)
