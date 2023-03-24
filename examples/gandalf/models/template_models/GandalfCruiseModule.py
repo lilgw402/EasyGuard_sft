@@ -1,4 +1,5 @@
 import numpy as np
+import torch.nn as nn
 from collections import defaultdict
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.rank_zero import rank_zero_warn, rank_zero_info
@@ -8,6 +9,7 @@ from utils.util import merge_into_target_dict
 class GandalfCruiseModule(TemplateCruiseModule):
     def __init__(self,kwargs):
         super(GandalfCruiseModule,self).__init__(kwargs)
+        self._sigmoid = nn.Sigmoid()
     
     def forward(self, batch, batch_idx):
         pass
@@ -133,6 +135,30 @@ class GandalfCruiseModule(TemplateCruiseModule):
     def pre_process_targets(self, batched_feature_data):
         batched_feature_data_items = [batched_feature_data["label"]]
         return self._pre_process(batched_feature_data_items)
+
+    def _reset_params(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def _freeze_params(self, freeze_prefix):
+        for name, param in self.named_parameters():
+            for prefix in freeze_prefix:
+                if name.startswith(prefix):
+                    param.requires_grad = False
+
+    def _freeze_text_encoder(self, layer=None):
+        if layer is None:  # Not freeze asr encoder
+            pass
+        elif layer == 0:  # Freeze asr encoder embedding layer
+            self._freeze_params(['_asr_encoder.embeddings'])
+        elif layer > 6:
+            self._freeze_params(['_asr_encoder'])  # Freeze all asr encoder params
+        else:  # Freeze asr encoder embeding layer and part mha layers
+            self._freeze_params(
+                ['_asr_encoder.embeddings'] + ['_asr_encoder.encoder.layer.{}'.format(i) for i in range(layer)])
+
+
 
 if __name__ == '__main__':
     module = GandalfCruiseModule()

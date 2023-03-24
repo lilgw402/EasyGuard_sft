@@ -1,43 +1,40 @@
-# -*- coding:utf-8 -*-
-# Email:    jiangxubin@bytedance.com
-# Created:  2023-03-02 14:23:40
-# Modified: 2023-03-02 14:23:40
 # coding=utf-8
-# Author: jiangxubin
-# Create: 2022/8/2 18:15
+# Author: jiangxubin@bytedance.com
+# Create: 2022/08/08 18:41
 import torch
 import torch.nn as nn
 from typing import Optional
-from easyguard.core import AutoModel,AutoTokenizer
+from easyguard.core import AutoModel
 from models.template_models.GandalfCruiseModule import GandalfCruiseModule
 from models.modules.encoders import AutoDisBucketEncoder
 from models.modules.losses import BCEWithLogitsLoss
 from models.modules.running_metrics import GeneralClsMetric
 from utils.util import count_params
+from models.modules.encoders.Transformer import  TransformerEncoderv2
 from utils.registry import MODELS
 
+
 @MODELS.register_module()
-class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
-    def __init__(
-        self,
-        features,
+class EcomLiveGandalfAutoDisTransformerAsrCruiseModel(GandalfCruiseModule):
+    def __init__(self, features,
         asr_encoder,
         embedding,
         kwargs,
-        type=None
-    ):
-        super(EcomLiveGandalfAutoDisNNAsrCruiseModel, self).__init__(kwargs)
+        type=None):
+        super(EcomLiveGandalfAutoDisTransformerAsrCruiseModel, self).__init__()
         self.save_hparams()
 
     def setup(self, stage: Optional[str] = None) -> None:
-        # print(self.hparams)
-        self._feature_num = self.hparams.features.get('feature_num',150)
+        # Dense feature config
+        self._feature_num = self.hparams.features.get('feature_num', 150)
         self._feature_input_num = self._feature_num - len(self.hparams.features.get('slot_mask', []))
-        self._bucket_num = self.hparams.features.get('bucket_num',8)
-        self._bucket_dim = self.hparams.features.get('bucket_dim',128)
-        self._bucket_output_size = self.hparams.features.get('bucket_output_size',1024)
+        self._bucket_num = self.hparams.features.get('bucket_num', 8)
+        self._bucket_dim = self.hparams.features.get('bucket_dim', 128)
+        self._bucket_output_size = self.hparams.features.get('bucket_output_size', 1024)
+        # Transformer config
+        self._fusion_transformer_num_heads = self.hparams.kwargs.get('num_heads',6)
+        self._fusion_transformer_num_layers = self.hparams.kwargs.get('num_layers',3)
         # Advanced model config
-        self._enable_asr_embedding = self.hparams.kwargs.get("enable_asr_embedding", 0)
         self._drop_prob = self.hparams.kwargs.get('dropout', 0.3)
         self._bucket_all_emb_dim = self._feature_input_num * self._bucket_dim
         # Init loss weight
@@ -58,26 +55,27 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         input_ids=None,
         attention_mask=None,
         token_type_ids=None,
-        targets=None,
+        targets=None
     ):
-        # get auto_dis embedding
+        #Get AutoDis embedding
         auto_dis_embedding = self._auto_dis_bucket_encoder(auto_dis_input)
-        # get concat features
-        asr_output = self._asr_encoder(input_ids, attention_mask, token_type_ids,output_pooled=True)
-        # print(type(asr_output),asr_output.keys())
-        asr_embedding = asr_output['pooled_output']
-        # print(type(asr_embedding),asr_embedding.shape)
-        # Add dropout for embedding
-        asr_embedding = self._asr_emb_dropout(asr_embedding)
-        # Concat all input features which have been transformed into embeddings
-        concat_features = self._bucket_embedding_bottom(torch.cat([
-            auto_dis_embedding,
-            feature_dense,
-            asr_embedding
-            ], 1)
-        )
-        # Get output of model
-        output = self._classifier_final(concat_features)
+        auto_dis_embedding_seq = auto_dis_embedding.reshape(-1, self._feature_num, self._bucket_dim)
+        #Get feature dense emd
+        feature_dense_emb = self._feature_dense_proj(feature_dense).unsqueeze(1)
+        # transformer结构
+        asr_embedding = self._asr_encoder(input_ids, attention_mask, token_type_ids,output_pooled=True)
+        proj_asr_embedding = self._asr_embedding_proj(asr_embedding).unsqueeze(1)
+        embeddings = torch.cat([
+            auto_dis_embedding_seq,
+            feature_dense_emb,
+            proj_asr_embedding,
+        ], dim=1)
+        # features
+        embeddings = embeddings.transpose(0, 1)  # embeddings.permute(1, 0, 2)
+        output_seq = self._transformer_encoder(embeddings)  # output_seq, layer_output_seq
+        # output
+        output = self._classifier_final(output_seq[0])
+
         if targets is not None:
             if not self._loss_weight:
                 loss = self._criterion_final(output, targets)
@@ -96,7 +94,6 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
             # 添加评价指标
             eval_dict = self._metric.batch_eval(output_prob, targets)
             output_dict.update(eval_dict)
-            output_dict.update(loss_dict)
             return loss_dict, output_dict
         else:
             return self._post_process_output(output)
@@ -110,7 +107,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
             batched_feature_data['token_type_ids']
         ]
         return self._pre_process(batched_feature_data_items)
-        
+
     def init_encoders(self):
         #Init bucket encoder
         self._auto_dis_bucket_encoder = AutoDisBucketEncoder(
@@ -123,6 +120,11 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         # Init model components:asr
         self._asr_encoder_param = self.hparams.asr_encoder
         self._asr_encoder = AutoModel.from_pretrained(self._asr_encoder_param.get('encoder_name','fashion-deberta-asr-small'),n_layers=self._asr_encoder_param.get('num_hidden_layers',3))
+        self._transformer_encoder = TransformerEncoderv2(
+            embed_dim=self._bucket_dim,
+            num_heads=self._fusion_transformer_num_heads,
+            layers=self._fusion_transformer_num_layers
+        )
         self._asr_emb_dropout = self._init_emb_dropout()
         self._init_cls_layer()
         self._init_criterion()
@@ -159,4 +161,10 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
     def _init_criterion(self):
         self._criterion_final = BCEWithLogitsLoss()
 
+    @property
+    def classifier_final(self):
+        return self._classifier_final
 
+    def _init_project_layers(self):
+        self._feature_dense_proj = nn.Linear(self._feature_num, self._bucket_dim)
+        self._asr_embedding_proj = nn.Linear(self._asr_embedding_dim, self._bucket_dim)
