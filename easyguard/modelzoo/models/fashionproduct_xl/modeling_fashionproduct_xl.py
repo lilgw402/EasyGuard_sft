@@ -5,7 +5,7 @@ Fashionproduct_XL, feat extractor
 import torch
 from ...modeling_utils import ModelBase
 
-from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
+from .falbert import FrameALBert
 
 
 class FashionProductXL(ModelBase):
