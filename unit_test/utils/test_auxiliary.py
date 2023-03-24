@@ -2,10 +2,29 @@ import unittest
 
 # test module
 
-TEST_FLAGS = ["all"]
+TEST_FLAGS = ["hdfs_open"]
 
 
 class TestAuxiliary(unittest.TestCase):
+    @unittest.skipUnless(
+        "all" in TEST_FLAGS or "hdfs_open" in TEST_FLAGS, "just do it"
+    )
+    def test_hdfs_open(self) -> str:
+        import io
+        import json
+
+        import torch
+        import yaml
+        from easyguard.utils.hdfs_utils import hdfs_open
+
+        path = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/xlmr_base/pytorch_model.bin"
+        path = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/xlmr_base/config.json"
+        # path = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_asr/config.yaml"
+        with hdfs_open(path, "rb") as hdfs_f:
+            content = io.BytesIO(hdfs_f.read())
+            state_dict = torch.load(content, map_location="cpu")
+            return state_dict
+
     @unittest.skipUnless(
         "all" in TEST_FLAGS or "sha256" in TEST_FLAGS, "just do it"
     )
