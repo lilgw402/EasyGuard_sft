@@ -43,6 +43,7 @@ class AutoProcessor:
         cls,
         pretrained_model_name_or_path: str,
         region: Optional[str] = "CN",
+        if_cache: Optional[bool] = False,
         *inputs,
         **kwargs,
     ):
@@ -117,6 +118,7 @@ class AutoProcessor:
                     PROCESSOR_CONFIG_NAMES,
                     remote_url,
                     model_type,
+                    if_cache=if_cache,
                     **kwargs,
                 )
             if not vocab_path:
@@ -125,6 +127,7 @@ class AutoProcessor:
                     VOCAB_NAME,
                     remote_url,
                     model_type,
+                    if_cache=if_cache,
                     **kwargs,
                 )
 

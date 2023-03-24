@@ -43,6 +43,7 @@ class AutoImageProcessor:
         cls,
         pretrained_model_name_or_path: str,
         region: Optional[str] = "CN",
+        if_cache: Optional[bool] = False,
         *inputs,
         **kwargs,
     ):
@@ -116,6 +117,7 @@ class AutoImageProcessor:
                     IMAGE_PROCESSOR_CONFIG_NAMES,
                     model_url,
                     model_type,
+                    if_cache=if_cache,
                     **kwargs,
                 )
 

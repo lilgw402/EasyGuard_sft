@@ -81,6 +81,7 @@ class AutoTokenizer:
         cls,
         pretrained_model_name_or_path: str,
         region: Optional[str] = "CN",
+        if_cache: Optional[bool] = False,
         *inputs,
         **kwargs,
     ):
@@ -191,7 +192,10 @@ class AutoTokenizer:
             try:
                 vocab_file_path = (
                     cache_file(
-                        pretrained_model_name_or_path, VOCAB_NAME, **extra_dict
+                        pretrained_model_name_or_path,
+                        VOCAB_NAME,
+                        if_cache=if_cache,
+                        **extra_dict,
                     )
                     if not is_local
                     else file_exist(pretrained_model_name_or_path, VOCAB_NAME)
@@ -207,6 +211,7 @@ class AutoTokenizer:
                 cache_file(
                     pretrained_model_name_or_path,
                     TOKENIZER_CONFIG_NAMES,
+                    if_cache=if_cache,
                     **extra_dict,
                 )
                 if not is_local

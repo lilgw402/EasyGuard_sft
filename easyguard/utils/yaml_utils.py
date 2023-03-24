@@ -5,10 +5,14 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import yaml
+from easydict import EasyDict
 
+from .hdfs_utils import hdfs_open
+from .logging import get_logger
 from .re_exp import E_STR
 from .type_utils import typecheck
-from easydict import EasyDict
+
+logger = get_logger(__name__)
 
 """Operators for yaml"""
 
@@ -45,9 +49,15 @@ def load_yaml(path: str) -> Dict[str, Any]:
     Dict[str, Any]
         dict data
     """
+    if not path.startswith("hdfs://"):
+        with open(path, "r") as yaml_file:
+            data = yaml.full_load(yaml_file)
+    else:
+        with hdfs_open(path, "rb") as hdfs_reader:
+            logger.info(f"start to read `{path}` file from hdfs")
+            data = yaml.full_load(hdfs_reader)
+            logger.info(f"read `{path}` successfully")
 
-    with open(path, "r") as yaml_file:
-        data = yaml.full_load(yaml_file)
     yaml_check(data)
 
     return EasyDict(data)
@@ -66,8 +76,14 @@ def load_json(path: str) -> Dict[str, Any]:
     Dict[str, Any]
         dict data
     """
-    with open(path, "r") as json_file:
-        data = json.load(json_file)
+    if not path.startswith("hdfs://"):
+        with open(path, "r") as json_file:
+            data = json.load(json_file)
+    else:
+        with hdfs_open(path, "rb") as hdfs_reader:
+            logger.info(f"start to read `{path}` file from hdfs")
+            data = json.load(hdfs_reader)
+            logger.info(f"read `{path}` successfully")
 
     return EasyDict(data)
 
