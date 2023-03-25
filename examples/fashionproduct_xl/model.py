@@ -2,21 +2,17 @@
 """
 FrameAlbert Classification
 """
-
 try:
     import cruise
 except ImportError:
     print(
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
-
 from cruise import CruiseModule
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
 from easyguard import AutoModel
-
 # from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
-
 from easyguard.core.optimizers import *
 from easyguard.core.optimizers import AdamW
 
@@ -24,6 +20,7 @@ from easyguard.core.optimizers import AdamW
 class FrameAlbertClassify(CruiseModule):
     def __init__(
             self,
+            backbone='fashionproduct-xl-general-v1',
             class_num: int = 2100,
             hidden_dim: int = 768,
             optim: str = 'AdamW',
@@ -37,6 +34,7 @@ class FrameAlbertClassify(CruiseModule):
             use_multihead: bool = True,
             load_pretrained: str = None,
             prefix_changes: list = [],
+            download_files: list = [],
     ):
         super(FrameAlbertClassify, self).__init__()
         self.save_hparams()
@@ -46,7 +44,7 @@ class FrameAlbertClassify(CruiseModule):
         Initialize modules
         """
         # self.falbert = FrameALBert(self.config_backbone)
-        self.backbone = AutoModel.from_pretrained('fashionproduct-xl-general-v1')
+        self.backbone = AutoModel.from_pretrained(self.hparams.backbone)
         """
         Initialize output layer
         """
@@ -71,6 +69,20 @@ class FrameAlbertClassify(CruiseModule):
                 rename_params=rename_params
             )
         self.freeze_params(self.hparams.freeze_prefix)
+
+    def local_rank_zero_prepare(self) -> None:
+        import os
+        if self.hparams.download_files:
+            to_download = [df.split('->') for df in self.hparams.download_files]
+            for src, tar in to_download:
+                if not os.path.exists(tar):
+                    os.makedirs(tar)
+                fdname = src.split('/')[-1]
+                if os.path.exists(f'{tar}/{fdname}'):
+                    print(f'{tar}/{fdname} already existed, pass!')
+                else:
+                    print(f'downloading {src} to {tar}')
+                    os.system(f"hdfs dfs -get {src} {tar}")
 
     # def init_weights(self):
     #     def init_weight_module(module):
@@ -296,7 +308,7 @@ class FrameAlbertClassify(CruiseModule):
                 normal_params_dict["params"].append(p)
 
         if low_lr_keys:
-            print(f'low_lr_keys: {low_lr_keys}')
+            print(f'low_lr_keys are: {low_lr_keys}')
 
         optimizer_grouped_parameters = [
             no_dacay_params_dict,
