@@ -8,15 +8,17 @@ except ImportError:
     print(
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
-
+print(f'00000000010')
 from cruise import CruiseModule
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
+print(f'00000000011')
 from easyguard import AutoModel
+print(f'00000000012')
 # from easyguard.modelzoo.models.falbert import FalBertModel as FrameALBert
 from easyguard.core.optimizers import *
 from easyguard.core.optimizers import AdamW
-
+print(f'00000000013')
 
 class FrameAlbertClassify(CruiseModule):
     def __init__(
@@ -45,7 +47,9 @@ class FrameAlbertClassify(CruiseModule):
         Initialize modules
         """
         # self.falbert = FrameALBert(self.config_backbone)
+        print(f'00000000014')
         self.backbone = AutoModel.from_pretrained(self.hparams.backbone)
+        print(f'00000000015')
         """
         Initialize output layer
         """
