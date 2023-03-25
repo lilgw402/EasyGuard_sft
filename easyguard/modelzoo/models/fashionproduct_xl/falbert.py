@@ -93,15 +93,15 @@ class FrameALBert(nn.Module):
             return self.visual_only_forward(*args, **kwargs)
 
     def text_visual_forward(
-        self,
-        input_ids,
-        input_segment_ids,
-        input_mask,
-        frames=None,
-        frames_mask=None,
-        visual_embeds=None,
-        *args,
-        **kwargs,
+            self,
+            input_ids,
+            input_segment_ids,
+            input_mask,
+            frames=None,
+            frames_mask=None,
+            visual_embeds=None,
+            *args,
+            **kwargs,
     ):
         """
         先两个模态一起拼接过 encoder
@@ -154,7 +154,7 @@ class FrameALBert(nn.Module):
         }
 
     def text_only_forward(
-        self, input_ids, input_segment_ids, input_mask, *args, **kwargs
+            self, input_ids, input_segment_ids, input_mask, *args, **kwargs
     ):
         """文本 only 的 forward"""
         embeddings, input_mask = self.embedding(
@@ -181,7 +181,7 @@ class FrameALBert(nn.Module):
         }
 
     def visual_only_forward(
-        self, frames, frames_mask, visual_embeds=None, *args, **kwargs
+            self, frames, frames_mask, visual_embeds=None, *args, **kwargs
     ):
         """
         frames: [bsz, frame_num, c, h, w]
@@ -275,7 +275,7 @@ class VEmbedding(nn.Module):
         else:
             self.proj_embedding_hidden = None
 
-        self.share_pos = config.get('share_pos', True)
+        self.share_tv_pos = config.get('share_tv_pos', False)
 
         self.img_embedder_tokens = torch.nn.Embedding(1, dim)
         self.v_segment_embeddings = torch.nn.Embedding(1, dim)
@@ -288,14 +288,14 @@ class VEmbedding(nn.Module):
         self.is_visual_front = config.visual_front
 
     def forward(
-        self,
-        input_ids=None,
-        token_type_ids=None,
-        position_ids=None,
-        input_mask=None,
-        visual_embeds=None,
-        visual_mask=None,
-        mode="tv",
+            self,
+            input_ids=None,
+            token_type_ids=None,
+            position_ids=None,
+            input_mask=None,
+            visual_embeds=None,
+            visual_mask=None,
+            mode="tv",
     ):
         """
         embedding 构造。
@@ -359,7 +359,7 @@ class VEmbedding(nn.Module):
         return embeddings
 
     def visual_forward(
-        self, visual_embeds, visual_mask, position_ids=None, *args, **kwargs
+            self, visual_embeds, visual_mask, position_ids=None, *args, **kwargs
     ):
         # 1. token
         if self.need_visual_ln:
@@ -371,7 +371,7 @@ class VEmbedding(nn.Module):
         length = visual_length + 1
         # 3. mask 多加一个 [IMG] 的位置
         img_token_mask = (
-            torch.sum(visual_mask, dim=1, keepdim=True) > 0
+                torch.sum(visual_mask, dim=1, keepdim=True) > 0
         ).long()
         input_mask = torch.cat(
             [
@@ -389,10 +389,10 @@ class VEmbedding(nn.Module):
                 0, length, dtype=torch.long, device=visual_embeds.device
             ).expand(bsz, length)
 
-        if self.share_pos:
+        if self.share_tv_pos:
             position_embeddings = self.token_embedder_positions(position_ids)
         else:
-            position_embeddings = self.v_token_embedder_positions(position_ids)     # fix
+            position_embeddings = self.v_token_embedder_positions(position_ids)  # fix
 
         # 6. segment embedding
         segment_embeddings = self.v_segment_embeddings(
@@ -429,12 +429,12 @@ if __name__ == "__main__":
     print(backbone.keys())
     for key, value in backbone.items():
         if key.startswith("falbert"):
-            trimmed_key = key[len("falbert.") :]
+            trimmed_key = key[len("falbert."):]
         else:
             trimmed_key = key
         if (
-            trimmed_key in state_dict_ori
-            and state_dict_ori[trimmed_key].shape == backbone[key].shape
+                trimmed_key in state_dict_ori
+                and state_dict_ori[trimmed_key].shape == backbone[key].shape
         ):
             state_dict_new[trimmed_key] = value
     missing_keys, unexpected_keys = model.load_state_dict(

@@ -235,7 +235,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         head_mask = []
         input_ids = []
         input_mask = []
-        input_segment_ids = []
+        # input_segment_ids = []
         # weights = []
 
         for ib, ibatch in enumerate(data):
@@ -249,7 +249,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             input_mask_id[input_mask_id != 0] = 1
             input_mask.append(input_mask_id)
             # input_mask.append(ibatch['attention_mask'])
-            input_segment_ids.append([0] * self.text_len)
+            # input_segment_ids.append([0] * self.text_len)
             # weights.append(ibatch['weight'])
 
             img_np = ibatch['frames']
@@ -283,11 +283,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_mask = torch.cat(input_mask, dim=0)
         # input_ids = torch.tensor(input_ids)
         # input_mask = torch.tensor(input_mask)
-        input_segment_ids = torch.tensor(input_segment_ids, dtype=torch.long)
-        # weights = torch.tensor(weights)
+        # input_segment_ids = torch.tensor(input_segment_ids, dtype=torch.long)
+        input_segment_ids = torch.zeros_like(input_ids, dtype=torch.long)
 
         res = {"frames": frames, "frames_mask": frames_mask,
-               "label": labels, "head_mask": head_mask,  # "country_idx": country_idx,
+               "label": labels, "head_mask": head_mask,
                "input_ids": input_ids, "input_mask": input_mask,
                "input_segment_ids": input_segment_ids,
                # "weights": weights
