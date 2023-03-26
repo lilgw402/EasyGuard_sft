@@ -87,9 +87,9 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.frame_len = config.frame_len
         self.head_num = config.head_num
 
-        self.gec = np.load('./examples/fashionproduct_xl/GEC_cat.npy', allow_pickle=True).item()
-        self.cid2label = np.load('./examples/fashionproduct_xl/tags.npy',
-                                 allow_pickle=True).item()['cid2label']
+        # self.gec = np.load('./examples/fashionproduct_xl/GEC_cat.npy', allow_pickle=True).item()
+        # self.cid2label = np.load('./examples/fashionproduct_xl/tags.npy',
+        #                          allow_pickle=True).item()['cid2label']
 
         self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
         # self.tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
@@ -119,86 +119,28 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             try:
                 data_item = json.loads(example)
 
-                # drop
-                # if self.is_training:
-                #     dropout_choice = ['drop_text', 'drop_img', 'nodrop']
-                #     drop = np.random.choice(dropout_choice, p=[0.05, 0.1, 0.85])
-                # else:
-                #     drop = 'nodrop'
-
                 # label
-                cid = data_item['leaf_cid']
-                # label = self.cid2label[cid]
-                label = self.gec[cid]['label']
-                # label = int(data_item['label'])
+                label = int(data_item['label'])
 
                 # 图像
                 frames = []
 
-                if 'image' in data_item:
+                if 'images' in data_item:
                     # get image by b64
                     try:
-                        image_tensor = self.image_preprocess(data_item['image'])
+                        image_tensor = self.image_preprocess(data_item['image'][0])
                         # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
                         print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
                         continue
-                elif 'images' in data_item:
-                    # get image by url
-                    image_tensor = None
-                    try:
-                        for url in data_item['images']:
-                            # image_str = download_url_with_exception(get_original_url(url), timeout=3)
-                            image_str = download_image_to_base64(get_original_url(url), timeout=2)
-                            # image_str = download_image_to_base64(get_real_url(url), timeout=2)
-                            if image_str != b'' and image_str != '':
-                                try:
-                                    image_tensor = self.image_preprocess(data_item['image'])
-                                    # image_tensor = self.cv2transform(self.load_image(image_str), return_tensor=True)
-                                    break
-                                except:
-                                    continue
-                            else:
-                                pass
-                    except:
-                        pass
-
-                    if image_tensor is not None:
-                        # image_tensor = self.preprocess(image)
-                        frames.append(image_tensor)
-                    else:
-                        print(
-                            f"No images in data {data_item.get('pid', 'None pid')} -- zero of {len(data_item['images'])}")
                 else:
                     raise Exception(f'cannot find image or images')
 
-                # if drop == 'drop_img':
-                #     frames = []
-
                 # 文本
-                # title = data_item['title']
-                # desc = data_item['desc']
-                # country_idx = 0
-                if 'translation' in data_item:
-                    country = random.choice(['GB', 'TH', 'ID', 'VN', 'MY'])
-                    country_idx = self.country2idx[country]
-                    title = data_item['translation'][country]
-                    desc = None
-                elif 'text' in data_item:
-                    title = data_item['text']
-                    desc = None
-                    country = data_item['country']
-                    country_idx = self.country2idx[country]
-                else:
-                    title = data_item['title']
-                    desc = data_item['desc']
-                    country = data_item['country']
-                    country_idx = self.country2idx[country]
+                title = data_item['title']
+                desc = data_item['desc']
                 text = text_concat(title, desc)
-
-                # if drop == 'drop_text' and frames:
-                #     text = ''
 
                 token_ids = self.pipe.preprocess([text])[0]
                 token_ids = token_ids.asnumpy()
@@ -217,10 +159,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 input_dict = {
                     'frames': frames,
                     'label': label,
-                    'country_idx': country_idx,
                     'input_ids': token_ids,
-                    # 'attention_mask': attention_mask,
-                    # 'weight': weight,
                 }
 
                 yield input_dict
@@ -232,25 +171,17 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         frames = []
         frames_mask = []
         labels = []
-        head_mask = []
         input_ids = []
         input_mask = []
-        # input_segment_ids = []
-        # weights = []
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
-            # country_idx.append(ibatch["country_idx"])
-            head = torch.zeros(self.head_num, dtype=torch.long)
-            head[ibatch["country_idx"]] = 1
-            head_mask.append(head)
             input_ids.append(ibatch['input_ids'])
             input_mask_id = ibatch['input_ids'].clone()
             input_mask_id[input_mask_id != 0] = 1
             input_mask.append(input_mask_id)
             # input_mask.append(ibatch['attention_mask'])
             # input_segment_ids.append([0] * self.text_len)
-            # weights.append(ibatch['weight'])
 
             img_np = ibatch['frames']
             frames_mask_cur = []
@@ -277,8 +208,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         bsz, frame_num = frames_mask.shape
         frames = frames.reshape([bsz, frame_num, c, h, w])
         labels = torch.tensor(labels)
-        # country_idx = torch.tensor(country_idx)
-        head_mask = torch.stack(head_mask, dim=0)
         input_ids = torch.cat(input_ids, dim=0)
         input_mask = torch.cat(input_mask, dim=0)
         # input_ids = torch.tensor(input_ids)
@@ -287,7 +216,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_segment_ids = torch.zeros_like(input_ids, dtype=torch.long)
 
         res = {"frames": frames, "frames_mask": frames_mask,
-               "label": labels, "head_mask": head_mask,
+               "label": labels,
                "input_ids": input_ids, "input_mask": input_mask,
                "input_segment_ids": input_segment_ids,
                # "weights": weights
