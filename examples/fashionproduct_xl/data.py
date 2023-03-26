@@ -128,7 +128,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if 'images' in data_item:
                     # get image by b64
                     try:
-                        image_tensor = self.image_preprocess(data_item['image'][0])
+                        image_tensor = self.image_preprocess(data_item['images'][0])
                         # image_tensor = self.cv2transform(self.load_image(data_item['image']), return_tensor=True)
                         frames.append(image_tensor)
                     except:
