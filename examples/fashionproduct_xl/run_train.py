@@ -2,8 +2,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
+print(f'00000000000')
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 try:
     import easyguard
 except ImportError:
@@ -14,7 +14,6 @@ import random
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
-
 from examples.fashionproduct_xl.data import FacDataModule
 from examples.fashionproduct_xl.model import FrameAlbertClassify
 
@@ -34,7 +33,6 @@ def setup_seed(seed):
 
 # random seed
 setup_seed(rand_seed)
-
 cli = CruiseCLI(
     FrameAlbertClassify,
     trainer_class=CruiseTrainer,
@@ -43,7 +41,6 @@ cli = CruiseCLI(
         "summarize_model_depth": 2,
     },
 )
-
 cfg, trainer, model, datamodule = cli.parse_args()
 
 trainer.fit(model, datamodule)

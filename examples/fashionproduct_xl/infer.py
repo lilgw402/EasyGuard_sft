@@ -23,9 +23,9 @@ from examples.fashionproduct_xl.model import FrameAlbertClassify
 from examples.fashionproduct_xl.data import text_concat
 
 max_len = 128
-gec = np.load('./examples/framealbert_classification/GEC_cat.npy', allow_pickle=True).item()
-pipe = Pipeline.from_option(f'file:/opt/tiger/easyguard/m_albert_h512a8l12')
-# tokenizer = AutoTokenizer.from_pretrained('./examples/framealbert_classification/xlm-roberta-base-torch')
+gec = np.load('./examples/fashionproduct_xl/GEC_cat.npy', allow_pickle=True).item()
+pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
+# tokenizer = AutoTokenizer.from_pretrained('./examples/fashionproduct_xl/xlm-roberta-base-torch')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
 # default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
 # default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
@@ -122,7 +122,7 @@ def process(data_item: dict):
     token_mask = token_ids.clone()
     token_mask[token_ids != 0] = 1
 
-    input_segment_ids = torch.zeros([1, max_len], dtype=torch.long)
+    input_segment_ids = torch.zeros_like(token_ids, dtype=torch.long)
 
     head_mask = torch.zeros([1, 5], dtype=torch.long)
     head_mask[0, country_idx] = 1
@@ -219,4 +219,4 @@ if __name__ == "__main__":
     for k, v in allres.items():
         print(k, v)
 
-# python3 examples/framealbert_classification/infer.py --config examples/framealbert_classification/default_config.yaml
+# python3 examples/fashionproduct_xl/infer.py --config examples/fashionproduct_xl/default_config.yaml
