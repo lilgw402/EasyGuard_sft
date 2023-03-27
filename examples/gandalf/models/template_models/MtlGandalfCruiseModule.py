@@ -6,15 +6,17 @@ from cruise.utilities.rank_zero import rank_zero_warn, rank_zero_info
 from .TemplateCruiseModule import TemplateCruiseModule
 from utils.util import merge_into_target_dict
 from utils.registry import get_metric_instance
+from training.metrics import ClsMetric
 
-class GandalfCruiseModule(TemplateCruiseModule):
+class MtlGandalfCruiseModule(TemplateCruiseModule):
     def __init__(self,kwargs):
-        super(GandalfCruiseModule,self).__init__(kwargs)
+        super(MtlGandalfCruiseModule,self).__init__(kwargs)
         self._sigmoid = nn.Sigmoid()
         self._gather_val_loss = True
-        self._metric_params = {'output':{'score_key':'output','label_key':'label'}}
+        self._metric_params = {'censor':{'score_key':'censor_prob','label_key':'censor_label','type':'ClsMetric'},
+                               'reject':{'score_key':'reject_prob','label_key':'reject_label','type':'ClsMetric'}}
         self._output_name = 'output'
-        self._eval_output_names =  ["loss"]
+        self._eval_output_names =  ["loss", "censor_loss", "reject_loss"]
         self._extra_metrics = []
         self._parse_eval_output_advanced_metrics()  # check if metrics like AUC/MPR will need to be calculated
     
@@ -87,6 +89,7 @@ class GandalfCruiseModule(TemplateCruiseModule):
 
             for extra_metric in self._extra_metrics:
                 assert all(m_key in extra_metric for m_key in ('op', 'name', 'type', 'score_key', 'label_key'))
+                metric_name = extra_metric['name']
                 op = extra_metric['op']
                 score_key = extra_metric['score_key']
                 label_key = extra_metric['label_key']
@@ -111,7 +114,7 @@ class GandalfCruiseModule(TemplateCruiseModule):
                     rank_zero_info(f"Result of {extra_metric['name']}: \n{result}")
                     op_type = extra_metric['type']
                     for k, v in result.items():
-                        new_name = f'{op_type}.{k}'
+                        new_name = f'{metric_name}.{op_type}.{k}'
                         extra_reduced_outputs[new_name] = v
         else:
             # no need to all gather and calculate extra metrics
@@ -169,15 +172,15 @@ class GandalfCruiseModule(TemplateCruiseModule):
         self._extra_metrics = []
         self._all_gather_output_names = set()
         for metric_name in self._metric_params:
-            metric_op = get_metric_instance(metric_name,self._metric_params[metric_name])
+            metric_op = get_metric_instance(self._metric_params[metric_name]['type'],self._metric_params[metric_name])
             assert hasattr(metric_op, 'cal_metric')
             score_key = self._metric_params[metric_name].get('score_key','output')
             label_key = self._metric_params[metric_name].get('label_key','label')
-            self._extra_metrics.append({'type': metric_name, 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
+            self._extra_metrics.append({'type': self._metric_params[metric_name]['type'], 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
             self._all_gather_output_names.add(score_key)
             self._all_gather_output_names.add(label_key)
             break
 
 
 if __name__ == '__main__':
-    module = GandalfCruiseModule()
+    module = MtlGandalfCruiseModule()

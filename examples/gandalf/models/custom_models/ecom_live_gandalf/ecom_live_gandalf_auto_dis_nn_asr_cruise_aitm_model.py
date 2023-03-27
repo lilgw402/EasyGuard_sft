@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from typing import Optional
 from easyguard.core import AutoModel
-from models.template_models.GandalfCruiseModule import GandalfCruiseModule
+from models.template_models.MtlGandalfCruiseModule import MtlGandalfCruiseModule
 from models.modules.encoders import AutoDisBucketEncoder
 from models.modules.mtl import AitmMtl
 from models.modules.losses import BCEWithLogitsLoss
@@ -17,7 +17,7 @@ import torch.nn.functional as F
 
 
 @MODELS.register_module()
-class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(GandalfCruiseModule):
+class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(MtlGandalfCruiseModule):
     def __init__(
         self,
         features,
@@ -52,6 +52,10 @@ class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(GandalfCruiseModule):
         self._init_encoders()
         # Init metric
         self._metric = GeneralClsMetric()
+        self._eval_output_names = ["loss", "censor_loss", "reject_loss"]
+        self._metric_params['censor'] = {'score_key': 'censor_prob', 'label_key': 'censor_label', 'type': 'ClsMetric'}
+        self._metric_params['reject'] = {'score_key': 'reject_prob', 'label_key': 'reject_label', 'type': 'ClsMetric'}
+        self._parse_eval_output_advanced_metrics()
         count_params(self)
 
     def forward(
@@ -84,12 +88,12 @@ class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(GandalfCruiseModule):
         if censor_label is not None and reject_label is not None:
             loss_dict = self._create_loss(censor_output, reject_output, censor_label, reject_label, constraint_weight=self._constraint_weight,
                                           loss_weight=self._loss_weight)
-            censor_output_prob = self._post_process_output(censor_output)
-            reject_output_prob = self._post_process_output(reject_output)
-            output_dict = {"censor_output": censor_output_prob,'reject_output_prob':reject_output_prob}
+            censor_prob = self._post_process_output(censor_output)
+            reject_prob = self._post_process_output(reject_output)
+            output_dict = {"censor_prob": censor_prob,'reject_prob':reject_prob}
             # 添加评价指标
-            censor_eval_dict = self._metric.batch_eval(censor_output_prob, censor_label,key='censor')
-            reject_eval_dict = self._metric.batch_eval(reject_output_prob, reject_label,key='reject')
+            censor_eval_dict = self._metric.batch_eval(censor_prob, censor_label,key='censor')
+            reject_eval_dict = self._metric.batch_eval(reject_prob, reject_label,key='reject')
             output_dict.update(censor_eval_dict)
             output_dict.update(reject_eval_dict)
             output_dict.update(loss_dict)

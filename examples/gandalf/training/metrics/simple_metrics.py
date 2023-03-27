@@ -5,7 +5,8 @@ import numpy as np
 from utils.registry import METRICS
 from training.metrics.base_metric import BaseMetric
 from typing import List, Union
-from utils.analyzer import roc_curve,mae_sklearn,mse_sklearn,rmse_sklearn,pr_score_analysis,precision_rescall_score
+from sklearn.metrics import precision_score,recall_score, auc, roc_curve,roc_auc_score
+from utils.analyzer import roc_curve_custom,mae_sklearn,mse_sklearn,rmse_sklearn,pr_score_analysis,precision_rescall_score
 
 
 class SimpleMetric(BaseMetric):
@@ -60,7 +61,7 @@ class AUC(SimpleMetric):
         positive_count = sum(labels)
         negative_count = len(labels) - positive_count
         result = {
-            f"{self._score_key}-AUC": round(roc_curve(scores, labels), 3),
+            f"{self._score_key}-AUC": round(roc_curve_custom(scores, labels), 3),
             "Total": len(labels),
             "PosCnt": positive_count,
             "NegCnt": negative_count,
@@ -101,7 +102,8 @@ class ClsMetric(SimpleMetric):
         score_idx: Union[int, List] = 1,
         binary_threshold=0.5,
         multi_class=False,
-        neg_tag=0
+        neg_tag=0,
+        **kwargs
         ):
         super().__init__(score_key, label_key, score_idx)
         self.score_key = score_key
@@ -113,7 +115,6 @@ class ClsMetric(SimpleMetric):
         assert self.neg_tag != 1, "neg_tag=1 is ambiguous, choose another num"
 
     def cal_metric(self,scores,labels):
-        from sklearn.metrics import precision_score,recall_score, auc, roc_curve
         scores = np.stack(scores,axis=0)
         labels = np.array(labels,dtype=np.int32)
         if self.multi_class:
@@ -135,7 +136,7 @@ class ClsMetric(SimpleMetric):
         binary_recall = recall_score(binary_labels, binary_output, zero_division=0)
         binary_fpr, binary_tpr, _ = roc_curve(binary_labels, binary_output, pos_label=1)
         binary_auc = auc(binary_fpr, binary_tpr)
-        if binary_auc!=binary_auc:
+        if binary_auc != binary_auc:
             binary_auc = 0
         binary_f1 = (2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6))
         binary_metric = {'acc':acc,'precision':binary_prec,'recall':binary_recall,'auc':binary_auc,'binary_f1':binary_f1,'input_neg_ratio':input_neg_ratio,'input_pos_ratio':input_pos_ratio,'output_neg_ratio':output_neg_ratio,'output_pos_ratio':output_pos_ratio,'pos_num':pos_num,'total_num':total_num}

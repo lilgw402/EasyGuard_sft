@@ -169,7 +169,7 @@ def trapezoid_area(fp, pre_fp, tp, pre_tp):
     return base * height
 
 
-def roc_curve(preds, labels):
+def roc_curve_custom(preds, labels):
     positive_count = sum(labels)
     negative_count = len(labels) - positive_count
     labels = [True if labels[i] > 0 else False for i in range(len(labels))]

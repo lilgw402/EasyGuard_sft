@@ -1,7 +1,7 @@
 import numpy as np
 from cruise import CruiseModule
 from cruise.utilities.distributed import DIST_ENV
-from utils.registry import get_metric_instance,build_optimizer_instance,build_lr_scheduler_instance
+from utils.registry import build_optimizer_instance,build_lr_scheduler_instance
 from utils.util import merge_into_target_dict
 
 
@@ -9,12 +9,6 @@ class TemplateCruiseModule(CruiseModule):
     def __init__(self,kwargs):
         super().__init__()
         self.kwargs = kwargs
-        self._gather_val_loss = True
-        self._metric_params = {'ClsMetric':{'score_key':'output','label_key':'label'}}
-        self._output_name = 'output'
-        self._eval_output_names =  ["loss"]
-        self._extra_metrics = []
-        self._parse_eval_output_advanced_metrics()  # check if metrics like AUC/MPR will need to be calculated
     
     def forward(self, batch, batch_idx):
         pass
@@ -84,19 +78,6 @@ class TemplateCruiseModule(CruiseModule):
             name = tag + '.' + k if tag else k
             self.log_dict({name: v},tb=False,tracking=True)
 
-    def _parse_eval_output_advanced_metrics(self):
-        self._extra_metrics = []
-        self._all_gather_output_names = set()
-        for metric_name in self._metric_params:
-            metric_op = get_metric_instance(metric_name,self._metric_params[metric_name])
-            assert hasattr(metric_op, 'cal_metric')
-            score_key = self._metric_params[metric_name].get('score_key','output')
-            label_key = self._metric_params[metric_name].get('label_key','label')
-            self._extra_metrics.append({'type': metric_name, 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
-            self._all_gather_output_names.add(score_key)
-            self._all_gather_output_names.add(label_key)
-            break
 
-   
 if __name__ == '__main__':
     module = TemplateCruiseModule()
