@@ -81,7 +81,7 @@ class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(GandalfCruiseModule):
         # Get output of model
         censor_output, reject_output = self._aitm_mtl(concat_features)
         # output = self._classifier_final(concat_features)
-        if not censor_label or not reject_label:
+        if censor_label is not None and reject_label is not None:
             loss_dict = self._create_loss(censor_output, reject_output, censor_label, reject_label, constraint_weight=self._constraint_weight,
                                           loss_weight=self._loss_weight)
             censor_output_prob = self._post_process_output(censor_output)
@@ -172,6 +172,6 @@ class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(GandalfCruiseModule):
         if not loss_weight:
             loss = censor_loss + reject_loss + constraint_weight * constraint_loss
         else:
-            loss = loss_weight[0] * censor_loss, loss_weight[1] * reject_loss + constraint_weight * constraint_loss
+            loss = loss_weight[0] * censor_loss + loss_weight[1] * reject_loss + constraint_weight * constraint_loss
         return {'loss':loss,'censor_loss':censor_loss,'reject_loss':reject_loss}
 
