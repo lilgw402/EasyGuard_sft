@@ -19,7 +19,6 @@ from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
 
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.data import create_transform
-from torchsampler import ImbalancedDatasetSampler
 try:
     from torchvision.transforms import InterpolationMode
 
@@ -106,8 +105,6 @@ class LiveSiteDataModule(CruiseDataModule):
                     )
 
     def train_dataloader(self):
-        # imbalanced_sampler_train = ImbalancedDatasetSampler(self.train_dataset,labels=self.train_dataset.label_array2)
-        # sampler_train = DistributedSamplerWrapper(imbalanced_sampler_train,num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=True)
         sampler_train = torch.utils.data.DistributedSampler(
             self.train_dataset, num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=True
         )
@@ -173,7 +170,7 @@ class MMDataset(Dataset):
     def __init__(self, params, data_path, is_training=False):
 
         super().__init__()
-        self.preprocess = get_transform_beta(mode='train' if is_training else 'val')
+        self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         self.max_len = {
             'text_ocr': params['ocr_max_len'],
