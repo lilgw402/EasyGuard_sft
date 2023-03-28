@@ -8,7 +8,7 @@ fc_drop_2: 0.5
 
 freeze_prefix: []
 
-weight_decay: 0.01
+weight_decay: 0.0001
 lr_scheduler: cosine #cosine, linear, step
 base_lr: 5.0e-5
 warmup_lr: 1.0e-8
