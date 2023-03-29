@@ -52,10 +52,13 @@ class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(MtlGandalfCruiseModule):
         self._init_encoders()
         # Init metric
         self._metric = GeneralClsMetric()
+        self._train_logging_names = ['censor_label','reject_label']
         self._eval_output_names = ["loss", "censor_loss", "reject_loss"]
         self._metric_params['censor'] = {'score_key': 'censor_prob', 'label_key': 'censor_label', 'type': 'ClsMetric'}
         self._metric_params['reject'] = {'score_key': 'reject_prob', 'label_key': 'reject_label', 'type': 'ClsMetric'}
         self._parse_eval_output_advanced_metrics()
+        print('_all_gather_output_names',self._all_gather_output_names)
+        print('_eval_output_names',self._eval_output_names)
         count_params(self)
 
     def forward(
@@ -114,7 +117,19 @@ class EcomLiveGandalfAutoDisNNAsrAitmCruiseModel(MtlGandalfCruiseModule):
     def pre_process_targets(self, batched_feature_data):
         batched_feature_data_items = [batched_feature_data["censor_label"],batched_feature_data["reject_label"]]
         return self._pre_process(batched_feature_data_items)
-        
+
+    def trace_before_step(self, batch):
+        # tracer don't like dict of input
+        return self.pre_process_inputs(batch)
+
+    def trace_step(self, batch):
+        trace_output = self.forward(*batch)
+        return trace_output
+
+    def trace_after_step(self, result):
+        # 按照本文档导出无需实现该方法，留空即可
+        pass
+
     def _init_encoders(self):
         #Init bucket encoder
         self._auto_dis_bucket_encoder = AutoDisBucketEncoder(

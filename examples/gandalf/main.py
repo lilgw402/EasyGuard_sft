@@ -59,13 +59,25 @@ def main():
     trainer_defaults = prepare_common_trainer_defaults(config)
     cli = CruiseCLI(model_module,data_module,trainer_class=CruiseTrainer,trainer_defaults=trainer_defaults)
     cfg, trainer, model, datamodule = cli.parse_args()
+    print('===Trace===',datamodule)
     print_cfg(cfg)
     if config['fit']:
         trainer.fit(model, datamodule=datamodule)
     if config['val']:
         trainer.validate(model, datamodule=datamodule)
     if config['trace']:
-        trainer.trace(model, datamodule=datamodule)
-
+        model.setup("val")
+        datamodule.setup("val")
+        # 使用deberta 使用anyon/jit都trace失败
+        # checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/mtl/version_0/checkpoints/epoch=0-step=1500-loss=0.647.ckpt"
+        # export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise"
+        # checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1/checkpoints/epoch=0-step=1000-loss=0.655.ckpt"
+        # export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/base"
+        # trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=checkpoint_path, export_dir=export_dir)
+        # 开源asr backbone使用anyon/jit都可以成功trace 
+        checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_2/checkpoints/epoch=0-step=600-loss=0.585.ckpt"
+        export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/simcse/anyon"
+        trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=checkpoint_path, export_dir=export_dir)
+        # trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'jit', checkpoint_path=checkpoint_path, export_dir=export_dir)
 if __name__ == "__main__":
     main()

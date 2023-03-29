@@ -9,7 +9,8 @@ import pickle
 import numpy as np
 from addict import Dict
 from typing import Optional,List
-from easyguard.core import AutoTokenizer
+# from easyguard.core import AutoTokenizer
+from transformers import AutoTokenizer
 from dataset.transforms.text_transforms.DebertaTokenizer import DebertaTokenizer
 from dataset.template_datasets.GandalfCruiseDataModule import GandalfParquetFeatureProvider,GandalfParquetCruiseDataModule
 from utils.driver import get_logger
@@ -43,7 +44,8 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 		self._feature_input_num = feature_num - len(slot_mask)
 		self._active_slot = [i for i in range(self._feature_num) if i not in self._slot_mask]
 		# self._text_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=512)
-		self._text_tokenizer = DebertaTokenizer(f'{tokenizer_path}/vocab.txt',max_len=max_len)
+		# self._text_tokenizer = DebertaTokenizer(f'{tokenizer_path}/vocab.txt',max_len=max_len)
+		self._text_tokenizer = AutoTokenizer.from_pretrained('./models/weights/simcse_bert_base')
 		self._save_extra = save_extra
 
 	def process_feature_dense(self, features):
@@ -67,7 +69,11 @@ class EcomLiveGandalfParquetAutoDisFeatureProvider(GandalfParquetFeatureProvider
 	
 	def process_text(self, text):
 		# 加载预处理参数
-		asr_inputs = self._text_tokenizer(text)
+		# asr_inputs = self._text_tokenizer(text)
+		asr_inputs = self._text_tokenizer(text,max_length=512, padding='max_length', truncation=True)#, return_tensors="pt")
+		asr_inputs['input_ids'] = torch.tensor(asr_inputs['input_ids'],dtype=torch.int32)
+		asr_inputs['attention_mask'] = torch.tensor(asr_inputs['attention_mask'], dtype=torch.int32)
+		asr_inputs['token_type_ids'] = torch.tensor(asr_inputs['token_type_ids'], dtype=torch.int32)
 		return asr_inputs
 
 	def process(self, data):
@@ -168,6 +174,7 @@ class EcomLiveGandalfParquetAutoDisMtlFeatureProvider(GandalfParquetFeatureProvi
 		# self._text_tokenizer = AutoTokenizer.from_pretrained(self.asr_model_name, return_tensors="pt", max_length=512)
 		self._text_tokenizer = DebertaTokenizer(f'{tokenizer_path}/vocab.txt', max_len=max_len)
 		self._save_extra = save_extra
+		self._trace_mode = trace_mode
 
 	def process_feature_dense(self, features):
 		# 加载预处理参数

@@ -17,6 +17,8 @@ export PYTHONPATH=$PYTHONPATH:$ROOT_HOME
 
 # # pretrain weights for custom tokenizer
 echo 'pulling down pretrained weights...'
+if [ ! -d "models/weights/simcse_bert_base" ]; then mkdir -p models/weights/simcse_bert_base; fi
+if [ ! -d "models/weights/simcse_bert_base" ]; then hadoop fs -get  hdfs:///user/jiangxubin/models/pretrain/simcse_bert_base ./models/weights/simcse_bert_base; fi
 if [ ! -d "models/weights/fashion_deberta_asr/" ]; then mkdir -p models/weights/fashion_deberta_asr/; fi
 if [ ! -d "models/weights/fashion_deberta_asr/deberta_3l" ]; then hadoop fs -get  hdfs:///user/jiangxubin/models/pretrain/fashion_deberta_asr/deberta_3l ./models/weights/fashion_deberta_asr; fi
 

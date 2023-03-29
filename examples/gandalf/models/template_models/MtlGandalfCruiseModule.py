@@ -15,8 +15,8 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
         self._gather_val_loss = True
         self._metric_params = {'censor':{'score_key':'censor_prob','label_key':'censor_label','type':'ClsMetric'},
                                'reject':{'score_key':'reject_prob','label_key':'reject_label','type':'ClsMetric'}}
-        self._output_name = 'output'
-        self._eval_output_names =  ["loss", "censor_loss", "reject_loss"]
+        self._label_logging_names = ['censor_label','reject_label']
+        self._loss_logging_names =  ["censor_loss", "reject_loss"]
         self._extra_metrics = []
         self._parse_eval_output_advanced_metrics()  # check if metrics like AUC/MPR will need to be calculated
     
@@ -29,12 +29,10 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
         train_loss_dict, train_output_dict = self.forward(*(inputs + targets))
         for loss_name, loss_val_list in train_loss_dict.items():
             train_loss_dict[loss_name] = loss_val_list.mean()
-        if self._output_name in train_output_dict:
-            merge_into_target_dict(train_output_dict,{self._output_name:train_output_dict[self._output_name]})
-        # print('train_loss_dict',train_loss_dict.keys(),train_loss_dict['loss'],type(train_loss_dict['loss']))
-        # print('train_output_dict',train_output_dict.keys())
+        for output_name in self._label_logging_names:
+            if output_name in train_output_dict:
+                merge_into_target_dict(train_output_dict,{output_name:train_output_dict[output_name]})
         # 'output':[batch,1], 'loss':[],'acc', 'binary_prec', 'binary_recall', 'binary_f1', 'input_neg_ratio', 'input_pos_ratio', 'output_neg_ratio', 'output_pos_ratio', 'binary_auc']
-        # print(train_output_dict['output'].shape,train_output_dict['loss'].shape)
         # self.track_logging_info(train_loss_dict,{},prefix='loss',is_loss_item=True)
         # self.track_logging_info(train_output_dict,{},prefix='train',hidden_keys={'loss'},is_loss_item=False)
         train_loss_dict.update(train_output_dict)
@@ -52,8 +50,8 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
                 if output_name not in self._all_gather_output_names:
                     continue
                 reduced_output[output_name] = output_val.cpu().numpy()
-        if 'label' in self._all_gather_output_names:
-            reduced_output['label'] = targets[0].cpu().numpy()
+        for idx,output_name in enumerate(self._label_logging_names):
+            reduced_output[output_name] = targets[idx].cpu().numpy()
         return reduced_output
 
     def validation_epoch_end(self, outputs) -> None:
@@ -65,7 +63,7 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
             for out_key, out_value in output.items():
                 if out_key in self._all_gather_output_names:
                     reduced_all_gather_output[out_key].append(out_value)
-                elif out_key in self._eval_output_names:
+                elif out_key in self._loss_logging_names:
                     reduced_test_loss[out_key].append(out_value)
                 else:
                     reduced_test_output[out_key].append(out_value)
@@ -114,14 +112,14 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
                     rank_zero_info(f"Result of {extra_metric['name']}: \n{result}")
                     op_type = extra_metric['type']
                     for k, v in result.items():
-                        new_name = f'{metric_name}.{op_type}.{k}'
+                        new_name = f'{metric_name}.{k}'
                         extra_reduced_outputs[new_name] = v
         else:
             # no need to all gather and calculate extra metrics
             reduced_test_output.update(reduced_all_gather_output)
         reduced_test_loss = {k: np.mean(vl) for k, vl in reduced_test_loss.items()}
         reduced_test_output = {k: np.mean(vl) for k, vl in reduced_test_output.items()}
-        self._tk_log_dict("", extra_reduced_outputs)
+        self._tk_log_dict("eval", extra_reduced_outputs)
 
     @staticmethod
     def _pre_process(batched_feature_data_items):
@@ -179,7 +177,6 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
             self._extra_metrics.append({'type': self._metric_params[metric_name]['type'], 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
             self._all_gather_output_names.add(score_key)
             self._all_gather_output_names.add(label_key)
-            break
 
 
 if __name__ == '__main__':

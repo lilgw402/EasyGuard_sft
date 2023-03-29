@@ -12,7 +12,7 @@ class GandalfCruiseModule(TemplateCruiseModule):
         super(GandalfCruiseModule,self).__init__(kwargs)
         self._sigmoid = nn.Sigmoid()
         self._gather_val_loss = True
-        self._metric_params = {'output':{'score_key':'output','label_key':'label'}}
+        self._metric_params = {'reject':{'score_key':'output','label_key':'label','type':'ClsMetric'}}
         self._output_name = 'output'
         self._eval_output_names =  ["loss"]
         self._extra_metrics = []
@@ -169,11 +169,11 @@ class GandalfCruiseModule(TemplateCruiseModule):
         self._extra_metrics = []
         self._all_gather_output_names = set()
         for metric_name in self._metric_params:
-            metric_op = get_metric_instance(metric_name,self._metric_params[metric_name])
+            metric_op = get_metric_instance(self._metric_params[metric_name]['type'],self._metric_params[metric_name])
             assert hasattr(metric_op, 'cal_metric')
             score_key = self._metric_params[metric_name].get('score_key','output')
             label_key = self._metric_params[metric_name].get('label_key','label')
-            self._extra_metrics.append({'type': metric_name, 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
+            self._extra_metrics.append({'type': self._metric_params[metric_name]['type'], 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
             self._all_gather_output_names.add(score_key)
             self._all_gather_output_names.add(label_key)
             break

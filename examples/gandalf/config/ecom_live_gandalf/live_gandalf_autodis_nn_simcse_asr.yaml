@@ -91,10 +91,9 @@ data:
       - 147
       - 148
       - 149
-    type: EcomLiveGandalfParquetAutoDisMtlFeatureProvider
+    type: EcomLiveGandalfParquetAutoDisFeatureProvider
     use_high_precision: false
     filtered_tags: null
-    trace_mode: true
   data_factory:
     type: ParquetDataFactory
     train_max_iteration: -1
@@ -106,7 +105,7 @@ data:
     num_workers: 6
   type: EcomLiveGandalfParquetAutoDisCruiseDataModule
 model:
-  type: EcomLiveGandalfAutoDisNNAsrAitmCruiseModel
+  type: EcomLiveGandalfAutoDisNNAsrSimcseCruiseModel
   features:
     feature_num: 150
     bucket_dim: 128
@@ -131,11 +130,6 @@ model:
     encoder_freeze_layer: null
     num_attention_heads: 3
     num_hidden_layers: 3
-  mtl:
-    shared_out_size: 256
-    tower_dims: [256,128,64]
-    loss_weight: [0.15,0.85]
-    constraint_weight: 0.3
   embedding:
     author_embedding_dim: 128
   kwargs:
@@ -153,14 +147,14 @@ model:
       end_factor: 0.2
       warmup_steps: 1000
 trainer:
-  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/mtl/version_0
-  # default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/mtl/version_0
+  default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_2
+  # default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_1
   enable_versions: false
-  # logger: tracking
+  logger: null
   max_epochs: 25
   find_unused_parameters: true
   limit_val_batches: 300
   limit_train_batches: -1
   val_check_interval: 300
   project_name: gandalf
-  experiment_name: augutus/auto_dis_nn_asr_mtl
+  experiment_name: augutus/auto_dis_nn_asr_simcse

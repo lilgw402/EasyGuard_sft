@@ -8,7 +8,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional
-from easyguard.core import AutoModel,AutoTokenizer
+from transformers import AutoModel
 from models.template_models.GandalfCruiseModule import GandalfCruiseModule
 from models.modules.encoders import AutoDisBucketEncoder
 from models.modules.losses import BCEWithLogitsLoss
@@ -17,7 +17,7 @@ from utils.util import count_params
 from utils.registry import MODELS
 
 @MODELS.register_module()
-class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
+class EcomLiveGandalfAutoDisNNAsrSimcseCruiseModel(GandalfCruiseModule):
     def __init__(
         self,
         features,
@@ -26,7 +26,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         kwargs,
         type=None
     ):
-        super(EcomLiveGandalfAutoDisNNAsrCruiseModel, self).__init__(kwargs)
+        super(EcomLiveGandalfAutoDisNNAsrSimcseCruiseModel, self).__init__(kwargs)
         self.save_hparams()
 
     def setup(self, stage: Optional[str] = None) -> None:
@@ -63,10 +63,8 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
         # get auto_dis embedding
         auto_dis_embedding = self._auto_dis_bucket_encoder(auto_dis_input)
         # get concat features
-        asr_output = self._asr_encoder(input_ids, attention_mask, token_type_ids,output_pooled=True)
-        # print(type(asr_output),asr_output.keys())
-        asr_embedding = asr_output['pooled_output']
-        # print(type(asr_embedding),asr_embedding.shape)
+        asr_output = self._asr_encoder(input_ids, attention_mask, token_type_ids)
+        asr_embedding = asr_output['pooler_output']
         # Add dropout for embedding
         asr_embedding = self._asr_emb_dropout(asr_embedding)
         # Concat all input features which have been transformed into embeddings
@@ -122,7 +120,7 @@ class EcomLiveGandalfAutoDisNNAsrCruiseModel(GandalfCruiseModule):
                                         add_block=False)
         # Init model components:asr
         self._asr_encoder_param = self.hparams.asr_encoder
-        self._asr_encoder = AutoModel.from_pretrained(self._asr_encoder_param.get('encoder_name','fashion-deberta-asr-small'),n_layers=self._asr_encoder_param.get('num_hidden_layers',3))
+        self._asr_encoder = AutoModel.from_pretrained("/mlx_devbox/users/jiangxubin/repo/EasyGuard/examples/gandalf//models/weights/simcse_bert_base", num_hidden_layers=3, num_attention_heads=6)
         self._asr_emb_dropout = self._init_emb_dropout()
         self._init_cls_layer()
         self._init_criterion()

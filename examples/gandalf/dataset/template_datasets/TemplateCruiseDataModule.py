@@ -152,9 +152,7 @@ class TemplateCruiseDataModule(CruiseDataModule):
 					# we make it to be an empty list here to match the original logic for single dataset
 					multiplex_dataset_weights = []
 			batch_sizes = [batch_size] * ds_num
-		print('batch_sizes',batch_sizes)
 		process_cfg = create_cruise_process_config(cfg, mode, is_kv)
-		print('process_cfg\n',process_cfg)
 		cruise_processor = parse_cruise_processor_cfg(process_cfg, "")
 
 		keys_or_columns = []
