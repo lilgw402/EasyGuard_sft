@@ -181,7 +181,7 @@ class FrameAlbertClassify(CruiseModule):
             "loss": loss,
             "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
         }
-        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
+        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, ))
         for k, v in acc_dict.items():
             res.update({f'train_{k}': v})
 
@@ -208,7 +208,7 @@ class FrameAlbertClassify(CruiseModule):
         loss = self.criterion(rep_dict["logits"], rep_dict["label"])
         res = {"val_loss": loss}
 
-        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, 5))
+        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1, ))
         for k, v in acc_dict.items():
             res.update({f'val_{k}': v})
 
@@ -228,20 +228,16 @@ class FrameAlbertClassify(CruiseModule):
             all_results.extend(item)
         val_loss_all = [out["val_loss"] for out in all_results]
         top1_acc_all = [out["val_top1_acc"] for out in all_results]
-        top5_acc_all = [out["val_top5_acc"] for out in all_results]
 
         val_loss = sum(val_loss_all) / len(val_loss_all)
         top1_acc = sum(top1_acc_all) / len(top1_acc_all)
-        top5_acc = sum(top5_acc_all) / len(top5_acc_all)
 
         res_out["val_loss"] = val_loss
         res_out["val_top1_acc"] = top1_acc
-        res_out["val_top5_acc"] = top5_acc
 
         self.log_dict(res_out, console=True)
         self.log("val_loss", val_loss, console=True)
         self.log("val_top1_acc", top1_acc, console=True)
-        self.log("val_top5_acc", top1_acc, console=True)
 
     def trace_before_step(self, batch):
         # batch为dataloader的输出，一般为dict形式
