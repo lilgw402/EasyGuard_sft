@@ -68,13 +68,15 @@ def main():
     if config['trace']:
         model.setup("val")
         datamodule.setup("val")
-        # 使用deberta 使用anyon/jit都trace失败
         # checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/mtl/version_0/checkpoints/epoch=0-step=1500-loss=0.647.ckpt"
         # export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise"
-        # checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1/checkpoints/epoch=0-step=1000-loss=0.655.ckpt"
-        # export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/base"
-        # trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=checkpoint_path, export_dir=export_dir)
+        # 使用deberta 使用anyon/jit都trace失败
+        # bash examples/gandalf/run_on_merlin.sh --config=config/ecom_live_gandalf/live_gandalf_autodis_nn_asr.yaml --trace>examples/gandalf/trace.log 2>&1 &
+        checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1/checkpoints/epoch=0-step=1000-loss=0.655.ckpt"
+        export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/base"
+        trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=checkpoint_path, export_dir=export_dir)
         # 开源asr backbone使用anyon/jit都可以成功trace 
+        # bash examples/gandalf/run_on_merlin.sh --config=config/ecom_live_gandalf/live_gandalf_autodis_nn_simcse_asr.yaml --trace>examples/gandalf/trace_simcse_anyon.log 2>&1 &
         checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_2/checkpoints/epoch=0-step=600-loss=0.585.ckpt"
         export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/simcse/anyon"
         trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=checkpoint_path, export_dir=export_dir)
