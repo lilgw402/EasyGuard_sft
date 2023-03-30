@@ -216,12 +216,7 @@ class FrameAlbertClassify(CruiseModule):
 
     def validation_epoch_end(self, outputs) -> None:
         gathered_results = DIST_ENV.all_gather_object(outputs)
-        # all_results = []
-        # for item in gathered_results:
-        #     all_results.extend(item)
-        # acc_all = [out["acc"] for out in all_results]
-        # total_acc = sum(acc_all) / len(acc_all)
-        # self.log("total_val_acc", total_acc, console=True)
+
         res_out = {}
         all_results = []
         for item in gathered_results:
