@@ -97,7 +97,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         # self.default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
         # self.default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
-        with hopen('hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg', 'rb') as f:
+        with hopen('./examples/fashionproduct_xl/black_image.jpeg', 'rb') as f:
+            # hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg
             self.black_frame = self.preprocess(self._load_image(f.read()))
 
         # black_frame = cv2.imread('./examples/fashionproduct_xl/black_image.jpeg')
@@ -119,16 +120,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             try:
                 data_item = json.loads(example)
 
-                # drop
-                # if self.is_training:
-                #     dropout_choice = ['drop_text', 'drop_img', 'nodrop']
-                #     drop = np.random.choice(dropout_choice, p=[0.05, 0.1, 0.85])
-                # else:
-                #     drop = 'nodrop'
-
                 # label
                 cid = data_item['leaf_cid']
-                # label = self.cid2label[cid]
                 label = self.gec[cid]['label']
                 # label = int(data_item['label'])
 
@@ -173,9 +166,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 else:
                     raise Exception(f'cannot find image or images')
 
-                # if drop == 'drop_img':
-                #     frames = []
-
                 # 文本
                 # title = data_item['title']
                 # desc = data_item['desc']
@@ -188,17 +178,14 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 elif 'text' in data_item:
                     title = data_item['text']
                     desc = None
-                    country = data_item['country']
+                    country = data_item.get('country', 0)
                     country_idx = self.country2idx[country]
                 else:
                     title = data_item['title']
                     desc = data_item['desc']
-                    country = data_item['country']
+                    country = data_item.get('country', 0)
                     country_idx = self.country2idx[country]
                 text = text_concat(title, desc)
-
-                # if drop == 'drop_text' and frames:
-                #     text = ''
 
                 token_ids = self.pipe.preprocess([text])[0]
                 token_ids = token_ids.asnumpy()
@@ -219,8 +206,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     'label': label,
                     'country_idx': country_idx,
                     'input_ids': token_ids,
-                    # 'attention_mask': attention_mask,
-                    # 'weight': weight,
                 }
 
                 yield input_dict
@@ -235,8 +220,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         head_mask = []
         input_ids = []
         input_mask = []
-        # input_segment_ids = []
-        # weights = []
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
@@ -277,7 +260,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         bsz, frame_num = frames_mask.shape
         frames = frames.reshape([bsz, frame_num, c, h, w])
         labels = torch.tensor(labels)
-        # country_idx = torch.tensor(country_idx)
         head_mask = torch.stack(head_mask, dim=0)
         input_ids = torch.cat(input_ids, dim=0)
         input_mask = torch.cat(input_mask, dim=0)
@@ -290,7 +272,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                "label": labels, "head_mask": head_mask,
                "input_ids": input_ids, "input_mask": input_mask,
                "input_segment_ids": input_segment_ids,
-               # "weights": weights
                }
         return res
 

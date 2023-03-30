@@ -2,7 +2,6 @@
 import os
 import sys
 
-print(f'00000000000')
 # sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 try:
     import easyguard
