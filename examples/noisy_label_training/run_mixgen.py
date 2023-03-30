@@ -275,8 +275,6 @@ if __name__ == '__main__':
                         'summarize_model_depth': 5,
                         'checkpoint_monitor': 'loss',
                         'checkpoint_mode': 'min',
-                        'default_root_dir': '/mnt/bn/ecom-tianke-lq/cruise_train',
-                        'default_hdfs_dir': None
                         # 'callbacks': [EarlyStopping(monitor='precision',
                         #                             mode='max',
                         #                             min_delta=0.001,
