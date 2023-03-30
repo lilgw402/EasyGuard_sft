@@ -96,8 +96,10 @@ data:
   train_batch_size: 64
   val_batch_size: 64
   num_workers: 2
-  text_len: 128
+  text_len: 128   # 如使用ptx_tokenizer，应在config.json中修改文本长度
   frame_len: 1
   exp: 0330_finetune_ansa
   download_files: [ ]
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
 log_level: INFO
