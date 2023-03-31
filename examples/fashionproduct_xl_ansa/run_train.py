@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+print(f'start running: run_train')
 import os
 import sys
 
