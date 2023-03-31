@@ -92,7 +92,7 @@ data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/ansa_demo/train_img_jsonl
   train_size: 1000000
   val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/ansa_demo/val_img_jsonl
-  val_size: 24576
+  val_size: 22000
   train_batch_size: 64
   val_batch_size: 64
   num_workers: 8

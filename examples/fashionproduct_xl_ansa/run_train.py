@@ -7,7 +7,7 @@ try:
     import easyguard
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
+print(f'running: run_train')
 import random
 
 import numpy as np
@@ -30,10 +30,11 @@ def setup_seed(seed):
         ...
 
 
-# random seed
-setup_seed(rand_seed)
-
 if __name__ == '__main__':
+    # random seed
+    print(f'set seed: {rand_seed}')
+    setup_seed(rand_seed)
+
     cli = CruiseCLI(
         FrameAlbertClassify,
         trainer_class=CruiseTrainer,
