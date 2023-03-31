@@ -1,5 +1,5 @@
 trainer:
-  default_root_dir: /mnt/bn/multimodel-pretrain/scripts/easyguard_train/live_site_mixgen
+  default_root_dir: /mnt/bn/multimodel-pretrain/scripts/easyguard_train/live_site_ocl
   default_hdfs_dir: null
   logger: true
   log_every_n_steps: 100
@@ -89,5 +89,4 @@ data:
   frame_len: 12
   num_classes_lv1: 4
   num_classes_lv2: 16
-  augment: mixgen
 log_level: INFO
