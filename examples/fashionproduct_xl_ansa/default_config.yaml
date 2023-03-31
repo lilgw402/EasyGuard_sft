@@ -5,7 +5,7 @@ trainer:
   log_every_n_steps: 100
   benchmark: false
   enable_speedmonitor: true
-  enable_versions: false
+  enable_versions: true
   detect_anomaly: false
   deterministic: true
   accelerator: gpu
@@ -18,14 +18,14 @@ trainer:
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: [ 500, 1.0 ]
+  val_check_interval: [ 1000, 1.0 ]
   accumulate_grad_batches: null
   gradient_clip_val: 1.0
   seed: 42
   summarize_model_depth: 3
   resume_ckpt_path: null
   callbacks: null
-  enable_checkpoint: 5
+  enable_checkpoint: 10
   checkpoint_monitor: val_top1_acc
   checkpoint_mode: max
   dataloader_timeout: -1
@@ -70,14 +70,14 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
-  backbone: fashionproduct-xl-hr-v1   # 加载预训练的backbone，通用版使用fashionproduct-xl-general-v1,更关注高危类目则使用fashonproduct-xl-hr-v1
+  backbone: fashionproduct-xl-general-v1   # 加载预训练的backbone，通用版fashionproduct-xl-general-v1,更关注高危类目召回则使用fashonproduct-xl-hr-v1
   class_num: 2
   hidden_dim: 768
   optim: AdamW
   learning_rate: 0.0001
   weight_decay: 0.0001
   lr_schedule: linear
-  warmup_steps_factor: 2
+  warmup_steps_factor: 1
   low_lr_prefix:
     - backbone
   freeze_prefix: [ ]
@@ -95,7 +95,7 @@ data:
   val_size: 24576
   train_batch_size: 64
   val_batch_size: 64
-  num_workers: 2
+  num_workers: 8
   text_len: 128   # 如使用ptx_tokenizer，应在config.json中修改文本长度
   frame_len: 1
   exp: 0330_finetune_ansa
