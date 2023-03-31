@@ -15,13 +15,11 @@ from ptx.matx.pipeline import Pipeline
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
-from cruise.utilities.hdfs_io import hopen
+from cruise.utilities.hdfs_io import hopen, hlist_files
 from examples.fashionproduct_xl_ansa.data import FacDataModule, text_concat
 from examples.fashionproduct_xl_ansa.model import FrameAlbertClassify
 
-max_len = 128
 pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
-country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
 # default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
 # default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
@@ -144,16 +142,18 @@ if __name__ == "__main__":
     # model = torch.jit.load('./traced_model/FrameAlbertClassify.ts')
     # model.cuda()
 
-    countries = ['GB', 'TH', 'ID', 'VN', 'MY']
     allres = dict()
-    for country in countries:
-        file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl'
+    allrec = []
+    files = hlist_files(['hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/ansa_demo/val_img_jsonl'])
+    print(len(files))
+    for file in files:
+        filename = file.split('/')[-1]
         with hopen(file, 'r') as f:
             lines = f.readlines()
 
         num_all = 0
         num_top1 = 0
-        for line in tqdm(lines):
+        for line in tqdm(lines, desc=filename):
             sample = json.loads(line)
             data = process(sample)
             if data is None:
@@ -180,6 +180,10 @@ if __name__ == "__main__":
             prob, pred = logits.topk(1, 1, True, True)
             labels = [int(p) for p in pred[0]]
 
+            sample['images'] = ''   # 减小文件体积，删掉推理结果中的images字段
+            sample['pred'] = labels[0]
+            allrec.append(json.dumps(sample))
+
             num_all += 1
             if sample['label'] == labels[0]:
                 num_top1 += 1
@@ -187,11 +191,14 @@ if __name__ == "__main__":
                 # print(gec[sample['leaf_cid']]['label'], labels)
                 pass
             if num_all % 2000 == 0:
-                print(f'{country} top1 acc is {num_top1 / num_all}, with samples: {num_all}')
-        print(f'{country} top1 acc is {num_top1 / num_all}')
-        allres[country] = {'top1': num_top1 / num_all}
+                print(f'{filename} top1 acc is {num_top1 / num_all}, with samples: {num_all}')
+        print(f'{filename} top1 acc is {num_top1 / num_all}')
+        allres[filename] = {'top1': num_top1 / num_all}
 
     for k, v in allres.items():
         print(k, v)
+
+    with open('allrec.jsonl', 'w') as f:
+        f.writelines('\n'.join(allrec))
 
 # python3 examples/fashionproduct_xl_ansa/infer.py --config examples/fashionproduct_xl_ansa/default_config.yaml
