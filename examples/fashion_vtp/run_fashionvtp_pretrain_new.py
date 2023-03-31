@@ -35,12 +35,12 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # appzoo中实现好自己的data模块
-from easyguard.appzoo.fashion_vtp.data import ByteDriveDataModule 
+from easyguard.appzoo.fashion_vtp.data import ByteDriveDataModule
 # 导入FashionVTP模型，无特殊需求不需要改动，import进来即可
-from easyguard.appzoo.fashion_vtp.model_pretrain_new import FashionVTP
+from easyguard.appzoo.fashion_vtp.model_pretrain import FashionVTP
 from easyguard.utils.arguments import print_cfg
 # 加入了timm的lr_scheduler，在config_optim中指定，['cosine'/'linear'/'step']
-from easyguard.appzoo.fashion_vtp.lr_scheduler import build_scheduler
+from easyguard.core.lr_scheduler import build_scheduler
 
 
 
@@ -94,6 +94,11 @@ class MMClsModel(CruiseModule):
         """
         self.text_visual_and_fuse_model = FashionVTP(self.config_model)
 
+        self.model_pairs = [[self.text_visual_and_fuse_model.falbert, self.text_visual_and_fuse_model.falbert_m],
+                            [self.text_visual_and_fuse_model.t_projector, self.text_visual_and_fuse_model.t_projector_m],
+                            [self.text_visual_and_fuse_model.v_projector, self.text_visual_and_fuse_model.v_projector_m],
+                           ]
+        self.copy_params()
         # itm 
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(768, 2),
@@ -115,7 +120,7 @@ class MMClsModel(CruiseModule):
         self.text_queue = nn.functional.normalize(self.text_queue, dim=0)
 
         # 会有一些参数不在pretrain里，初始化它
-        self.init_weights()
+        # self.init_weights()
         # 主要是load pretrain weights 
         self.initialize_weights()
         # freeze不需要更新的参数
@@ -431,13 +436,13 @@ class MMClsModel(CruiseModule):
 
     @torch.no_grad()        
     def _momentum_update(self):
-        for model_pair in self.text_visual_and_fuse_model.model_pairs:       
+        for model_pair in self.model_pairs:       
             for param, param_m in zip(model_pair[0].parameters(), model_pair[1].parameters()):
                 param_m.data = param_m.data * self.momentum + param.data * (1. - self.momentum)
 
     @torch.no_grad()    
     def copy_params(self):
-        for model_pair in self.text_visual_and_fuse_model.model_pairs:          
+        for model_pair in self.model_pairs:          
             for param, param_m in zip(model_pair[0].parameters(), model_pair[1].parameters()):
                 param_m.data.copy_(param.data)  # initialize
                 param_m.requires_grad = False  # not update by gradient
@@ -449,6 +454,8 @@ def concat_all_gather(tensor):
     Performs all_gather operation on the provided tensors.
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
+    # world_size = int(os.environ.get('WORLD_SIZE') or 1)
+    # tensors_gather = [torch.ones_like(tensor) for _ in range(world_size)]
     tensors_gather = [torch.ones_like(tensor)
         for _ in range(torch.distributed.get_world_size())]
     torch.distributed.all_gather(tensors_gather, tensor, async_op=False)

@@ -24,7 +24,7 @@ from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
 from cruise.utilities.hdfs_io import hexists, hopen
 
-from easyguard.modelzoo.models.falbert import FrameALBert
+from .falbert import FrameALBert
 from .module_fuse import ALBertFusion
 
 
@@ -39,11 +39,6 @@ class FashionVTP(nn.Module):
         self.falbert_m = self.falbert
         self.t_projector_m = self.t_projector
         self.v_projector_m = self.v_projector
-
-        self.model_pairs = [[self.falbert, self.falbert_m],
-                            [self.t_projector,self.t_projector_m],
-                            [self.v_projector,self.v_projector_m],
-                           ]
 
     '''
     def forward(
