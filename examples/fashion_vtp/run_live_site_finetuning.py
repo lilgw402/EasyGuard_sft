@@ -58,7 +58,7 @@ class MyModel(CruiseModule):
         with open(self.hparams.config_optim) as fp:
             self.config_optim = SimpleNamespace(**yaml.load(fp, yaml.Loader))
 
-        self.fashionvtp_model = AutoModel.from_pretrained("fashionvtp-base-c")
+        self.fashionvtp_model = AutoModel.from_pretrained("fashionvtp-base")
 
         self.classifier_1 = nn.Linear(768, self.config_optim.class_num_lv1)
         self.classifier_2 = nn.Linear(768, self.config_optim.class_num_lv2)
