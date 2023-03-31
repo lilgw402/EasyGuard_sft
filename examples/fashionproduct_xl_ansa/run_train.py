@@ -32,14 +32,16 @@ def setup_seed(seed):
 
 # random seed
 setup_seed(rand_seed)
-cli = CruiseCLI(
-    FrameAlbertClassify,
-    trainer_class=CruiseTrainer,
-    datamodule_class=FacDataModule,
-    trainer_defaults={
-        "summarize_model_depth": 2,
-    },
-)
-cfg, trainer, model, datamodule = cli.parse_args()
 
-trainer.fit(model, datamodule)
+if __name__ == '__main__':
+    cli = CruiseCLI(
+        FrameAlbertClassify,
+        trainer_class=CruiseTrainer,
+        datamodule_class=FacDataModule,
+        trainer_defaults={
+            "summarize_model_depth": 2,
+        },
+    )
+    cfg, trainer, model, datamodule = cli.parse_args()
+
+    trainer.fit(model, datamodule)
