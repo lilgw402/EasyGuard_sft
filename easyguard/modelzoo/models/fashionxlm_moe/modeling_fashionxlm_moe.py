@@ -16,6 +16,8 @@
 
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
 import numpy as np
 import torch
@@ -30,6 +32,7 @@ from transformers.file_utils import (
     add_start_docstrings_to_model_forward,
 )
 from transformers.modeling_outputs import (
+    ModelOutput,
     BaseModelOutput,
     MaskedLMOutput,
     QuestionAnsweringModelOutput,
@@ -54,6 +57,156 @@ DEBERTA_V2_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "microsoft/deberta-v2-xlarge-mnli",
     "microsoft/deberta-v2-xxlarge-mnli",
 ]
+
+
+@dataclass
+class BaseModelOutputMoE(ModelOutput):
+    """
+    Base class for model's outputs, with potential hidden states and attentions.
+
+    Args:
+        last_hidden_state (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`):
+            Sequence of hidden-states at the output of the last layer of the model.
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
+            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    last_hidden_state: torch.FloatTensor = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    aux_loss: torch.FloatTensor = None
+
+
+@dataclass
+class MaskedLMOutputMoE(ModelOutput):
+    """
+    Base class for masked language models outputs.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
+            Masked language modeling (MLM) loss.
+        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):
+            Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
+            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    loss: Optional[torch.FloatTensor] = None
+    logits: torch.FloatTensor = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    aux_loss: torch.FloatTensor = None
+
+
+@dataclass
+class SequenceClassifierOutputMoE(ModelOutput):
+    """
+    Base class for outputs of sentence classification models.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
+            Classification (or regression if config.num_labels==1) loss.
+        logits (`torch.FloatTensor` of shape `(batch_size, config.num_labels)`):
+            Classification (or regression if config.num_labels==1) scores (before SoftMax).
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
+            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    loss: Optional[torch.FloatTensor] = None
+    logits: torch.FloatTensor = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    aux_loss: torch.FloatTensor = None
+
+
+@dataclass
+class TokenClassifierOutputMoE(ModelOutput):
+    """
+    Base class for outputs of token classification models.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided) :
+            Classification loss.
+        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.num_labels)`):
+            Classification scores (before SoftMax).
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
+            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    loss: Optional[torch.FloatTensor] = None
+    logits: torch.FloatTensor = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    aux_loss: torch.FloatTensor = None
+
+
+@dataclass
+class QuestionAnsweringModelOutputMoE(ModelOutput):
+    """
+    Base class for outputs of question answering models.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
+            Total span extraction loss is the sum of a Cross-Entropy for the start and end positions.
+        start_logits (`torch.FloatTensor` of shape `(batch_size, sequence_length)`):
+            Span-start scores (before SoftMax).
+        end_logits (`torch.FloatTensor` of shape `(batch_size, sequence_length)`):
+            Span-end scores (before SoftMax).
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
+            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    loss: Optional[torch.FloatTensor] = None
+    start_logits: torch.FloatTensor = None
+    end_logits: torch.FloatTensor = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    aux_loss: torch.FloatTensor = None
 
 
 class LayerNorm(nn.LayerNorm):
@@ -395,32 +548,86 @@ class DebertaV2Layer(nn.Module):
             return layer_output
 
 
+# Copied from transformers.models.deberta.modeling_deberta.DebertaAttention with Deberta->DebertaV2
+class DebertaV2AttentionMoE(nn.Module):
+    def __init__(self, config, mode='soft'):
+        super().__init__()
+        if mode == 'soft':
+            from janus.layer import MoE
+            self.experts = MoE(
+                hidden_size=config.hidden_states,
+                expert=DebertaV2Attention(config),
+                expert_shape='abc->dabe',
+                num_experts=12,
+                k=2
+            )
+
+        self.moe_l_aux_loss = 0
+
+    def forward(
+        self,
+        hidden_states,
+        attention_mask,
+        output_attentions=False,
+        query_states=None,
+        relative_pos=None,
+        rel_embeddings=None,
+        language=None,
+    ):
+        if self.mode == 'soft':
+            attention_output, self.moe_l_aux_loss, _ = self.experts(hidden_states,
+                                                                    attention_mask,
+                                                                    output_attentions=output_attentions,
+                                                                    query_states=query_states,
+                                                                    relative_pos=relative_pos,
+                                                                    rel_embeddings=rel_embeddings,
+                                                                    language=language,)
+            return attention_output
+
+
 # Copied from transformers.models.bert.modeling_bert.BertIntermediate with Bert->DebertaV2
 class DebertaV2IntermediateMoE(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, mode='hard'):
         super().__init__()
-        self.experts = nn.ModuleDict(
-            {
-                k: DebertaV2Intermediate(config)
-                for k in ["GB", "ID", "TH", "MY", "VN", "PH"]
-                # for k in ["GB", "ID", "TH", "MY", "VN", "PH", "PT", "ES"]
-            }
-        )
-        self.expert_share = DebertaV2Intermediate(config)
-        self.expert_selector = nn.Linear(
-            config.intermediate_size * 2, config.intermediate_size
-        )
+        self.mode=mode
+        if mode == 'hard':
+            self.experts = nn.ModuleDict(
+                {
+                    k: DebertaV2Intermediate(config)
+                    for k in ["GB", "ID", "TH", "MY", "VN", "PH"]
+                    # for k in ["GB", "ID", "TH", "MY", "VN", "PH", "PT", "ES"]
+                }
+            )
+            self.expert_share = DebertaV2Intermediate(config)
+            self.expert_selector = nn.Linear(
+                config.intermediate_size * 2, config.intermediate_size
+            )
+        elif mode == 'soft':
+            from janus.layer import MoE
+            self.experts = MoE(
+                hidden_size=config.intermediate_size,
+                expert=DebertaV2Intermediate(config),
+                num_experts=12,
+                k=2
+            )
+
+        self.moe_l_aux_loss = 0
 
     def forward(self, hidden_states, language):
-        hidden_states_sep = torch.stack(
-            [self.experts[k](h) for h, k in zip(hidden_states, language)], dim=0
-        )  # language proj
-        hidden_states_share = self.expert_share(hidden_states)
-        hidden_states = torch.cat(
-            [hidden_states_sep, hidden_states_share], dim=-1
-        )
-        hidden_states = self.expert_selector(hidden_states)
-        return hidden_states
+        if self.mode == 'hard':
+            hidden_states_sep = torch.stack(
+                [self.experts[k](h) for h, k in zip(hidden_states, language)], dim=0
+            )  # language proj
+            hidden_states_share = self.expert_share(hidden_states)
+            hidden_states = torch.cat(
+                [hidden_states_sep, hidden_states_share], dim=-1
+            )
+            hidden_states = self.expert_selector(hidden_states)
+            return hidden_states
+
+        elif self.mode == 'soft':
+            hidden_states, self.moe_l_aux_loss, _ = self.experts(hidden_states)
+            return hidden_states
 
 
 # Copied from transformers.models.deberta.modeling_deberta.DebertaOutput with DebertaLayerNorm->LayerNorm
@@ -457,11 +664,21 @@ class DebertaV2OutputMoE(nn.Module):
 
 # Copied from transformers.models.deberta.modeling_deberta.DebertaLayer with Deberta->DebertaV2
 class DebertaV2LayerMoE(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, mode='hard'):
         super().__init__()
-        self.attention = DebertaV2Attention(config)
-        self.intermediate = DebertaV2IntermediateMoE(config)
-        self.output = DebertaV2OutputMoE(config)
+        self.mode = mode
+        if mode == 'hard':
+            self.attention = DebertaV2Attention(config)
+            self.intermediate = DebertaV2IntermediateMoE(config, mode=mode)
+            self.output = DebertaV2OutputMoE(config, mode=mode)
+        elif mode == 'soft':
+            self.attention = DebertaV2AttentionMoE(config, mode=mode)
+            self.intermediate = DebertaV2IntermediateMoE(config, mode=mode)
+            self.output = DebertaV2Output(config)
+        else:
+            print (f'Error mode : {mode}')
+
+        self.moe_l_aux_loss = 0
 
     def forward(
         self,
@@ -480,6 +697,7 @@ class DebertaV2LayerMoE(nn.Module):
             query_states=query_states,
             relative_pos=relative_pos,
             rel_embeddings=rel_embeddings,
+            language=language,
         )
         if output_attentions:
             attention_output, att_matrix = attention_output
@@ -488,10 +706,14 @@ class DebertaV2LayerMoE(nn.Module):
             intermediate_output, attention_output, language
         )
 
+        if self.mode == 'soft':
+            self.moe_l_aux_loss += self.attention.moe_l_aux_loss
+            self.moe_l_aux_loss += self.intermediate.moe_l_aux_loss
+
         if output_attentions:
-            return (layer_output, att_matrix)
+            return (layer_output, self.moe_l_aux_loss, att_matrix)
         else:
-            return layer_output
+            return (layer_output, self.moe_l_aux_loss)
 
 
 class ConvLayer(nn.Module):
@@ -541,14 +763,17 @@ class ConvLayer(nn.Module):
 class DebertaV2Encoder(nn.Module):
     """Modified BertEncoder with relative position bias support"""
 
-    def __init__(self, config):
+    def __init__(self, config, mode='none'):
         super().__init__()
+        self.mode = mode
         layer_list = [
             DebertaV2Layer(config) for _ in range(config.num_hidden_layers)
         ]
-        layer_list[7] = DebertaV2LayerMoE(config)
-        layer_list[9] = DebertaV2LayerMoE(config)
-        layer_list[11] = DebertaV2LayerMoE(config)
+        if mode != 'none':
+            layer_list[7] = DebertaV2LayerMoE(config, mode=mode)
+            layer_list[9] = DebertaV2LayerMoE(config, mode=mode)
+            layer_list[11] = DebertaV2LayerMoE(config, mode=mode)
+        self.moe_l_aux_loss = 0
         self.layer = nn.ModuleList(layer_list)
         self.relative_attention = getattr(config, "relative_attention", False)
 
@@ -685,7 +910,13 @@ class DebertaV2Encoder(nn.Module):
                     output_attentions=output_attentions,
                 )
 
-            if output_attentions:
+            if i in [7,9,11] and output_attentions:
+                output_states, moe_l_aux_loss, att_m = output_states
+                self.moe_l_aux_loss += moe_l_aux_loss
+            elif i in [7,9,11] and not output_attentions:
+                output_states, moe_l_aux_loss = output_states
+                self.moe_l_aux_loss += moe_l_aux_loss
+            elif i not in [7,9,11] and output_attentions:
                 output_states, att_m = output_states
 
             if i == 0 and self.conv is not None:
@@ -712,17 +943,31 @@ class DebertaV2Encoder(nn.Module):
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (output_states,)
 
-        if not return_dict:
-            return tuple(
-                v
-                for v in [output_states, all_hidden_states, all_attentions]
-                if v is not None
+        if mode == 'none':
+            if not return_dict:
+                return tuple(
+                    v
+                    for v in [output_states, all_hidden_states, all_attentions]
+                    if v is not None
+                )
+            return BaseModelOutput(
+                last_hidden_state=output_states,
+                hidden_states=all_hidden_states,
+                attentions=all_attentions,
             )
-        return BaseModelOutput(
-            last_hidden_state=output_states,
-            hidden_states=all_hidden_states,
-            attentions=all_attentions,
-        )
+        else:
+            if not return_dict:
+                return tuple(
+                    v
+                    for v in [output_states, all_hidden_states, all_attentions]
+                    if v is not None
+                ) + (self.moe_l_aux_loss, )
+            return BaseModelOutputMoE(
+                last_hidden_state=output_states,
+                hidden_states=all_hidden_states,
+                attentions=all_attentions,
+                aux_loss=self.moe_l_aux_loss,
+            )
 
 
 def make_log_bucket_position(relative_pos, bucket_size, max_position):
@@ -1324,11 +1569,12 @@ DEBERTA_INPUTS_DOCSTRING = r"""
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaModel with Deberta->DebertaV2
 class DebertaV2Model(DebertaV2PreTrainedModel):
-    def __init__(self, config):
+    def __init__(self, config, mode='none'):
         super().__init__(config)
 
+        self.mode = mode
         self.embeddings = DebertaV2Embeddings(config)
-        self.encoder = DebertaV2Encoder(config)
+        self.encoder = DebertaV2Encoder(config, mode=mode)
         self.z_steps = 0
         self.config = config
         # Initialize weights and apply final processing
@@ -1450,18 +1696,33 @@ class DebertaV2Model(DebertaV2PreTrainedModel):
 
         sequence_output = encoded_layers[-1]
 
-        if not return_dict:
-            return (sequence_output,) + encoder_outputs[
-                (1 if output_hidden_states else 2) :
-            ]
+        if mode == 'none':
+            if not return_dict:
+                return (sequence_output,) + encoder_outputs[
+                    (1 if output_hidden_states else 2) :
+                ]
 
-        return BaseModelOutput(
-            last_hidden_state=sequence_output,
-            hidden_states=encoder_outputs.hidden_states
-            if output_hidden_states
-            else None,
-            attentions=encoder_outputs.attentions,
-        )
+            return BaseModelOutput(
+                last_hidden_state=sequence_output,
+                hidden_states=encoder_outputs.hidden_states
+                if output_hidden_states
+                else None,
+                attentions=encoder_outputs.attentions,
+            )
+        else:
+            if not return_dict:
+                return (sequence_output,) + encoder_outputs[
+                (1 if output_hidden_states else 2):
+                ]
+
+            return BaseModelOutputMoE(
+                last_hidden_state=sequence_output,
+                hidden_states=encoder_outputs.hidden_states
+                if output_hidden_states
+                else None,
+                attentions=encoder_outputs.attentions,
+                aux_loss=encoder_outputs.aux_loss
+            )
 
 
 @add_start_docstrings(
@@ -1479,7 +1740,7 @@ class FashionxlmMoEForMaskedLMMoE(DebertaV2PreTrainedModel, ModelBase):
     def __init__(self, config):
         super().__init__(config)
 
-        self.deberta = DebertaV2Model(config)
+        self.deberta = DebertaV2Model(config, mode='hard')
         self.cls = DebertaV2OnlyMLMHead(config)
 
         # Initialize weights and apply final processing
@@ -1557,11 +1818,12 @@ class FashionxlmMoEForMaskedLMMoE(DebertaV2PreTrainedModel, ModelBase):
                 else output
             )
 
-        return MaskedLMOutput(
+        return MaskedLMOutputMoE(
             loss=masked_lm_loss,
             logits=prediction_scores,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
+            aux_loss=outputs.aux_loss,
         )
 
 
@@ -1636,7 +1898,7 @@ class FashionxlmMoEForSequencelCassificationMoE(
         num_labels = getattr(config, "num_labels", 2)
         self.num_labels = num_labels
 
-        self.deberta = DebertaV2Model(config)
+        self.deberta = DebertaV2Model(config, mode='hard')
         self.pooler = ContextPooler(config)
         output_dim = self.pooler.output_dim
 
@@ -1764,11 +2026,12 @@ class FashionxlmMoEForSequencelCassificationMoE(
             output = (logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output
 
-        return SequenceClassifierOutput(
+        return SequenceClassifierOutputMoE(
             loss=loss,
             logits=logits,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
+            aux_loss=outputs.aux_loss,
         )
 
 
@@ -1787,7 +2050,7 @@ class DebertaV2ForTokenClassificationMoE(DebertaV2PreTrainedModel, ModelBase):
         super().__init__(config)
         self.num_labels = config.num_labels
 
-        self.deberta = DebertaV2Model(config)
+        self.deberta = DebertaV2Model(config, mode='hard')
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
 
@@ -1863,11 +2126,12 @@ class DebertaV2ForTokenClassificationMoE(DebertaV2PreTrainedModel, ModelBase):
             output = (logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output
 
-        return TokenClassifierOutput(
+        return TokenClassifierOutputMoE(
             loss=loss,
             logits=logits,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
+            aux_loss=outputs.aux_loss
         )
 
 
@@ -1886,7 +2150,7 @@ class DebertaV2ForQuestionAnsweringMoE(DebertaV2PreTrainedModel, ModelBase):
         super().__init__(config)
         self.num_labels = config.num_labels
 
-        self.deberta = DebertaV2Model(config)
+        self.deberta = DebertaV2Model(config, mode='hard')
         self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
 
         # Initialize weights and apply final processing
@@ -1971,12 +2235,13 @@ class DebertaV2ForQuestionAnsweringMoE(DebertaV2PreTrainedModel, ModelBase):
                 ((total_loss,) + output) if total_loss is not None else output
             )
 
-        return QuestionAnsweringModelOutput(
+        return QuestionAnsweringModelOutputMoE(
             loss=total_loss,
             start_logits=start_logits,
             end_logits=end_logits,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
+            aux_loss=outputs.aux_loss
         )
 
 
@@ -1992,3 +2257,101 @@ class MLP(nn.Module):
         out = self.relu(out)
         out = self.fc2(out)
         return out
+
+
+# Copied from transformers.models.deberta.modeling_deberta.DebertaForMaskedLM with Deberta->DebertaV2
+class FashionxlmSoftMoEForMaskedLMMoE(DebertaV2PreTrainedModel, ModelBase):
+    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+    _keys_to_ignore_on_load_missing = [
+        r"position_ids",
+        r"predictions.decoder.bias",
+    ]
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.deberta = DebertaV2Model(config, mode='soft')
+        self.cls = DebertaV2OnlyMLMHead(config)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def get_output_embeddings(self):
+        return self.cls.predictions.decoder
+
+    def set_output_embeddings(self, new_embeddings):
+        self.cls.predictions.decoder = new_embeddings
+
+    @add_start_docstrings_to_model_forward(
+        DEBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length")
+    )
+    @add_code_sample_docstrings(
+        processor_class=_TOKENIZER_FOR_DOC,
+        checkpoint=_CHECKPOINT_FOR_DOC,
+        output_type=MaskedLMOutput,
+        config_class=_CONFIG_FOR_DOC,
+    )
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        language=None,
+        position_ids=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Labels for computing the masked language modeling loss. Indices should be in `[-100, 0, ...,
+            config.vocab_size]` (see `input_ids` docstring) Tokens with indices set to `-100` are ignored (masked), the
+            loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
+        """
+
+        return_dict = (
+            return_dict
+            if return_dict is not None
+            else self.config.use_return_dict
+        )
+
+        outputs = self.deberta(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            language=language,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        sequence_output = outputs[0]
+        prediction_scores = self.cls(sequence_output)
+
+        masked_lm_loss = None
+        if labels is not None:
+            loss_fct = CrossEntropyLoss()  # -100 index = padding token
+            masked_lm_loss = loss_fct(
+                prediction_scores.view(-1, self.config.vocab_size),
+                labels.view(-1),
+            )
+
+        if not return_dict:
+            output = (prediction_scores,) + outputs[1:]
+            return (
+                ((masked_lm_loss,) + output)
+                if masked_lm_loss is not None
+                else output
+            )
+
+        return MaskedLMOutputMoE(
+            loss=masked_lm_loss,
+            logits=prediction_scores,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+            aux_loss=outputs.aux_loss,
+        )

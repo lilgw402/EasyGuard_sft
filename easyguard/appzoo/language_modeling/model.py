@@ -7,28 +7,21 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-
-from transformers import AutoModelForMaskedLM, AutoTokenizer
+from easyguard import AutoModel
 
 try:
     import cruise
+    from cruise import CruiseModule
 except ImportError:
     print(
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 
-from cruise import CruiseModule
-from cruise.utilities.distributed import DIST_ENV
-
 from ...core.optimizers import build_optimizer, build_scheduler
-from ...modelzoo.modeling_utils import load_pretrained
-from ...modelzoo.models.fashionxlm import (
-    MLP,
-    DebertaV2ForMaskedLMMoE,
-    XLMRobertaForMaskedLM,
-)
-from ...modelzoo.models.mdeberta_v2 import DebertaV2ForMaskedLM
+from ...utils import logging
 from ...utils.losses import LearnableNTXentLoss, cross_entropy
+
+logger = logging.get_logger(__name__)
 
 
 class LanguageModel(CruiseModule):
@@ -42,9 +35,6 @@ class LanguageModel(CruiseModule):
         classification_task_enable: bool = False,
         classification_task_head: int = 1422,
         hidden_size: int = 768,
-        load_pretrain: Optional[
-            str
-        ] = "hdfs://harunava/home/byte_magellan_va/user/jiangjunjun.happy/xlmr16/model_state_epoch_400000.th",
         all_gather_limit: int = -1,
         warmup_ratio: float = 0.1,
         weight_decay: float = 0.05,
@@ -61,28 +51,17 @@ class LanguageModel(CruiseModule):
     ):
         super().__init__()
         self.save_hparams()
-        self.moe = False
-        if pretrained_model_name_or_path == "fashionxlm-mdeberta-v3-base":
-            self.backbone = DebertaV2ForMaskedLM.from_pretrained(
-                "microsoft/mdeberta-v3-base"
-            )
-        elif pretrained_model_name_or_path == "fashionxlm-mdeberta-moe-adv":
-            self.moe = True
-            self.backbone = DebertaV2ForMaskedLMMoE.from_pretrained(
-                "microsoft/mdeberta-v3-base"
-            )
-        elif pretrained_model_name_or_path == "xlm-roberta-base":
-            self.backbone = XLMRobertaForMaskedLM.from_pretrained(
-                "xlm-roberta-base"
-            )
+        self.backbone = AutoModel.from_pretrained(
+            pretrained_model_name_or_path,   # fashionxlm-softmoe-base, fashionxlm-moe-base
+            model_cls='soft_model',
+        )
+        if pretrained_model_name_or_path == 'fashionxlm-moe-base':
+            self.hard_moe = True
+            self.soft_moe = True    # todo, remove int future
+        elif pretrained_model_name_or_path == 'fashionxlm-softmoe-base':
+            self.soft_moe = True
         else:
-            self.backbone = AutoModelForMaskedLM.from_pretrained(
-                pretrained_model_name_or_path
-            )
-
-        # self.model = self.backbone
-        # self.init_weights()
-        # self.freeze_params(self.config.TRAIN.freeze_prefix)
+            self.hard_moe, self.soft_moe = False, False
 
         # use contrast learning loss
         self.cl_enable = cl_enable
@@ -98,12 +77,13 @@ class LanguageModel(CruiseModule):
         self.classification_task_enable = classification_task_enable
         if self.classification_task_enable:
             self.classification_task_head = classification_task_head
-            cla_input_size = hidden_size * 2 if self.moe else hidden_size
+            cla_input_size = hidden_size * 2 if self.hard_moe else hidden_size
             self.classifier = torch.nn.Linear(
                 cla_input_size, self.classification_task_head
             )
 
-        if self.moe:
+        if self.hard_moe:
+            from ...modelzoo.models.fashionxlm import MLP
             self.moe_hard_heads = nn.ModuleDict(
                 {
                     k: MLP(hidden_size, hidden_size, hidden_size)
@@ -114,55 +94,6 @@ class LanguageModel(CruiseModule):
             self.kl_loss = nn.KLDivLoss(reduction="batchmean")
             self.adv_head = nn.Linear(hidden_size, 6)
 
-        # setup nce allgather group if has limit
-        nce_limit = self.hparams.all_gather_limit
-        if nce_limit < 0:
-            # no limit
-            self.nce_group = None
-        elif nce_limit == 0:
-            # no all_gather
-            self.nce_group = False
-        else:
-            raise NotImplementedError(
-                "Using sub-groups in NCCL is not well implemented."
-            )
-            group_rank_id = self.trainer.global_rank // nce_limit
-            group_ranks = [
-                group_rank_id * nce_limit + i for i in range(nce_limit)
-            ]
-            self.nce_group = torch.distributed.new_group(
-                ranks=group_ranks, backend="nccl"
-            )
-            self.print(
-                "Create non-global allgather group from ranks:",
-                group_ranks,
-                "group size:",
-                self.nce_group.size(),
-            )
-
-    def init_weights(self):
-        def init_weight_module(module):
-            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
-                torch.nn.init.xavier_uniform_(module.weight)
-            elif isinstance(module, (torch.nn.BatchNorm2d, torch.nn.LayerNorm)):
-                module.bias.data.zero_()
-                module.weight.data.fill_(1.0)
-            if isinstance(module, torch.nn.Linear) and module.bias is not None:
-                module.bias.data.zero_()
-
-        self.apply(init_weight_module)
-
-    def freeze_params(self, freeze_prefix):
-        for name, param in self.named_parameters():
-            for prefix in freeze_prefix:
-                if name.startswith(prefix):
-                    param.requires_grad = False
-
-    def rank_zero_prepare(self):
-        # load partial pretrain
-        if self.hparams.load_pretrain:
-            load_pretrained(self.hparams.load_pretrain, self)
-
     def cl_loss(self, cls_status):
         batch_size = cls_status.shape[0]
         z1, z2 = (
@@ -171,17 +102,11 @@ class LanguageModel(CruiseModule):
         )
 
         # all gather to increase effective batch size
-        if self.nce_group is not False:
-            # [bsz, n] -> [group, bsz, n]
-            group_z1 = self.all_gather(
-                z1, group=self.nce_group, sync_grads="rank"
-            )
-            group_z2 = self.all_gather(
-                z2, group=self.nce_group, sync_grads="rank"
-            )
-            # [group, bsz, n] -> [group * bsz, n]
-            z1 = group_z1.view((-1, cls_status.shape[-1]))
-            z2 = group_z2.view((-1, cls_status.shape[-1]))
+        group_z1 = self.all_gather(z1, sync_grad=True)
+        group_z2 = self.all_gather(z2, sync_grad=True)
+        # [group, bsz, n] -> [group * bsz, n]
+        z1 = group_z1.view((-1, cls_status.shape[-1]))
+        z2 = group_z2.view((-1, cls_status.shape[-1]))
 
         if self.ntx_enable:
             loss = self.ntx_loss_layer(z1, z2)
@@ -335,9 +260,9 @@ class LanguageModel(CruiseModule):
         return self(**batch)
 
     def validation_epoch_end(self, outputs) -> None:
-        gathered_results = DIST_ENV.all_gather_object(outputs)
+        group_outputs = self.all_gather(outputs)
         all_results = []
-        for item in gathered_results:
+        for item in group_outputs:
             all_results.extend(item)
         acc_all = [out["mlm_acc"] for out in all_results]
         total_acc = sum(acc_all) / len(acc_all)
