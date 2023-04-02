@@ -47,3 +47,5 @@ if __name__ == '__main__':
     cfg, trainer, model, datamodule = cli.parse_args()
 
     trainer.fit(model, datamodule)
+
+# python3 examples/fashionproduct_xl_ansa/run_train.py --config examples/fashionproduct_xl_ansa/default_config.yaml

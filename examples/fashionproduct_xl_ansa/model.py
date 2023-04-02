@@ -49,8 +49,8 @@ class FrameAlbertClassify(CruiseModule):
         Initialize output layer
         """
         hidden_dim = self.hparams.hidden_dim
-        self.classifier_concat = torch.nn.Linear(hidden_dim * 2, 256)
-        self.final_class = torch.nn.Linear(256, self.hparams.class_num)
+        self.classifier_concat = torch.nn.Linear(hidden_dim * 2, 2100)
+        self.final_class = torch.nn.Linear(2100, self.hparams.class_num)
         self.ce = torch.nn.CrossEntropyLoss()
         """
         Initialize some fixed parameters.
