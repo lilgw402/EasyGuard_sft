@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
 from examples.fashion_sv.data import SVDataModule
-from examples.fashion_sv.model import FashionSV
+from examples.fashion_sv.sv_model import FashionSV
 
 rand_seed = 42
 
@@ -33,9 +33,9 @@ def setup_seed(seed):
 # random seed
 setup_seed(rand_seed)
 cli = CruiseCLI(
-    SVDataModule,
+    FashionSV,
     trainer_class=CruiseTrainer,
-    datamodule_class=FashionSV,
+    datamodule_class=SVDataModule,
     trainer_defaults={
         "summarize_model_depth": 2,
     },

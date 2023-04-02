@@ -1,8 +1,9 @@
-'''
-DataLoader for training
-'''
-
-import glob, numpy, os, random, soundfile, torch
+import os
+import glob
+import random
+import numpy as np
+import soundfile
+import torch
 from scipy import signal
 
 
@@ -40,10 +41,10 @@ class train_loader(object):
         length = self.num_frames * 160 + 240
         if audio.shape[0] <= length:
             shortage = length - audio.shape[0]
-            audio = numpy.pad(audio, (0, shortage), 'wrap')
-        start_frame = numpy.int64(random.random() * (audio.shape[0] - length))
+            audio = np.pad(audio, (0, shortage), 'wrap')
+        start_frame = np.int64(random.random() * (audio.shape[0] - length))
         audio = audio[start_frame:start_frame + length]
-        audio = numpy.stack([audio], axis=0)
+        audio = np.stack([audio], axis=0)
         # Data Augmentation
         augtype = random.randint(0, 5)
         if augtype == 0:  # Original
@@ -67,12 +68,12 @@ class train_loader(object):
     def add_rev(self, audio):
         rir_file = random.choice(self.rir_files)
         rir, sr = soundfile.read(rir_file)
-        rir = numpy.expand_dims(rir.astype(numpy.float), 0)
-        rir = rir / numpy.sqrt(numpy.sum(rir ** 2))
+        rir = np.expand_dims(rir.astype(np.float), 0)
+        rir = rir / np.sqrt(np.sum(rir ** 2))
         return signal.convolve(audio, rir, mode='full')[:, :self.num_frames * 160 + 240]
 
     def add_noise(self, audio, noisecat):
-        clean_db = 10 * numpy.log10(numpy.mean(audio ** 2) + 1e-4)
+        clean_db = 10 * np.log10(np.mean(audio ** 2) + 1e-4)
         numnoise = self.numnoise[noisecat]
         noiselist = random.sample(self.noiselist[noisecat], random.randint(numnoise[0], numnoise[1]))
         noises = []
@@ -81,12 +82,12 @@ class train_loader(object):
             length = self.num_frames * 160 + 240
             if noiseaudio.shape[0] <= length:
                 shortage = length - noiseaudio.shape[0]
-                noiseaudio = numpy.pad(noiseaudio, (0, shortage), 'wrap')
-            start_frame = numpy.int64(random.random() * (noiseaudio.shape[0] - length))
+                noiseaudio = np.pad(noiseaudio, (0, shortage), 'wrap')
+            start_frame = np.int64(random.random() * (noiseaudio.shape[0] - length))
             noiseaudio = noiseaudio[start_frame:start_frame + length]
-            noiseaudio = numpy.stack([noiseaudio], axis=0)
-            noise_db = 10 * numpy.log10(numpy.mean(noiseaudio ** 2) + 1e-4)
+            noiseaudio = np.stack([noiseaudio], axis=0)
+            noise_db = 10 * np.log10(np.mean(noiseaudio ** 2) + 1e-4)
             noisesnr = random.uniform(self.noisesnr[noisecat][0], self.noisesnr[noisecat][1])
-            noises.append(numpy.sqrt(10 ** ((clean_db - noise_db - noisesnr) / 10)) * noiseaudio)
-        noise = numpy.sum(numpy.concatenate(noises, axis=0), axis=0, keepdims=True)
+            noises.append(np.sqrt(10 ** ((clean_db - noise_db - noisesnr) / 10)) * noiseaudio)
+        noise = np.sum(np.concatenate(noises, axis=0), axis=0, keepdims=True)
         return noise + audio

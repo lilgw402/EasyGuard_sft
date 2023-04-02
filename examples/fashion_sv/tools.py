@@ -1,12 +1,8 @@
-'''
-Some utilized functions
-These functions are all copied from voxceleb_trainer: https://github.com/clovaai/voxceleb_trainer/blob/master/tuneThreshold.py
-'''
-
-import os, numpy, torch
+import os
+import numpy as np
+import torch
 from sklearn import metrics
 from operator import itemgetter
-import torch.nn.functional as F
 
 
 def init_args(args):
@@ -19,15 +15,15 @@ def init_args(args):
 def tuneThresholdfromScore(scores, labels, target_fa, target_fr=None):
     fpr, tpr, thresholds = metrics.roc_curve(labels, scores, pos_label=1)
     fnr = 1 - tpr
-    tunedThreshold = [];
+    tunedThreshold = []
     if target_fr:
         for tfr in target_fr:
-            idx = numpy.nanargmin(numpy.absolute((tfr - fnr)))
+            idx = np.nanargmin(np.absolute((tfr - fnr)))
             tunedThreshold.append([thresholds[idx], fpr[idx], fnr[idx]])
     for tfa in target_fa:
-        idx = numpy.nanargmin(numpy.absolute((tfa - fpr)))  # numpy.where(fpr<=tfa)[0][-1]
+        idx = np.nanargmin(np.absolute((tfa - fpr)))  # np.where(fpr<=tfa)[0][-1]
         tunedThreshold.append([thresholds[idx], fpr[idx], fnr[idx]])
-    idxE = numpy.nanargmin(numpy.absolute((fnr - fpr)))
+    idxE = np.nanargmin(np.absolute((fnr - fpr)))
     eer = max(fpr[idxE], fnr[idxE]) * 100
 
     return tunedThreshold, eer, fpr, fnr
@@ -38,7 +34,7 @@ def tuneThresholdfromScore(scores, labels, target_fa, target_fr=None):
 def ComputeErrorRates(scores, labels):
     # Sort the scores from smallest to largest, and also get the corresponding
     # indexes of the sorted scores.  We will treat the sorted scores as the
-    # thresholds at which the the error-rates are evaluated.
+    # thresholds at which the error-rates are evaluated.
     sorted_indexes, thresholds = zip(*sorted(
         [(index, threshold) for index, threshold in enumerate(scores)],
         key=itemgetter(1)))
