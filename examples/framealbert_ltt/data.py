@@ -41,9 +41,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.is_training = is_training
         self.text_len = config.text_len
         self.frame_len = config.frame_len
-        self.head_num = config.head_num
 
-        self.pipe = Pipeline.from_option(f'file:./examples/framealbert_ltt/m_albertv2_h768a12l12')
+        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         with hopen('./examples/fashionproduct_xl/black_image.jpeg', 'rb') as f:
@@ -195,7 +194,6 @@ class FacDataModule(CruiseDataModule):
             num_workers: int = 8,
             text_len: int = 128,
             frame_len: int = 1,
-            head_num: int = 5,
             exp: str = 'default',
             download_files: list = []
     ):

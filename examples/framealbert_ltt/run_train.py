@@ -44,3 +44,5 @@ if __name__ == '__main__':
     cfg, trainer, model, datamodule = cli.parse_args()
 
     trainer.fit(model, datamodule)
+
+# python3 examples/framealbert_ltt/run_train.py --config examples/framealbert_ltt/default_config.yaml

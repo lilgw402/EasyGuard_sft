@@ -42,12 +42,12 @@ class FrameAlbertTune(CruiseModule):
         """
         # self.backbone = AutoModel.from_pretrained(self.hparams.backbone)
         ##########
-        from easyguard.modelzoo.models.falbert import modeling_falbert
+        from easyguard.modelzoo.models.falbert.modeling_falbert import FalBertModel
         from types import SimpleNamespace
         import yaml
-        with open(self.hparams.config_backbone) as fp:
+        with open(self.hparams.backbone) as fp:
             self.config_backbone = SimpleNamespace(**yaml.load(fp, yaml.Loader))
-        self.backbone = modeling_falbert(self.config_backbone)
+        self.backbone = FalBertModel(self.config_backbone)
         """
         Initialize output layer
         """
