@@ -58,7 +58,7 @@ class MyModel(CruiseModule):
         with open(self.hparams.config_optim) as fp:
             self.config_optim = SimpleNamespace(**yaml.load(fp, yaml.Loader))
 
-        self.fashionvtp_model = AutoModel.from_pretrained("fashionvtp-base-s")
+        self.fashionvtp_model = AutoModel.from_pretrained("fashionvtp-base-c")
 
         self.classifier_1 = nn.Linear(768, self.config_optim.class_num_lv1)
         self.classifier_2 = nn.Linear(768, self.config_optim.class_num_lv2)
@@ -66,7 +66,6 @@ class MyModel(CruiseModule):
         self.criterion_1 = nn.CrossEntropyLoss(ignore_index=-1)
         self.criterion_2 = nn.CrossEntropyLoss(ignore_index=-1)
 
-        # self.initialize_weights()
         self.freeze_params(self.config_optim.freeze_prefix)
 
     def freeze_params(self, freeze_prefix):
@@ -74,20 +73,6 @@ class MyModel(CruiseModule):
             for prefix in freeze_prefix:
                 if name.startswith(prefix):
                     param.requires_grad = False
-
-    def initialize_weights(self):
-        state_dict_ori = self.state_dict()
-        state_dict = torch.load("/mnt/bn/multimodel-pretrain/scripts/easyguard_train/live_site/version_7/checkpoints/epoch=28-step=15660-val_acc2=0.565.ckpt", map_location="cpu")['state_dict']
-
-        state_dict_new = OrderedDict()
-        for key, value in state_dict.items():
-            if (
-                key in state_dict_ori
-                and state_dict_ori[key].shape == state_dict[key].shape
-            ):
-                state_dict_new[key] = value
-        info = self.load_state_dict(state_dict_new, strict=False)
-        print("load info: ", info, file=sys.stderr)
 
     def forward(
         self,

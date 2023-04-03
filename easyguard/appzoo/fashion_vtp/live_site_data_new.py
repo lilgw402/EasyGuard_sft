@@ -170,7 +170,7 @@ class MMDataset(Dataset):
     def __init__(self, params, data_path, is_training=False):
 
         super().__init__()
-        self.preprocess = get_transform(mode='train' if is_training else 'val')
+        self.preprocess = get_transform_beta(mode='train' if is_training else 'val')
 
         self.max_len = {
             'text_ocr': params['ocr_max_len'],
