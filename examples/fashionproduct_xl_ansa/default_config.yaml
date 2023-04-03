@@ -80,9 +80,8 @@ model:
   warmup_steps_factor: 1
   low_lr_prefix:
     - backbone
-    - classifier
   freeze_prefix: [ ]
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_segtv_17060.th
+  load_pretrained: null
 # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_segtv_17060.th
 # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0317_ema_fix_GB/model_state_epoch_5468.th
   prefix_changes: [ ]

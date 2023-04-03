@@ -49,8 +49,7 @@ class FrameAlbertClassify(CruiseModule):
         Initialize output layer
         """
         hidden_dim = self.hparams.hidden_dim
-        self.classifier_concat = torch.nn.Linear(hidden_dim * 2, 2100)
-        self.final_class = torch.nn.Linear(2100, self.hparams.class_num)
+        self.classifier_concat = torch.nn.Linear(hidden_dim * 2, self.hparams.class_num)
         self.ce = torch.nn.CrossEntropyLoss()
         """
         Initialize some fixed parameters.
@@ -135,7 +134,7 @@ class FrameAlbertClassify(CruiseModule):
 
         concat_feat = torch.cat([cls_emb, max_pooling], dim=1)
 
-        logits = self.final_class(self.classifier_concat(concat_feat))
+        logits = self.classifier_concat(concat_feat)
 
         return {"feat": concat_feat, "logits": logits}
 
