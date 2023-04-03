@@ -80,7 +80,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
 
-        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/fashionproduct_xl_ansa/m_albert_h512a8l12')
+        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         with hopen('./examples/fashionproduct_xl/black_image.jpeg', 'rb') as f:
