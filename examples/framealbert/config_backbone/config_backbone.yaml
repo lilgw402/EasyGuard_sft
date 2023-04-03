@@ -1,4 +1,4 @@
-vocab_size: 145608
+vocab_size: 280001
 embedding_size: 256
 num_hidden_layers: 6
 hidden_size: 768
@@ -13,7 +13,8 @@ max_frame_num: 16
 visual_front: false
 with_pooler: true
 initializer_range: 0.02
-visual_dim: 512
-visual_type: SwinB224
+visual_dim: 2048
+visual_type: RN50
 layernorm_eps: 0.00001
-freeze_prefix: []
+freeze_prefix: [ ]
+share_tv_pos: false
