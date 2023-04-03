@@ -64,7 +64,7 @@ class MyModel(CruiseModule):
         self.classifier_2 = nn.Linear(768, self.config_optim.class_num_lv2)
 
         self.criterion_1 = nn.CrossEntropyLoss(ignore_index=-1)
-        self.criterion_2 = nn.CrossEntropyLoss(ignore_index=-1)
+        self.criterion_2 = nn.CrossEntropyLoss(ignore_index=-1, label_smoothing=self.config_optim.label_smooth_2)
 
         self.freeze_params(self.config_optim.freeze_prefix)
 
@@ -151,7 +151,7 @@ class MyModel(CruiseModule):
         val_rep_dict.update({"labels_2": batch["labels_2"]})
         val_cls_loss_lv2 = self.cal_cls_loss_v2(keys=["logits_2", "labels_2"], **val_rep_dict)
 
-        val_loss = val_cls_loss_lv1 + 2.0 * val_cls_loss_lv2
+        val_loss = val_cls_loss_lv1 + val_cls_loss_lv2
         val_loss_dict = {'loss': val_loss}
         val_loss_dict.update({"logits_1": val_rep_dict["logits_1"], "labels_1": val_rep_dict["labels_1"]})
         val_loss_dict.update({"logits_2": val_rep_dict["logits_2"], "labels_2": val_rep_dict["labels_2"]})

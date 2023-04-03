@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import io
 import os
+from tracemalloc import is_tracing
 import torch
 import base64
 import traceback
@@ -170,7 +171,7 @@ class MMDataset(Dataset):
     def __init__(self, params, data_path, is_training=False):
 
         super().__init__()
-        self.preprocess = get_transform_beta(mode='train' if is_training else 'val')
+        self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         self.max_len = {
             'text_ocr': params['ocr_max_len'],
@@ -372,3 +373,15 @@ def get_transform_beta(mode: str = "train"):
         t.append(transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD))
 
     return transforms.Compose(t)
+
+
+def mixgen(data, lam=0.5):
+    batch_size = len(data) // 4
+    index = np.random.permutation(batch_size)
+    for i in range(batch_size):
+        # image mixup
+        for j in range(len(data[i]['frames'])):
+            data[i]['frames'][j] = lam * data[i]['frames'][j] + (1 - lam) * data[index[i]]['frames'][j]
+        # text concat
+        data[i]['input_ids'] = data[i]['input_ids'] + data[index[i]]['input_ids']
+    return data
