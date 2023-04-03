@@ -13,8 +13,8 @@ import random
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
-from examples.framealbert_ltt.data import FacDataModule
-from examples.framealbert_ltt.model import FrameAlbertTune
+from examples.framealbert.data import FacDataModule
+from examples.framealbert.model import FrameAlbertTune
 
 rand_seed = 42
 
