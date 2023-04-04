@@ -1,0 +1,108 @@
+trainer:
+  default_root_dir: null
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/cruise_exp
+  logger: true
+  log_every_n_steps: 100
+  benchmark: false
+  enable_speedmonitor: true
+  enable_versions: false
+  detect_anomaly: false
+  deterministic: false
+  accelerator: gpu
+  accelerator_kwargs: { }
+  precision: fp16
+  max_epochs: 1
+  max_steps: -1
+  limit_train_batches: null
+  limit_val_batches: 2
+  limit_test_batches: null
+  sync_batchnorm: false
+  sync_fit_metrics: null
+  val_check_interval: [ 1000, 1.0 ]
+  accumulate_grad_batches: null
+  gradient_clip_val: 1.0
+  seed: 42
+  summarize_model_depth: 3
+  resume_ckpt_path: null
+  callbacks: null
+  enable_checkpoint: 10
+  checkpoint_monitor: val_top1_acc
+  checkpoint_mode: max
+  dataloader_timeout: -1
+  dataloader_retry_limit: 100
+  dataloader_retry_persistent_limit: 5
+  find_unused_parameters: true
+  project_name: null
+  experiment_name: null
+  enable_trace: false
+  reload_dataloaders_every_n_epochs: -1
+  strategy: ddp
+  enable_qat: false
+  qat_kwargs: { }
+  optimizer_kwargs:
+    optimizer:
+      type: torch.optim.AdamW
+      params:
+        lr: 0.0001
+        betas:
+          - 0.9
+          - 0.999
+        eps: 1.0e-06
+        weight_decay: 0.01
+        correct_bias: true
+        correct_bias_eps: false
+        bias_correction: true
+        adam_w_mode: true
+        amsgrad: false
+        set_grad_none: true
+        momentum: 0.0
+        nesterov: false
+    scheduler:
+      type: torch.optim.lr_scheduler.LinearLR
+      total_steps_param_name: total_iters
+      warmup_steps_param_name: num_warmup_steps
+      params:
+        warmup_step_rate: 0.005
+        start_factor: 0.3333333333333333
+        end_factor: 1.0
+        num_cycles: 0.5
+        lr_end: 1.0e-07
+        power: 1.0
+  grad_norm_layers: [ ]
+model:
+  backbone: fashionproduct-xl-general-v1
+  class_num: 2100
+  hidden_dim: 768
+  optim: AdamW
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  lr_schedule: linear
+  warmup_steps_factor: 4
+  low_lr_prefix:
+    - backbone
+  freeze_prefix: [ ]
+  head_num: 5
+  use_multihead: false
+  load_pretrained: null
+# hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
+  prefix_changes: [ ]
+#    - backbone.vision.->backbone.falbert.visual.
+#    - backbone.->backbone.falbert.
+  download_files: [ ]
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
+data:
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl
+  train_size: 300000
+  val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country_slices
+  val_size: 16000
+  train_batch_size: 64
+  val_batch_size: 32
+  num_workers: 8
+  text_len: 128
+  frame_len: 1
+  head_num: 5
+  exp: 0322_cruise_exp
+  download_files: [ ]
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
+#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
+log_level: INFO

@@ -10,9 +10,10 @@ import yaml
 from ...modeling_utils import ModelBase
 from . import albert
 from .swin import SwinTransformer
+from .resnet import resnet50
 
 
-class FalBertModel(nn.Module, ModelBase):
+class FalBertModel(ModelBase):
     """Frame + ALBert"""
 
     def __init__(self, config, **kwargs):
@@ -39,12 +40,15 @@ class FalBertModel(nn.Module, ModelBase):
         self.visual_type = config.visual_type
         if self.visual_type == "SwinB224":
             self.visual = SwinTransformer(
-                img_size=config.get("img_size", 224),
-                num_classes=config.get("num_classes", 512),
-                embed_dim=config.get("embed_dim", 128),
-                depths=config.get("depths", [2, 2, 18, 2]),
-                num_heads=config.get("num_heads", [4, 8, 16, 32]),
+                img_size=224,
+                num_classes=512,
+                embed_dim=128,
+                depths=[2, 2, 18, 2],
+                num_heads=[4, 8, 16, 32],
             )
+        elif self.visual_type == 'RN50':
+            # 注意，此处为随机初始化的RN50
+            self.resnet = resnet50(expose_stages=[5])  # 5是最后一层，6是分类输出
 
         # 映射
         self.middle_size = config.get("middle_size", 128)

@@ -14,10 +14,11 @@
 # limitations under the License.
 """ Auto Config class."""
 
-from collections import OrderedDict
-from genericpath import isfile
 import os
+from collections import OrderedDict
 from typing import List, Optional, Union
+
+from genericpath import isfile
 
 from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
@@ -62,6 +63,7 @@ class AutoConfig:
         cls,
         pretrained_model_name_or_path: str,
         config_name: Optional[str] = "config",
+        if_cache: Optional[bool] = False,
         **kwargs,
     ):
         backend = kwargs.pop("backend", None)
@@ -116,6 +118,7 @@ class AutoConfig:
                     cache_file(
                         pretrained_model_name_or_path,
                         MODEL_CONFIG_NAMES,
+                        if_cache=if_cache,
                         **extra_dict,
                     )
                     if not is_local

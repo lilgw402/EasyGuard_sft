@@ -101,3 +101,14 @@ fashionvtp-base-s:
   server: hdfs
   region: CN
   description: 视频多模态预训练表征模型fashionvtp(1000w)
+fashionproduct-xl-general-v1:
+  type: fashionproduct_xl
+  server: hdfs
+  region: CN
+  description: 多语言商品图文表征模型fashionproduct-xl，目前支持en、th、id、vn、my
+fashionproduct-xl-hr-v1:
+  type: fashionproduct_xl
+  server: hdfs
+  region: CN
+  description: 侧重于高危类目的多语言商品图文表征模型fashionproduct-xl，目前支持en、th、id、vn、my
+

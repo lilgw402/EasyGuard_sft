@@ -201,18 +201,19 @@ class ModelZooYaml(YamlConfig):
 
 
 MODELZOO_CONFIG = ModelZooYaml.yaml_reader(MODEL_CONFIG_PATH)
-if os.path.exists(MODEL_ARCHIVE_PATH):
-    os.remove(MODEL_ARCHIVE_PATH)
+# if os.path.exists(MODEL_ARCHIVE_PATH):
+#     os.remove(MODEL_ARCHIVE_PATH)
 
-os.makedirs(EASYGUARD_CONFIG_CACHE, exist_ok=True)
-hmget([MODEL_ARCHIVE_PATH_REMOTE], EASYGUARD_CONFIG_CACHE)
-MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH_BACKUP
-if (
-    os.path.exists(MODEL_ARCHIVE_PATH)
-    and os.path.getsize(MODEL_ARCHIVE_PATH) != 0
-):
-    MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH
-logger.info(f"the path of the loaded archive file: {MODEL_ARCHIVE_PATH_}")
+# os.makedirs(EASYGUARD_CONFIG_CACHE, exist_ok=True)
+# hmget([MODEL_ARCHIVE_PATH_REMOTE], EASYGUARD_CONFIG_CACHE)
+# MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH_BACKUP
+# if (
+#     os.path.exists(MODEL_ARCHIVE_PATH)
+#     and os.path.getsize(MODEL_ARCHIVE_PATH) != 0
+# ):
+#     MODEL_ARCHIVE_PATH_ = MODEL_ARCHIVE_PATH
+# logger.info(f"the path of the loaded archive file: {MODEL_ARCHIVE_PATH_}")
 
-MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_)
+# MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_)
+MODEL_ARCHIVE_CONFIG = load_yaml(MODEL_ARCHIVE_PATH_BACKUP)
 MODELZOO_CONFIG.initialize()

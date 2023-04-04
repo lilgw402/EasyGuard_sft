@@ -16,7 +16,7 @@
 import importlib
 import os
 from collections import OrderedDict
-from typing import Optional, Union, Any, Dict
+from typing import Any, Dict, Optional, Union
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
@@ -282,6 +282,7 @@ class _BaseAutoModelClass:
         region: Optional[str] = "CN",
         model_cls: Optional[str] = "model",
         model_weight_file_path: Optional[str] = None,
+        if_cache: Optional[bool] = False,
         *model_args,
         **kwargs,
     ):
@@ -295,6 +296,10 @@ class _BaseAutoModelClass:
             avaiable region, CN (China), VA (oversea), CN/VA (both), by default "CN"
         model_cls : Optional[str], optional
             different categories of models, such as "model", "sequence_model", which can be found in unique_key of models.yaml, by default "model"
+        model_weight_file_path : Optional[str]
+            can set the local path or hdfs path
+        if_cache: Optional[bool]
+            if true, download model from server, otherwise, read from hdfs directly, default False
 
         Returns
         -------
@@ -397,6 +402,7 @@ class _BaseAutoModelClass:
                     MODEL_CONFIG_NAMES,
                     remote_url,
                     model_type,
+                    if_cache=if_cache,
                     **kwargs,
                 )
 
@@ -408,6 +414,7 @@ class _BaseAutoModelClass:
                         MODEL_SAVE_NAMES,
                         remote_url,
                         model_type,
+                        if_cache=if_cache,
                         **kwargs,
                     )
                 except:
@@ -506,6 +513,7 @@ class _BaseAutoModelClass:
                     model_config_class_: ConfigBase = (
                         AutoConfig.from_pretrained(
                             pretrained_model_name_or_path,
+                            if_cache=if_cache,
                             **extra_dict,
                             **config_dict,
                             **kwargs,

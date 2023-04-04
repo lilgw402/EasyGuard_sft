@@ -36,6 +36,8 @@ EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业
 
 * FashionModel模型列表，详见[电商治理预训练模型库](https://bytedance.feishu.cn/sheets/shtcnJU6aAYhLP1wdYXFyPXH7mc)
 
+* EasyGuard示例，详见[EasyGuard Examples](https://code.byted.org/ecom_govern/EasyGuard/tree/master/examples)
+
 * 调用方式详见[电商治理模型FashionModels使用文档](https://bytedance.feishu.cn/wiki/wikcnBlgTsEuyDo1ZtYXW38k4Gf)
 
 * 调用示例

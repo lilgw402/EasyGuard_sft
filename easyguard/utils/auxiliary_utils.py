@@ -1,4 +1,5 @@
 import hashlib
+import io
 import os
 import sys
 import time
@@ -16,7 +17,7 @@ from . import (
     REMOTE_PATH_SEP,
     SERVER_MAPPING,
 )
-from .hdfs_utils import hexists, hlist_files, hmget
+from .hdfs_utils import hdfs_open, hexists, hlist_files, hmget
 from .logging import get_logger
 from .type_utils import typecheck
 from .yaml_utils import file_read
@@ -89,6 +90,7 @@ def cache_file(
     remote_url: Optional[str] = None,
     model_type: Optional[str] = None,
     download_retry_number: Optional[int] = RETYR_TIMES,
+    if_cache: Optional[bool] = False,
     *args,
     **kwargs,
 ) -> str:
@@ -122,6 +124,35 @@ def cache_file(
     """
     if os.path.exists(model_name_path):
         return model_name_path
+    elif not if_cache:
+        model_path_remote = remote_url
+        assert (
+            model_path_remote is not None
+        ), f"the argument `remote_url` doesn't exist"
+        model_file_remote_list = []
+        if isinstance(file_name, str):
+            model_file_remote_list = [
+                REMOTE_PATH_SEP.join([model_path_remote, file_name])
+            ]
+        else:
+            model_file_remote_list = list(
+                map(
+                    lambda x: REMOTE_PATH_SEP.join([model_path_remote, x]),
+                    file_name,
+                )
+            )
+        # diffent servers, different processes
+        if model_path_remote.startswith("hdfs://"):
+            model_file_path_remote = None
+            for remote_path_ in model_file_remote_list:
+                if hexists(remote_path_):
+                    model_file_path_remote = remote_path_
+                    break
+        if model_file_path_remote:
+            return model_file_path_remote
+        raise FileExistsError(
+            f"failed to obtain one of the remote files `{model_file_remote_list}`"
+        )
     elif model_type is not None:
         hash_ = sha256(model_name_path)
         hash_file = (
@@ -281,6 +312,7 @@ def hf_name_or_path_check(
                         file_name,
                         model_url,
                         model_type,
+                        if_cache=True,
                     )
             return REMOTE_PATH_SEP.join(
                 target_file_path.split(REMOTE_PATH_SEP)[:-1]
@@ -488,7 +520,14 @@ def load_pretrained_model_weights(
     map_location = kwargs.pop("map_location", "cpu")
 
     # load weights
-    ckpt = torch.load(model_path, map_location=map_location)
+    if not model_path.startswith("hdfs://"):
+        ckpt = torch.load(model_path, map_location=map_location)
+    else:
+        with hdfs_open(model_path, "rb") as hdfs_reader:
+            logger.info(f"start to read `{model_path}` file from hdfs")
+            state_dict = io.BytesIO(hdfs_reader.read())
+            logger.info(f"read `{model_path}` successfully")
+            ckpt = torch.load(state_dict, map_location=map_location)
 
     if ckpt.get("state_dict", None):
         state_dict = ckpt["state_dict"]
