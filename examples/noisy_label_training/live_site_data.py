@@ -250,9 +250,6 @@ class MMDataset(Dataset):
         return len(self.vids)
 
     def collect_fn(self, data):
-        if self.training and self.params.get('augment', '') == 'mixgen':
-            data = mixgen(data)
-
         vids = []
         labels_1 = []
         labels_2 = []
@@ -263,6 +260,8 @@ class MMDataset(Dataset):
         frames_mask = []
 
         max_len = max([len(b['input_ids']) for b in data])
+        if self.training and self.params.get('augment', '') == 'mixgen':
+            data = mixgen(data)
 
         for ib, ibatch in enumerate(data):
             vids.append(ibatch['vid'])
