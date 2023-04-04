@@ -1,5 +1,6 @@
 set -x
 
+# https://www.cyberciti.biz/faq/unix-linux-bash-script-check-if-variable-is-empty/
 if [ -z "$MARIANA_OVERRIDE_CRUISE_VERSION" ]
 then
     echo "MARIANA_OVERRIDE_CRUISE_VERSION not set, will not update cruise"

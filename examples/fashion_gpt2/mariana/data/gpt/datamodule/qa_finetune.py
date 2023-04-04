@@ -172,7 +172,8 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
         train_steps = -1
         if self.hparams.train_size > 0:
             train_steps = self.hparams.train_size // (self.hparams.train_batch_size * DIST_ENV.world_size)
-            assert train_steps > 0, f"train_size={self.hparams.train_size} may be too small to split to batch_size * world_size"
+            assert train_steps > 0, f"train_size={self.hparams.train_size} " \
+                                    f"may be too small to split to batch_size * world_size"
         train_files = [self.hparams.train_path]
         self.rank_zero_info(f"Fetched {len(train_files)} training files.")
         if self.hparams.tokenizer_type == "bbpe":
@@ -199,8 +200,7 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
                                                  add_sep_token=self.hparams.add_sep_token,
                                                  mask_prompt_loss=self.hparams.mask_prompt_loss,
                                                  tokenizer_kwargs=tokenizer_kwargs),
-                                             transform_output_many=True,
-                                             )
+                                             transform_output_many=True)
         if self.hparams.gpu_prefetch:
             loader = GPUPrefetcher(loader)
         return loader
@@ -230,8 +230,7 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
                                                  drop_last=False,
                                                  add_sep_token=self.hparams.add_sep_token,
                                                  mask_prompt_loss=self.hparams.mask_prompt_loss),
-                                             transform_output_many=True,
-                                             )
+                                             transform_output_many=True)
         if self.hparams.gpu_prefetch:
             loader = GPUPrefetcher(loader)
         return loader

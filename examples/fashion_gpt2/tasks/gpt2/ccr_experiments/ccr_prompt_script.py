@@ -279,20 +279,20 @@ if __name__ == "__main__":
     #     train_out_file_path=os.path.join(base_dir, 'ner', 'ccr_ner_train.txt'),
     #     valid_out_file_path=os.path.join(base_dir, 'ner', 'ccr_ner_valid.jsonl'))
 
-    # generate_prompt_mlc_data(input_train_file_path=os.path.join(base_dir, 'mlc', 'train.txt'),
-    #                          input_valid_file_path=os.path.join(base_dir, 'mlc', 'valid.txt'),
+    # generate_prompt_mlc_data(input_train_file_path=os.path.join(base_dir, 'mlc', 'ccr_order_train.txt'),
+    #                          input_valid_file_path=os.path.join(base_dir, 'mlc', 'ccr_order_valid.txt'),
     #                          train_out_file_path=os.path.join(base_dir, 'mlc', 'ccr_mlc_train.txt'),
     #                          valid_out_file_path=os.path.join(base_dir, 'mlc', 'ccr_mlc_valid.jsonl'))
 
     # convert_txt_to_parquet(input_file_path=os.path.join(base_dir, 'all', 'ccr_all_train.txt'),
     #                        output_file_path=os.path.join(base_dir, 'all', 'ccr_all_train.parquet'))
-    # generate_prompt_multi_choice_data(input_train_file_path=os.path.join(base_dir, 'mlc', 'train.txt'),
-    #                                   input_valid_file_path=os.path.join(base_dir, 'mlc', 'valid.txt'),
+    # generate_prompt_multi_choice_data(input_train_file_path=os.path.join(base_dir, 'mlc', 'ccr_order_train.txt'),
+    #                                   input_valid_file_path=os.path.join(base_dir, 'mlc', 'ccr_order_valid.txt'),
     #                                   train_out_file_path=os.path.join(base_dir, 'mlc',
     #                                                                    'ccr_multi_choice_train.parquet'),
     #                                   valid_out_file_path=os.path.join(base_dir, 'mlc', 'ccr_multi_choice_valid.jsonl'),
     #                                   label_map_file_path=os.path.join(base_dir, 'mlc', 'label_definition.txt'))
-    # generate_train_prompt_data(input_file_path=os.path.join(data_base_dir, 'train.txt'),
+    # generate_train_prompt_data(input_file_path=os.path.join(data_base_dir, 'ccr_order_train.txt'),
     #                            label_definition_path='label_definition.txt',
     #                            parquet_out_file_path='ccr_train.parquet',
     #                            txt_out_file_path='ccr_train.txt')
@@ -301,5 +301,5 @@ if __name__ == "__main__":
     #                            label_definition_path='label_definition.txt',
     #                            valid_out_file_path='ccr_mlc_valid.jsonl')
     # parse_result_from_mlc(input_file_path='eval_detail.txt')
-    parse_result_mlc_prompt(input_file_path='data/inference_result_2023032020.txt')
+    parse_result_mlc_prompt(input_file_path='data/outputs/inference_result_2023032020.txt')
     # parse_result_ner_prompt(input_file_path='data/inference_result_2023031711.txt')

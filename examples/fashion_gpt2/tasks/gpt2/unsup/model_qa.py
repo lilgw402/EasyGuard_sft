@@ -209,13 +209,13 @@ if __name__ == '__main__':
     helper = ExpHelper(__file__)
     from cruise.trainer.callback import ModelCheckpoint
 
-    ckpter = ModelCheckpoint(monitor='epoch',
-                             save_last=True,
-                             save_top_k=-1,
-                             every_n_train_steps=2000,
-                             save_weights_only=True,
-                             save_on_train_epoch_end=True,
-                             enable_trace=False)
+    checkpointer = ModelCheckpoint(monitor='epoch',
+                                   save_last=True,
+                                   save_top_k=-1,
+                                   every_n_train_steps=2000,
+                                   save_weights_only=True,
+                                   save_on_train_epoch_end=True,
+                                   enable_trace=False)
     cli = CruiseCLI(GPT2Model,
                     datamodule_class=QAFinetuneGPTDatamodule,
                     trainer_defaults={
@@ -232,7 +232,7 @@ if __name__ == '__main__':
                         'gradient_clip_val'     : 1.0,
                         'checkpoint_monitor'    : 'step',
                         'checkpoint_mode'       : 'max',
-                        'callbacks'             : [ckpter],
+                        'callbacks'             : [checkpointer],
                         'optimizer_kwargs'      : mariana_optimizer_kwargs_defaults,
                     })
     cli.add_argument('--val-only', default=False, action='store_true', dest='val_only')

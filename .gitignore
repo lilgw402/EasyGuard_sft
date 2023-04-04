@@ -168,6 +168,6 @@ events.out*
 # output
 *.stderr
 *.stdout
-.idea/
+.idea
 
 examples/fashion_gpt2/tasks/gpt2/ccr_experiments/data
