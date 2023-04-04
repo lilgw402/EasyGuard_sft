@@ -165,7 +165,7 @@ class FrameAlbertClassify(CruiseModule):
             batch["input_mask"],
             batch["frames"],
             batch["frames_mask"],
-            batch["head_mask"]
+            batch.get("head_mask", None)
         )
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -194,7 +194,7 @@ class FrameAlbertClassify(CruiseModule):
             batch["input_mask"],
             batch["frames"],
             batch["frames_mask"],
-            batch["head_mask"]
+            batch.get("head_mask", None)
         )
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -243,7 +243,7 @@ class FrameAlbertClassify(CruiseModule):
             batch["input_mask"],
             batch["frames"],
             batch["frames_mask"],
-            batch["head_mask"]
+            batch.get("head_mask", None)
         )
         return token_ids, segment_ids, attn_mask, image, image_mask, head_mask
 

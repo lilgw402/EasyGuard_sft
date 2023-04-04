@@ -1,7 +1,6 @@
 import io
 import os
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
 import random
 import re
@@ -87,8 +86,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.frame_len = config.frame_len
         self.head_num = config.head_num
 
-        self.gec = np.load('./examples/fashionproduct_xl/GEC_cat.npy', allow_pickle=True).item()
-        self.cid2label = np.load('./examples/fashionproduct_xl/tags.npy',
+        self.gec = np.load('./examples/fashionproduct_xl/fashionproduct_xl_cat/GEC_cat.npy', allow_pickle=True).item()
+        self.cid2label = np.load('./examples/fashionproduct_xl/fashionproduct_xl_cat/tags.npy',
                                  allow_pickle=True).item()['cid2label']
 
         self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')

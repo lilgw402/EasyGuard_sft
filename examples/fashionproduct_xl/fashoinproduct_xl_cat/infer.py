@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import io
-import os
 
 # os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # import cv2
@@ -18,12 +17,12 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
 from cruise.utilities.hdfs_io import hopen
-from examples.fashionproduct_xl.data import FacDataModule
-from examples.fashionproduct_xl.model import FrameAlbertClassify
-from examples.fashionproduct_xl.data import text_concat
+from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import FacDataModule
+from examples.fashionproduct_xl.fashoinproduct_xl_cat.model import FrameAlbertClassify
+from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import text_concat
 
 max_len = 128
-gec = np.load('./examples/fashionproduct_xl/GEC_cat.npy', allow_pickle=True).item()
+gec = np.load('./examples/fashionproduct_xl/fashionproduct_xl_cat/GEC_cat.npy', allow_pickle=True).item()
 pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
 # tokenizer = AutoTokenizer.from_pretrained('./examples/fashionproduct_xl/xlm-roberta-base-torch')
 country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }

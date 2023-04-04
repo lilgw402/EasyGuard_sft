@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from cruise import CruiseCLI, CruiseTrainer
-from examples.fashionproduct_xl.data import FacDataModule
-from examples.fashionproduct_xl.model import FrameAlbertClassify
+from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import FacDataModule
+from examples.fashionproduct_xl.fashoinproduct_xl_cat.model import FrameAlbertClassify
 
 if __name__ == "__main__":
     cli = CruiseCLI(FrameAlbertClassify,
