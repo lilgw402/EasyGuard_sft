@@ -169,9 +169,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                     frames_mask_cur.append(0)
             else:
                 # 帧数足够，无需补帧
-                for i, img in enumerate(img_np):
-                    frames.append(img)
-                    frames_mask_cur.append(1)
+                frames = img_np[:self.frame_len]
+                frames_mask_cur = [1] * self.frame_len
+                # for i, img in enumerate(img_np):
+                #     frames.append(img)
+                #     frames_mask_cur.append(1)
 
             frames_mask.append(frames_mask_cur)
 
