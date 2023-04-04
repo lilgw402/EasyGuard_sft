@@ -1,20 +1,20 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/cruise_exp
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/ansa_demo
   logger: true
   log_every_n_steps: 100
   benchmark: false
   enable_speedmonitor: true
-  enable_versions: false
+  enable_versions: true
   detect_anomaly: false
-  deterministic: false
+  deterministic: true
   accelerator: gpu
   accelerator_kwargs: { }
   precision: fp16
-  max_epochs: 1
+  max_epochs: 5
   max_steps: -1
   limit_train_batches: null
-  limit_val_batches: 2
+  limit_val_batches: 16
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
@@ -70,38 +70,35 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
-  backbone: fashionproduct-xl-general-v1
-  class_num: 2100
+  backbone: fashionproduct-xl-general-v1   # 加载预训练的backbone，通用版fashionproduct-xl-general-v1,更关注高危类目召回则使用fashonproduct-xl-hr-v1
+  class_num: 2
   hidden_dim: 768
   optim: AdamW
   learning_rate: 0.0001
   weight_decay: 0.0001
   lr_schedule: linear
-  warmup_steps_factor: 4
+  warmup_steps_factor: 1
   low_lr_prefix:
     - backbone
   freeze_prefix: [ ]
-  head_num: 5
-  use_multihead: false
   load_pretrained: null
-# hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
+# hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_segtv_17060.th
+# hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0317_ema_fix_GB/model_state_epoch_5468.th
   prefix_changes: [ ]
 #    - backbone.vision.->backbone.falbert.visual.
 #    - backbone.->backbone.falbert.
   download_files: [ ]
-#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_translation/train_jsonl
-  train_size: 300000
-  val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country_slices
-  val_size: 16000
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/ansa_demo/train_img_jsonl
+  train_size: 1000000
+  val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/ansa_demo/val_img_jsonl
+  val_size: 22000
   train_batch_size: 64
-  val_batch_size: 32
+  val_batch_size: 64
   num_workers: 8
-  text_len: 128
+  text_len: 128   # 如使用ptx_tokenizer，应在config.json中修改文本长度
   frame_len: 1
-  head_num: 5
-  exp: 0322_cruise_exp
+  exp: 0330_finetune_ansa
   download_files: [ ]
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger

@@ -1,10 +1,10 @@
-class_num: 3
+class_num: 130
 
 freeze_prefix: []
 
 weight_decay: 0.01
 lr_scheduler: cosine #cosine, linear, step
-base_lr: 5.0e-3
+base_lr: 1.0e-5
 warmup_lr: 0.0
 min_lr: 0.0
 warmup_epochs: 5

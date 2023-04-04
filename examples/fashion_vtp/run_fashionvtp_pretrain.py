@@ -35,7 +35,7 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # appzoo中实现好自己的data模块
-from easyguard.appzoo.fashion_vtp.data import ByteDriveDataModule
+from easyguard.appzoo.fashion_vtp.data_pretrain import PretrainDataModule
 # 导入FashionVTP模型，无特殊需求不需要改动，import进来即可
 from easyguard.appzoo.fashion_vtp.model_pretrain import FashionVTP
 from easyguard.utils.arguments import print_cfg
@@ -55,7 +55,7 @@ class MMClsModel(CruiseModule):
         self,
         config_model: str = './examples/fashion_vtp/pretrain_configs/config_model.yaml',
         config_optim: str = './examples/fashion_vtp/pretrain_configs/config_optim.yaml',
-        load_pretrained: str = 'hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/weights/fashionvtp3-model-20230109.th',
+        load_pretrained: str = 'hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/1e_fvtp3_continue_pretrain_0220_8new/model_state_epoch_1508298.th',
     ):
         super(MMClsModel, self).__init__()
         self.save_hparams()
@@ -98,14 +98,15 @@ class MMClsModel(CruiseModule):
                             [self.text_visual_and_fuse_model.t_projector, self.text_visual_and_fuse_model.t_projector_m],
                             [self.text_visual_and_fuse_model.v_projector, self.text_visual_and_fuse_model.v_projector_m],
                            ]
-        self.copy_params()
+
         # itm 
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(768, 2),
         )
         # just for demo(this data has 3 categories)
         self.category_classifier = torch.nn.Sequential(
-            torch.nn.Linear(768, 3),
+            torch.nn.Linear(768, 256), # add a proj
+            torch.nn.Linear(256, 130),
         )
 
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -123,6 +124,13 @@ class MMClsModel(CruiseModule):
         # self.init_weights()
         # 主要是load pretrain weights 
         self.initialize_weights()
+        self.copy_params()
+
+        # test
+        # model_pair = self.model_pairs[0]
+        # for param, param_m in zip(model_pair[0].parameters(), model_pair[1].parameters()):
+        #     print(param, param_m)
+
         # freeze不需要更新的参数
         self.freeze_params(self.config_optim.freeze_prefix)
 
@@ -142,7 +150,11 @@ class MMClsModel(CruiseModule):
         if hexists(self.hparams.load_pretrained):
             state_dict_ori = self.state_dict()
             state_dict_pretrain = load(self.hparams.load_pretrained, map_location="cpu")
-            state_dict = { 'text_visual_and_fuse_model.'+k : v for k, v in state_dict_pretrain.items() }
+            state_dict = { 'text_visual_and_fuse_model.'+k : v for k, v in state_dict_pretrain.items() if not 'classifier' in k}
+            # 
+            state_dict.update({'classifier.0.weight': state_dict_pretrain['classifier.0.weight'], 'classifier.0.bias': state_dict_pretrain['classifier.0.bias'], 
+                               'category_classifier.0.weight': state_dict_pretrain['category_classifier.0.weight'], 'category_classifier.0.bias': state_dict_pretrain['category_classifier.0.bias'],
+                               'category_classifier.1.weight': state_dict_pretrain['category_classifier.1.weight'], 'category_classifier.1.bias': state_dict_pretrain['category_classifier.1.bias']})
 
             state_dict_new = OrderedDict()
             for key, value in state_dict.items():
@@ -172,10 +184,11 @@ class MMClsModel(CruiseModule):
             batch["frames_mask"],
         )
 
-        if self.trainer.current_epoch>0:
-            alpha = self.alpha
-        else:
-            alpha = self.alpha * min(1.0, self.trainer.current_step / self.trainer.steps_per_epoch)
+        # if self.trainer.current_epoch>0:
+        #     alpha = self.alpha
+        # else:
+        #     alpha = self.alpha * min(1.0, self.trainer.current_step / self.trainer.steps_per_epoch)
+        alpha = self.alpha
 
         with torch.no_grad():
             self.temp.clamp_(0.001,0.5)
@@ -235,7 +248,7 @@ class MMClsModel(CruiseModule):
         # loss_i2t = -torch.sum(F.log_softmax(sim_i2t, dim=1),dim=1).mean()
         # loss_t2i = -torch.sum(F.log_softmax(sim_t2i, dim=1),dim=1).mean()
 
-        loss_ita = (loss_i2t+loss_t2i)/2
+        loss_ita = (loss_i2t + loss_t2i) / 2.0
 
         self._dequeue_and_enqueue(image_feat_m, text_feat_m)
 
@@ -309,10 +322,10 @@ class MMClsModel(CruiseModule):
 
         total_loss = loss_ita + loss_itm + cls_loss
 
-        train_loss_dic = {'loss': total_loss.item(),
-                          'cls_loss': cls_loss.item(),
-                          'matching loss': loss_itm.item(),
-                          'contrastive loss': loss_ita.item()
+        train_loss_dic = {'loss': total_loss,
+                          'cls_loss': cls_loss,
+                          'matching loss': loss_itm,
+                          'contrastive loss': loss_ita,
                         }
         self.log_dict(train_loss_dic, console=True)
         return train_loss_dic
@@ -386,8 +399,8 @@ class MMClsModel(CruiseModule):
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
             elif n.startswith('text_visual_and_fuse_model'):
-                # low_lr_params_dict["params"].append(p) #for finetune
-                normal_params_dict["params"].append(p)
+                low_lr_params_dict["params"].append(p) #for finetune
+                # normal_params_dict["params"].append(p)
             else:
                 normal_params_dict["params"].append(p)
 
@@ -468,7 +481,7 @@ def concat_all_gather(tensor):
 if __name__ == '__main__':
     cli = CruiseCLI(MMClsModel,
                     trainer_class=CruiseTrainer,
-                    datamodule_class=ByteDriveDataModule,
+                    datamodule_class=PretrainDataModule,
                     trainer_defaults={
                         'log_every_n_steps': 20,
                         'max_epochs': 30,

@@ -250,9 +250,6 @@ class MMDataset(Dataset):
         return len(self.vids)
 
     def collect_fn(self, data):
-        if self.training and self.params.get('augment', '') == 'mixgen':
-            data = mixgen(data)
-
         vids = []
         labels_1 = []
         labels_2 = []
@@ -263,6 +260,8 @@ class MMDataset(Dataset):
         frames_mask = []
 
         max_len = max([len(b['input_ids']) for b in data])
+        if self.training and self.params.get('augment', '') == 'mixgen':
+            data = mixgen(data)
 
         for ib, ibatch in enumerate(data):
             vids.append(ibatch['vid'])
@@ -384,8 +383,8 @@ def mixgen(data, lam=0.5):
     index = np.random.permutation(batch_size)
     for i in range(batch_size):
         # image mixup
-        for j, image in enumerate(data[i]['frames']):
-            image = lam * image + (1 - lam) * data[index[i]]['frames'][j]
+        for j in range(len(data[i]['frames'])):
+            data[i]['frames'][j] = lam * data[i]['frames'][j] + (1 - lam) * data[index[i]]['frames'][j]
         # text concat
         data[i]['input_ids'] = data[i]['input_ids'] + data[index[i]]['input_ids'] 
     return data
