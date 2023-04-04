@@ -1,4 +1,4 @@
-# This is an example of fashionvtp+fashionbert finetune demo.
+# This is an example of FashionVTP pretrain and finetune demo.
 
 ```python
 # modify the config file
@@ -6,6 +6,7 @@ vi examples/fashion_vtp/un_hq_configs/auto_default_config.yaml
 # if no config file found, can dump default configs as initial file (in your local machine)
 python3 examples/fashion_vtp/run_fashionvtp_with_fashionbert_finetuning.py  --print_config > examples/fashion_vtp/un_hq_configs/auto_default_config.yaml
 ```
+## Finetune
 
 ### Model build:
 ```
@@ -34,11 +35,20 @@ class MyModel(CruiseModule):
         self.classifier = torch.nn.Linear(768, self.config_optim.class_num)
 ```
 
-### Distributed training:
+### Training:
 ```
 /path/to/EasyGuard/tools/TORCHRUN examples/fashion_vtp/run_fashionvtp_with_fashionbert_finetuning.py \
     --config examples/fashion_vtp/un_hq_configs/auto_default_config.yaml
 ```
 
-### Doc
+## Pretrain
+
+Only support distributed training
+
+```
+/path/to/EasyGuard/tools/TORCHRUN ./examples/fashion_vtp/run_fashionvtp_pretrain.py \
+    --config ./examples/fashion_vtp/pretrain_configs/default_config.yaml
+```
+
+## Doc
 [**电商预训练--视频多模态FashionVTPv3**](https://bytedance.feishu.cn/docx/GQlRd5J65oCOQBxRLqcc3qXBnth)
