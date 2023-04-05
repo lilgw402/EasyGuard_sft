@@ -85,16 +85,19 @@ model:
   # hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/ckpt/FrameALBERT_v4_1/model_state_epoch_20000.th
   prefix_changes: []
   download_files: []
+  vocab_size: 280001
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/huotianjiao/misleading_multimodal/train/
-  train_size: 470000
-  val_files: hdfs://harunava/home/byte_magellan_va/user/huotianjiao/misleading_multimodal/validation/
-  val_size: 16000
-  train_batch_size: 64
+  frame_root: /mnt/bn/ecom-lxy/zhuhe/dataset/video_frame
+  train_files: hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/data/pretrain/raw_clean_v3/train/
+  train_size: 10000000
+  val_files: hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/data/pretrain/raw_clean_v3/val
+  val_size: 2250000
+  train_batch_size: 32
   val_batch_size: 32
   num_workers: 4
+  vocab_size: 280001
   text_len: 128
-  frame_len: 2
+  frame_len: 10
   exp: default
   download_files: []
 log_level: INFO

@@ -7,6 +7,7 @@ import re
 import base64
 import emoji
 import numpy as np
+from copy import deepcopy
 import torch
 import torchvision.transforms as transforms
 from cruise.data_module import (
@@ -27,6 +28,31 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 _whitespace_re = re.compile(r'\s+')
 
 
+def rmEmoji(line):
+    return emoji.replace_emoji(line, replace=' ')
+
+
+def rmRepeat(line):
+    return re.sub(r'(.)\1{5,}', r'\1', line)
+
+
+def collapse_whitespace(text):
+    return re.sub(_whitespace_re, ' ', text)
+
+
+def text_preprocess(text):
+    if text is None:
+        return text
+
+    try:
+        text = text.replace("\n", " ").replace("\t", " ").replace("\"", "").replace("\\", "").strip()
+        text = re.sub(r"\<.*?\>", " ", text)
+        text = collapse_whitespace(rmRepeat(rmEmoji(text)))
+        return text
+    except Exception:
+        return text
+
+
 class TorchvisionLabelDataset(DistLineReadingDataset):
     """
     dataset，继承的dataset是 DistLineReadingDataset，是一个逐行读hdfs数据的IterableDataset。
@@ -41,8 +67,10 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.is_training = is_training
         self.text_len = config.text_len
         self.frame_len = config.frame_len
-
-        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
+        self.frame_root = config.frame_root
+        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')  # 128
+        self.mask_id = 28000
+        self.pad_id = 0
         self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         with hopen('./examples/fashionproduct_xl/black_image.jpeg', 'rb') as f:
@@ -56,37 +84,101 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         else:
             return self.config.val_size // self.world_size
 
+    def texts2tokenid(self, texts, maxlen, padding, lenlimit=None):
+        # todo, use lenlimit
+        token_ids = []
+        token_seg = []
+        for idx, t in enumerate(texts):
+            if idx == 0:
+                tokens = [i for i in self.pipe.preprocess([t])[0][0].to_list() if i > 1]  # pad, cls and sep not include
+            else:
+                tokens = [i for i in self.pipe.preprocess([t])[0][0].to_list() if i > 2]  # pad, cls and sep not include
+            seg = [idx] * (len(tokens) + 1)
+
+            token_ids += tokens
+            token_seg += seg
+            # add sep <s>
+            token_ids += [1]
+            token_seg += [idx]
+
+        if len(token_ids) < maxlen and padding:
+            token_ids += [self.pad_id] * (maxlen - len(token_ids))
+            token_seg += [0] * (maxlen - len(token_ids))
+        else:
+            token_ids = token_ids[:maxlen]
+            token_seg = token_seg[:maxlen]
+
+        return token_ids, token_seg
+
     def __iter__(self):
         for example in self.generate():
             try:
                 data_item = json.loads(example)
 
-                # label
-                label_idx = int(data_item['label'])
-
                 # 图像
                 frames = []
-                frames_raw = data_item['img_base64'][:self.frame_len]
-                for frame_str in frames_raw:
-                    try:
-                        image_tensor = self.image_preprocess(frame_str)
-                        frames.append(image_tensor)
-                    except:
-                        continue
+                frames_raw = data_item['selected_frames']
+                num_frames = len(frames_raw)
+                if num_frames <= self.frame_len:
+                    select_inds = list(range(num_frames))
+                else:
+                    step = num_frames // self.frame_len
+                    select_inds = list(range(0, num_frames, step))
+                    select_inds = select_inds[:self.max_frame]
+
+                for ind in select_inds:
+                    image_tensor = self.image_preprocess(os.path.join(self.frame_root, frames_raw[ind]))
+                    frames.append(image_tensor)
+                    # try:
+                    #     image_tensor = self.image_preprocess(os.path.join(self.frame_root, frame_path))
+                    #     frames.append(image_tensor)
+                    # except:
+                    #     continue
 
                 # 文本
-                text = data_item['text']
-                if len(text) == 0:
-                    # log.error('empty input: %s, will skip, %s/%s=%s' % (text, self.emp, self.tot, round(self.emp/self.tot, 4)))
-                    continue
-                token_ids = self.pipe.preprocess([text])[0]
-                token_ids = token_ids.asnumpy()
-                token_ids = torch.from_numpy(token_ids)
+                video_desp = text_preprocess(data_item['video_desp'])
+                product_title = text_preprocess(data_item['product_title'])
+                anchor_title = text_preprocess(data_item['anchor_title'])
+                merge_ocr = text_preprocess(data_item['merge_ocr'])
+
+                texts = [video_desp, product_title, anchor_title, merge_ocr]
+                # lenlimit = (96, 48, 96, 256)
+                token_ids, token_seg = self.texts2tokenid(texts, maxlen=384, padding=True)
+                token_ids = np.array([token_ids], dtype=np.int64)
+                token_seg = np.array([token_seg], dtype=np.int64)
+
+                # MLM
+                text_len = (token_ids == 0).argmax(axis=1)[0]
+                inputs = np.array(deepcopy(token_ids), dtype=np.int64)
+                input_labels = token_ids[:, :text_len]
+
+                special_tokens_mask = input_labels < 3  # do not mask special_tokens
+                # 1 indicates mask
+                mask_matrix = np.random.binomial(n=1, p=0.15, size=input_labels.shape) & (special_tokens_mask == 0)
+
+                # 不会被Mask掉的位置label设置成-100；
+                input_labels[mask_matrix == 0] = -100
+
+                # 80%的情况下，使用Mask的token来替换；
+                indices_replace = (np.random.binomial(n=1, p=0.8, size=input_labels.shape) == 1) & (mask_matrix == 1)
+
+                inputs[:, :text_len][indices_replace] = self.mask_id
+
+                # 10%的情况下，使用随机词替换；剩余10%保持不变；
+                indices_random = (mask_matrix == 1) & (~ indices_replace) & \
+                                 (np.random.binomial(n=1, p=0.5, size=input_labels.shape) == 1)
+                random_words = np.random.randint(0, self.config.vocab_size - 1, input_labels.shape, dtype=np.int64)
+                inputs[:, :text_len][indices_random] = random_words[indices_random]
+
+                inputs = torch.from_numpy(inputs)
+                input_labels = np.pad(input_labels, ((0, 0), (0, inputs.shape[1] - text_len)), 'constant',
+                                      constant_values=(-100))
 
                 input_dict = {
                     'frames': frames,
-                    'label': label_idx,
-                    'input_ids': token_ids,
+                    'input_labels': input_labels,
+                    'input_ids': inputs,
+                    'input_segment_ids': token_seg,
                 }
 
                 yield input_dict
@@ -97,29 +189,60 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
     def collect_fn(self, data):
         frames = []
         frames_mask = []
-        labels = []
+        itm_labels = []
         input_ids = []
+        input_labels = []
+        input_segment_ids = []
 
         for ib, ibatch in enumerate(data):
-
-            labels.append(ibatch["label"])
+            itm_labels.append(1)
             input_ids.append(ibatch['input_ids'])
+            input_labels.append(ibatch['input_labels'])
+            input_segment_ids.append(ibatch['input_segment_ids'])
 
             img_np = ibatch['frames']
             frames_mask_cur = []
-            # 如果不够8帧，要补帧
+            # 判断补帧
             if len(img_np) < self.frame_len:
                 # print('encouter not %s frames: %s ' % (self.frame_len, len(img_np)))
-                for i, img in enumerate(img_np):
-                    frames.append(img)
+                for i in range(len(img_np)):
+                    frames.append(img_np[i])
                     frames_mask_cur.append(1)
-                for i in range(len(img_np), self.frame_len):
+                while len(frames) < self.frame_len:
                     frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
                     frames_mask_cur.append(0)
             else:
-                # 够的话就冲啊
-                for i, img in enumerate(img_np):
-                    frames.append(img)
+                for i in range(self.frame_len):
+                    frames.append(img_np[i])
+                    frames_mask_cur.append(1)
+
+            frames_mask.append(frames_mask_cur)
+
+        # construct negative samples
+        nums = len(data)
+        text_len = data[0]['input_ids'].shape[1]
+        for ib, ibatch in enumerate(data):
+            itm_labels.append(0)
+            neg_id = random.choice([i for i in range(nums) if i != ib])
+            input_ids.append(data[neg_id]['input_ids'])
+            fake_label = np.array([-100] * text_len, dtype=np.int64)
+            input_labels.append([fake_label])
+            input_segment_ids.append(data[neg_id]['input_segment_ids'])
+
+            img_np = ibatch['frames']
+            frames_mask_cur = []
+            # 判断补帧
+            if len(img_np) < self.frame_len:
+                # print('encouter not %s frames: %s ' % (self.frame_len, len(img_np)))
+                for i in range(len(img_np)):
+                    frames.append(img_np[i])
+                    frames_mask_cur.append(1)
+                while len(frames) < self.frame_len:
+                    frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
+                    frames_mask_cur.append(0)
+            else:
+                for i in range(self.frame_len):
+                    frames.append(img_np[i])
                     frames_mask_cur.append(1)
 
             frames_mask.append(frames_mask_cur)
@@ -129,13 +252,16 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         _, c, h, w = frames.shape
         bsz, frame_num = frames_mask.shape
         frames = frames.reshape([bsz, frame_num, c, h, w])
-        labels = torch.tensor(labels)
+        itm_labels = torch.tensor(itm_labels)
+
+        input_labels = torch.tensor(input_labels)
+        input_labels = torch.squeeze(input_labels)
         input_ids = torch.cat(input_ids, dim=0)
         input_mask = (input_ids != 0).int()
-        input_segment_ids = torch.zeros_like(input_ids)
+        input_segment_ids = torch.cat(input_segment_ids, dim=0)
 
         res = {"frames": frames, "frames_mask": frames_mask,
-               "label": labels,
+               "label": itm_labels, 'input_labels': input_labels,
                "input_ids": input_ids, "input_mask": input_mask,
                "input_segment_ids": input_segment_ids,
                }
@@ -192,8 +318,10 @@ class FacDataModule(CruiseDataModule):
             train_batch_size: int = 64,
             val_batch_size: int = 32,
             num_workers: int = 8,
+            vocab_size: int = 280001,
             text_len: int = 128,
             frame_len: int = 1,
+            frame_root: str = '',
             exp: str = 'default',
             download_files: list = []
     ):

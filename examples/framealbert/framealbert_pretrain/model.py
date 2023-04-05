@@ -8,6 +8,7 @@ except ImportError:
     print(
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
+from torch import nn
 from cruise import CruiseModule
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
@@ -53,6 +54,15 @@ class FrameAlbertTune(CruiseModule):
         """
         self.classifier = torch.nn.Linear(self.hparams.hidden_dim, self.hparams.class_num)
         self.criterion = torch.nn.CrossEntropyLoss()
+        # 新增Mask Language Model的损失；
+        self.mlm_head = nn.Sequential(
+            nn.Linear(self.hparams.hidden_dim, self.hparams.hidden_dim),
+            nn.GELU(),
+            nn.LayerNorm(self.hparams.hidden_dim, eps=1e-5),
+            # nn.Dropout(self.config.BERT.hidden_dropout_prob),
+            nn.Linear(self.hparams.hidden_dim, self.hparams.vocab_size)
+        )  # 预测MLM的标签
+        self.mlm_ce = nn.CrossEntropyLoss(ignore_index=-100)
         """
         Initialize some fixed parameters.
         """
@@ -115,10 +125,11 @@ class FrameAlbertTune(CruiseModule):
         return {"logits": logits}
 
     def training_step(self, batch, idx):
-        token_ids, segment_ids, attn_mask, image, image_mask = (
+        token_ids, segment_ids, attn_mask, input_labels, image, image_mask = (
             batch["input_ids"],
             batch["input_segment_ids"],
             batch["input_mask"],
+            batch["input_labels"],
             batch["frames"],
             batch["frames_mask"],
         )
@@ -129,25 +140,35 @@ class FrameAlbertTune(CruiseModule):
             frames=image,
             frames_mask=image_mask,
         )
+        # itm
+        cls_emb = rep_dict['pooled_output']
+        logits = self.classifier(cls_emb)
+        itm_loss = self.criterion(logits, batch["label"])
+
+        # mlm
+        text_emb = rep_dict['text_final_output']
+        mlm_logits = self.mlm_head(text_emb)
+        mlm_loss = self.mlm_ce(mlm_logits.flatten(0, 1), input_labels.flatten(0, 1))
+
         rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
+
         res = {
-            "loss": loss,
+            "loss": itm_loss + mlm_loss,
+            "itm_loss": itm_loss,
+            "mlm_loss": mlm_loss,
             "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
         }
-        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1,))
-        for k, v in acc_dict.items():
-            res.update({f'train_{k}': v})
 
         return res
 
     def validation_step(self, batch, idx):
-        token_ids, segment_ids, attn_mask, image, image_mask = (
+        token_ids, segment_ids, attn_mask, input_labels, image, image_mask = (
             batch["input_ids"],
             batch["input_segment_ids"],
             batch["input_mask"],
+            batch["input_labels"],
             batch["frames"],
-            batch["frames_mask"]
+            batch["frames_mask"],
         )
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -156,13 +177,23 @@ class FrameAlbertTune(CruiseModule):
             frames=image,
             frames_mask=image_mask,
         )
-        rep_dict.update({"label": batch["label"]})
-        loss = self.criterion(rep_dict["logits"], rep_dict["label"])
-        res = {"val_loss": loss}
+        # itm
+        cls_emb = rep_dict['pooled_output']
+        logits = self.classifier(cls_emb)
+        itm_loss = self.criterion(logits, batch["label"])
 
-        acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1,))
-        for k, v in acc_dict.items():
-            res.update({f'val_{k}': v})
+        # mlm
+        text_emb = rep_dict['text_final_output']
+        mlm_logits = self.mlm_head(text_emb)
+        mlm_loss = self.mlm_ce(mlm_logits.flatten(0, 1), input_labels.flatten(0, 1))
+
+        rep_dict.update({"label": batch["label"]})
+
+        res = {
+            "val_loss": itm_loss + mlm_loss,
+            "val_itm_loss": itm_loss,
+            "val_mlm_loss": mlm_loss,
+        }
 
         return res
 
