@@ -205,17 +205,17 @@ class FrameAlbertTune(CruiseModule):
         for item in gathered_results:
             all_results.extend(item)
         val_loss_all = [out["val_loss"] for out in all_results]
-        top1_acc_all = [out["val_top1_acc"] for out in all_results]
+        val_mlm_loss = [out["val_mlm_loss"] for out in all_results]
 
         val_loss = sum(val_loss_all) / len(val_loss_all)
-        top1_acc = sum(top1_acc_all) / len(top1_acc_all)
+        val_mlm = sum(val_mlm_loss) / len(val_mlm_loss)
 
         res_out["val_loss"] = val_loss
-        res_out["val_top1_acc"] = top1_acc
+        res_out["val_mlm_loss"] = val_mlm
 
         self.log_dict(res_out, console=True)
         self.log("val_loss", val_loss, console=True)
-        self.log("val_top1_acc", top1_acc, console=True)
+        self.log("val_mlm_loss", val_mlm, console=True)
 
     def trace_before_step(self, batch):
         # batch为dataloader的输出，一般为dict形式
