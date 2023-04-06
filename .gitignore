@@ -168,3 +168,4 @@ events.out*
 # output
 *.stderr
 *.stdout
+ccr_experiments
