@@ -6,15 +6,15 @@ import sys
 try:
     import easyguard
 except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../..", ".."))
 
 import random
 
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
-from examples.framealbert.data import FacDataModule
-from examples.framealbert.model import FrameAlbertTune
+from examples.framealbert.framealbert_pretrain.data import FacDataModule
+from examples.framealbert.framealbert_pretrain.model import FrameAlbertTune
 
 rand_seed = 42
 

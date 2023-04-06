@@ -19,7 +19,7 @@ from easyguard.core.optimizers import AdamW
 class FrameAlbertTune(CruiseModule):
     def __init__(
             self,
-            backbone='./examples/framealbert_ltt/config_backbone/config_backbone.yaml',
+            backbone='./examples/framealbert/framealbert_finetune/config_backbone/config_backbone.yaml',
             class_num: int = 2,
             hidden_dim: int = 768,
             optim: str = 'AdamW',

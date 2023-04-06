@@ -70,7 +70,7 @@ trainer:
         power: 1.0
   grad_norm_layers: []
 model:
-  backbone: ./examples/framealbert_ltt/config_backbone/config_backbone.yaml
+  backbone: ./examples/framealbert/framealbert_finetune/config_backbone/config_backbone.yaml
   class_num: 2
   hidden_dim: 768
   optim: AdamW
