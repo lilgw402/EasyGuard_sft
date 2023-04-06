@@ -45,4 +45,4 @@ if __name__ == '__main__':
 
     trainer.fit(model, datamodule)
 
-# python3 examples/framealbert_ltt/run_train.py --config examples/framealbert_ltt/default_config.yaml
+# python3 examples/framealbert/framealbert_pretrain/run_train.py --config examples/framealbert/framealbert_pretrain/default_config.yaml

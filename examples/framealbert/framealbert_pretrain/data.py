@@ -93,7 +93,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 tokens = [i for i in self.pipe.preprocess([t])[0][0].to_list() if i > 1]  # pad, cls and sep not include
             else:
                 tokens = [i for i in self.pipe.preprocess([t])[0][0].to_list() if i > 2]  # pad, cls and sep not include
-            seg = [idx] * (len(tokens) + 1)
+            seg = [idx] * len(tokens)
 
             token_ids += tokens
             token_seg += seg
