@@ -84,7 +84,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         else:
             return self.config.val_size // self.world_size
 
-    def texts2tokenid(self, texts, maxlen, padding, lenlimit=None):
+    def texts2tokenid(self, texts, padding, lenlimit=None):
         # todo, use lenlimit
         token_ids = []
         token_seg = []
@@ -101,12 +101,12 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             token_ids += [1]
             token_seg += [idx]
 
-        if len(token_ids) < maxlen and padding:
-            token_ids += [self.pad_id] * (maxlen - len(token_ids))
-            token_seg += [0] * (maxlen - len(token_ids))
+        if len(token_ids) < self.text_len and padding:
+            token_ids += [self.pad_id] * (self.text_len - len(token_ids))
+            token_seg += [0] * (self.text_len - len(token_seg))
         else:
-            token_ids = token_ids[:maxlen]
-            token_seg = token_seg[:maxlen]
+            token_ids = token_ids[:self.text_len]
+            token_seg = token_seg[:self.text_len]
 
         return token_ids, token_seg
 
@@ -124,10 +124,10 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 else:
                     step = num_frames // self.frame_len
                     select_inds = list(range(0, num_frames, step))
-                    select_inds = select_inds[:self.max_frame]
+                    select_inds = select_inds[:self.frame_len]
 
                 for ind in select_inds:
-                    image_tensor = self.image_preprocess(os.path.join(self.frame_root, frames_raw[ind]))
+                    image_tensor = self.local_image_preprocess(os.path.join(self.frame_root, frames_raw[ind]))
                     frames.append(image_tensor)
                     # try:
                     #     image_tensor = self.image_preprocess(os.path.join(self.frame_root, frame_path))
@@ -143,7 +143,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
                 texts = [video_desp, product_title, anchor_title, merge_ocr]
                 # lenlimit = (96, 48, 96, 256)
-                token_ids, token_seg = self.texts2tokenid(texts, maxlen=384, padding=True)
+                token_ids, token_seg = self.texts2tokenid(texts, padding=True)
                 token_ids = np.array([token_ids], dtype=np.int64)
                 token_seg = np.array([token_seg], dtype=np.int64)
 
@@ -198,7 +198,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             itm_labels.append(1)
             input_ids.append(ibatch['input_ids'])
             input_labels.append(ibatch['input_labels'])
-            input_segment_ids.append(ibatch['input_segment_ids'])
+            input_segment_ids.append(torch.from_numpy(ibatch['input_segment_ids']))
 
             img_np = ibatch['frames']
             frames_mask_cur = []
@@ -208,7 +208,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 for i in range(len(img_np)):
                     frames.append(img_np[i])
                     frames_mask_cur.append(1)
-                while len(frames) < self.frame_len:
+                for i in range(self.frame_len - len(img_np)):
                     frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
                     frames_mask_cur.append(0)
             else:
@@ -227,7 +227,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
             input_ids.append(data[neg_id]['input_ids'])
             fake_label = np.array([-100] * text_len, dtype=np.int64)
             input_labels.append([fake_label])
-            input_segment_ids.append(data[neg_id]['input_segment_ids'])
+            input_segment_ids.append(torch.from_numpy(ibatch['input_segment_ids']))
 
             img_np = ibatch['frames']
             frames_mask_cur = []
@@ -237,7 +237,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 for i in range(len(img_np)):
                     frames.append(img_np[i])
                     frames_mask_cur.append(1)
-                while len(frames) < self.frame_len:
+                for i in range(self.frame_len - len(img_np)):
                     frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
                     frames_mask_cur.append(0)
             else:
@@ -266,6 +266,11 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                "input_segment_ids": input_segment_ids,
                }
         return res
+
+    def local_image_preprocess(self, image_path):
+        image = Image.open(image_path).convert('RGB')
+        image_tensor = self.preprocess(image)
+        return image_tensor
 
     def image_preprocess(self, image_str):
         image = self._load_image(self.b64_decode(image_str))

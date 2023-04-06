@@ -10,7 +10,7 @@ trainer:
   deterministic: false
   accelerator: gpu
   accelerator_kwargs: {}
-  precision: 32
+  precision: 16
   max_epochs: 1
   max_steps: -1
   limit_train_batches: null
@@ -78,7 +78,8 @@ model:
   weight_decay: 0.0001
   lr_schedule: linear
   warmup_steps_factor: 0
-  low_lr_prefix: []
+  low_lr_prefix: # []
+    - backbone.visual
   freeze_prefix: []
   load_pretrained: null
   # hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/ckpt/FrameALBERT_v2_2/model_state_epoch_150000.th
@@ -92,12 +93,12 @@ data:
   train_size: 10000000
   val_files: hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/data/pretrain/raw_clean_v3/val
   val_size: 2250000
-  train_batch_size: 32
-  val_batch_size: 32
-  num_workers: 4
+  train_batch_size: 4
+  val_batch_size: 4
+  num_workers: 2
   vocab_size: 280001
-  text_len: 128
-  frame_len: 10
+  text_len: 256
+  frame_len: 8
   exp: default
   download_files: []
 log_level: INFO

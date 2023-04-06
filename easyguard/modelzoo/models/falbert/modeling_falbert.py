@@ -51,7 +51,7 @@ class FalBertModel(ModelBase):
             self.resnet = resnet50(expose_stages=[5])  # 5是最后一层，6是分类输出
 
         # 映射
-        self.middle_size = config.get("middle_size", 128)
+        self.middle_size = 128
         self.v_projector = torch.nn.Sequential(
             torch.nn.Linear(config.visual_dim, self.middle_size),
             torch.nn.Tanh(),
@@ -281,7 +281,7 @@ class VEmbedding(nn.Module):
         else:
             self.proj_embedding_hidden = None
 
-        self.share_tv_pos = config.get('share_tv_pos', False)
+        self.share_tv_pos = config.share_tv_pos
 
         self.img_embedder_tokens = torch.nn.Embedding(1, dim)
         self.v_segment_embeddings = torch.nn.Embedding(1, dim)

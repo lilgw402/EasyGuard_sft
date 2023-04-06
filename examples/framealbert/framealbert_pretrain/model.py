@@ -33,6 +33,7 @@ class FrameAlbertTune(CruiseModule):
             load_pretrained: str = None,
             prefix_changes: list = [],
             download_files: list = [],
+            vocab_size: int = 280001,
     ):
         super(FrameAlbertTune, self).__init__()
         self.save_hparams()
