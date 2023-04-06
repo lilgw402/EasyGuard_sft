@@ -12,7 +12,7 @@ from torch import nn
 from cruise import CruiseModule
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
-from easyguard import AutoModel
+# from easyguard import AutoModel
 from easyguard.core.optimizers import *
 from easyguard.core.optimizers import AdamW
 
@@ -118,11 +118,7 @@ class FrameAlbertTune(CruiseModule):
                                  frames=frames,
                                  frames_mask=frames_mask,
                                  mode="tv")
-        cls_emb = rep_dict['pooled_output']
-
-        logits = self.classifier(cls_emb)
-
-        return {"logits": logits}
+        return rep_dict
 
     def training_step(self, batch, idx):
         token_ids, segment_ids, attn_mask, input_labels, image, image_mask = (
