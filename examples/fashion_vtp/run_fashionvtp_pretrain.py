@@ -4,7 +4,7 @@
     @brief 
     @description FashionVTP3 pretrain demo
     @author yangmin.priv@bytedance.com
-    @date: 2023/03/01 16:04:36
+    @date: 2023/04/01 16:04:36
 """
 import pdb
 import os
@@ -36,11 +36,13 @@ except ImportError:
 
 # appzoo中实现好自己的data模块
 from easyguard.appzoo.fashion_vtp.data_pretrain import PretrainDataModule
+from easyguard.appzoo.fashion_vtp.data import ByteDriveDataModule
 # 导入FashionVTP模型，无特殊需求不需要改动，import进来即可
 from easyguard.appzoo.fashion_vtp.model_pretrain import FashionVTP
 from easyguard.utils.arguments import print_cfg
 # 加入了timm的lr_scheduler，在config_optim中指定，['cosine'/'linear'/'step']
 from easyguard.core.lr_scheduler import build_scheduler
+from easyguard.appzoo.fashion_vtp.utils import compute_accuracy
 
 
 
@@ -151,11 +153,13 @@ class MMClsModel(CruiseModule):
             state_dict_ori = self.state_dict()
             state_dict_pretrain = load(self.hparams.load_pretrained, map_location="cpu")
             state_dict = { 'text_visual_and_fuse_model.'+k : v for k, v in state_dict_pretrain.items() if not 'classifier' in k}
-            # 
+
+            #load the same classifer weights from ptrtrained if continue pretain on the same pretrain data 
+            '''
             state_dict.update({'classifier.0.weight': state_dict_pretrain['classifier.0.weight'], 'classifier.0.bias': state_dict_pretrain['classifier.0.bias'], 
                                'category_classifier.0.weight': state_dict_pretrain['category_classifier.0.weight'], 'category_classifier.0.bias': state_dict_pretrain['category_classifier.0.bias'],
                                'category_classifier.1.weight': state_dict_pretrain['category_classifier.1.weight'], 'category_classifier.1.bias': state_dict_pretrain['category_classifier.1.bias']})
-
+            '''
             state_dict_new = OrderedDict()
             for key, value in state_dict.items():
                 if (
@@ -206,8 +210,6 @@ class MMClsModel(CruiseModule):
         image_feat = F.normalize(v_emb, dim=-1)
         
         v_tokens = v_output['encoded_layers'][-1][:, 1:, :]
-
-        # pdb.set_trace()
         
         # get momentum features
         with torch.no_grad():
@@ -365,7 +367,29 @@ class MMClsModel(CruiseModule):
         val_rep_dic = {'logits': cls_logits, "labels": batch['labels']}
         val_loss = self.cal_cls_loss(**val_rep_dict)
         val_dic = {'val_loss': val_loss}
+        val_dic.update(val_rep_dic)
         return val_dic
+
+    @torch.no_grad()
+    def validation_epoch_end(self, outputs: List[Dict[str, torch.Tensor]]) -> None:
+        gathered_results = DIST_ENV.all_gather_object(outputs)
+        all_results = []
+        for item in gathered_results:
+            all_results.extend(item)
+        all_logits = []
+        all_labels = []
+        
+        for out in all_results:
+            all_logits.extend(out["logits"].detach().cpu().tolist())
+            all_labels.extend(out["labels"].detach().cpu().tolist())
+
+        logits = torch.from_numpy(np.array(all_logits))
+        labels = torch.from_numpy(np.array(all_labels))
+    
+        accuracy = compute_accuracy(logits, labels)
+
+        val_metric_dict = {'val_acc': accuracy}
+        self.log_dict(val_metric_dict, console=True)
 
     def cal_cls_loss(self, **kwargs):
         for key in ["logits", "labels"]:
@@ -399,8 +423,7 @@ class MMClsModel(CruiseModule):
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
             elif n.startswith('text_visual_and_fuse_model'):
-                low_lr_params_dict["params"].append(p) #for finetune
-                # normal_params_dict["params"].append(p)
+                low_lr_params_dict["params"].append(p)
             else:
                 normal_params_dict["params"].append(p)
 

@@ -36,9 +36,8 @@ class FashionVTP(nn.Module):
         self.fusemodel = ALBertFusion(config)
         self.t_projector, self.v_projector = self.init_projector()
         # add momentum model
-        self.falbert_m = self.falbert
-        self.t_projector_m = self.t_projector
-        self.v_projector_m = self.v_projector
+        self.falbert_m = FrameALBert(config)
+        self.t_projector_m, self.v_projector_m = self.init_projector()
 
     '''
     def forward(
