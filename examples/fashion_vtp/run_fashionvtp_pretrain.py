@@ -504,7 +504,7 @@ def concat_all_gather(tensor):
 if __name__ == '__main__':
     cli = CruiseCLI(MMClsModel,
                     trainer_class=CruiseTrainer,
-                    datamodule_class=PretrainDataModule,
+                    datamodule_class=ByteDriveDataModule,
                     trainer_defaults={
                         'log_every_n_steps': 20,
                         'max_epochs': 30,

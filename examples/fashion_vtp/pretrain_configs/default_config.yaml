@@ -76,16 +76,16 @@ model:
   config_optim: ./examples/fashion_vtp/pretrain_configs/config_optim.yaml
   load_pretrained: hdfs://haruna/home/byte_ecom_govern/user/yangmin.priv/1e_fvtp3_continue_pretrain_0220_8new/model_state_epoch_1508298.th
 data:
-  # train_path: /mnt/bn/multimodel-pretrain/benchmark/video-text-pretrain/samples_subset/meta/train
-  # val_path: /mnt/bn/multimodel-pretrain/benchmark/video-text-pretrain/samples_subset/meta/val
+  # train_path: /mnt/bd/video-text-pretrain/samples_all/meta/train
+  # val_path: /mnt/bd/video-text-pretrain/samples_all/meta/val
   train_path: /mnt/bn/ecology-multimodal-benchmark/hq_live_data/meta/train
   val_path: /mnt/bn/ecology-multimodal-benchmark/hq_live_data/meta/val
   vocab_file: hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab
   train_batch_size: 8
   val_batch_size: 8
   num_workers: 4
-  # train_data_size: 11700864
-  # val_data_size: 1
+  # train_data_size: 93606912
+  # val_data_size: 3237888
   train_data_size: 158028
   val_data_size: 19995
   ocr_max_len: 40
