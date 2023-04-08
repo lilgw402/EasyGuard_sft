@@ -23,7 +23,6 @@ class SEModule(nn.Module):
 
 
 class Bottle2neck(nn.Module):
-
     def __init__(self, inplanes, planes, kernel_size=None, dilation=None, scale=8):
         super(Bottle2neck, self).__init__()
         width = int(math.floor(planes / scale))
@@ -75,7 +74,6 @@ class Bottle2neck(nn.Module):
 
 
 class PreEmphasis(torch.nn.Module):
-
     def __init__(self, coef: float = 0.97):
         super().__init__()
         self.coef = coef
@@ -90,7 +88,6 @@ class PreEmphasis(torch.nn.Module):
 
 
 class FbankAug(nn.Module):
-
     def __init__(self, freq_mask_width=(0, 8), time_mask_width=(0, 10)):
         self.time_mask_width = time_mask_width
         self.freq_mask_width = freq_mask_width
@@ -127,7 +124,6 @@ class FbankAug(nn.Module):
 
 
 class ECAPA_TDNN(nn.Module):
-
     def __init__(self, C):
         super(ECAPA_TDNN, self).__init__()
 
