@@ -66,7 +66,8 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 yield input_dict
 
             except Exception as e:
-                print(f'error in dataset: {e}')
+                # print(f'error in dataset: {e}')
+                pass
 
     def collect_fn(self, data):
         feature = []
