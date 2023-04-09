@@ -90,6 +90,7 @@ class SVDataModule(CruiseDataModule):
             val_size: int = 16000,
             train_batch_size: int = 64,
             val_batch_size: int = 32,
+            num_frames: int = 200,
             num_workers: int = 8,
             exp: str = 'default',
             download_files: list = []

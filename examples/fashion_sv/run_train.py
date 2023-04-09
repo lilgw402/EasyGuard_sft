@@ -43,3 +43,5 @@ cli = CruiseCLI(
 cfg, trainer, model, datamodule = cli.parse_args()
 
 trainer.fit(model, datamodule)
+
+# python3 examples/fashion_sv/run_train.py --config examples/fashion_sv/default_config.yaml

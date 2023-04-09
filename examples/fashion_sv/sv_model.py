@@ -25,8 +25,8 @@ class FashionSV(CruiseModule):
             class_num: int = 2100,
             hidden_dim: int = 768,
             channel: int = 512,
-            m: int = 1,
-            s: int = 1,
+            m: float = 0.2,
+            s: float = 30,
             optim: str = 'AdamW',
             learning_rate: float = 1.0e-4,
             weight_decay: float = 1.e-4,
@@ -130,146 +130,142 @@ class FashionSV(CruiseModule):
         self.log("val_loss", val_loss, console=True)
         self.log("val_prec", val_prec, console=True)
 
+    def configure_optimizers(self):
+        no_decay = ["bias", "bn", "norm"]
+        no_dacay_params_dict = {"params": [], "weight_decay": 0.0}
+        low_lr_params_dict = {
+            "params": [],
+            "weight_decay": self.hparams.weight_decay,
+            "lr": self.hparams.learning_rate * 0.1,
+        }
+        normal_params_dict = {
+            "params": [],
+            "weight_decay": self.hparams.weight_decay,
+        }
 
-def configure_optimizers(self):
-    no_decay = ["bias", "bn", "norm"]
-    no_dacay_params_dict = {"params": [], "weight_decay": 0.0}
-    low_lr_params_dict = {
-        "params": [],
-        "weight_decay": self.hparams.weight_decay,
-        "lr": self.hparams.learning_rate * 0.1,
-    }
-    normal_params_dict = {
-        "params": [],
-        "weight_decay": self.hparams.weight_decay,
-    }
+        low_lr_keys = []
+        for n, p in self.named_parameters():
+            low_lr = False
+            for low_lr_prefix in self.hparams.low_lr_prefix:
+                if n.startswith(low_lr_prefix):
+                    low_lr = True
+                    low_lr_params_dict['params'].append(p)
+                    low_lr_keys.append(n)
+                    break
+            if low_lr:
+                continue
 
-    low_lr_keys = []
-    for n, p in self.named_parameters():
-        low_lr = False
-        for low_lr_prefix in self.hparams.low_lr_prefix:
-            if n.startswith(low_lr_prefix):
-                low_lr = True
-                low_lr_params_dict['params'].append(p)
-                low_lr_keys.append(n)
-                break
-        if low_lr:
-            continue
+            if any(nd in n for nd in no_decay):
+                no_dacay_params_dict["params"].append(p)
+            else:
+                normal_params_dict["params"].append(p)
 
-        if any(nd in n for nd in no_decay):
-            no_dacay_params_dict["params"].append(p)
-        else:
-            normal_params_dict["params"].append(p)
+        if low_lr_keys:
+            print(f'low_lr_keys are: {low_lr_keys}')
 
-    if low_lr_keys:
-        print(f'low_lr_keys are: {low_lr_keys}')
+        optimizer_grouped_parameters = [
+            no_dacay_params_dict,
+            low_lr_params_dict,
+            normal_params_dict,
+        ]
 
-    optimizer_grouped_parameters = [
-        no_dacay_params_dict,
-        low_lr_params_dict,
-        normal_params_dict,
-    ]
+        if self.hparams.optim == "SGD":
+            optm = torch.optim.SGD(
+                optimizer_grouped_parameters,
+                self.hparams.learning_rate,
+                momentum=self.hparams.momentum,
+                weight_decay=self.hparams.weight_decay,
+            )
+        elif self.hparams.optim == "AdamW":
+            optm = AdamW(
+                optimizer_grouped_parameters,
+                lr=self.hparams.learning_rate,
+                betas=(0.9, 0.999),
+                eps=1e-6,
+                weight_decay=self.hparams.weight_decay,
+                correct_bias=False,
+            )
 
-    if self.hparams.optim == "SGD":
-        optm = torch.optim.SGD(
-            optimizer_grouped_parameters,
-            self.hparams.learning_rate,
-            momentum=self.hparams.momentum,
-            weight_decay=self.hparams.weight_decay,
-        )
-    elif self.hparams.optim == "AdamW":
-        optm = AdamW(
-            optimizer_grouped_parameters,
-            lr=self.hparams.learning_rate,
-            betas=(0.9, 0.999),
-            eps=1e-6,
-            weight_decay=self.hparams.weight_decay,
-            correct_bias=False,
-        )
+        if self.hparams.lr_schedule == "linear":
+            print(f'warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}')
+            print(f'total step: {self.trainer.total_steps}')
+            lr_scheduler = get_linear_schedule_with_warmup(
+                optimizer=optm,
+                num_warmup_steps=int(self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch),
+                num_training_steps=self.trainer.total_steps,
+            )
+        elif self.hparams.lr_schedule == "cosine":
+            lr_scheduler = get_cosine_schedule_with_warmup(
+                optimizer=optm,
+                num_warmup_steps=int(self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch),
+                num_training_steps=self.trainer.total_steps,
+            )
+        elif self.hparams.lr_schedule == "onecycle":
+            lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                optimizer=optm,
+                max_lr=self.hparams.learning_rate,
+                total_steps=self.trainer.total_steps,
+            )
 
-    if self.hparams.lr_schedule == "linear":
-        print(f'warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}')
-        print(f'total step: {self.trainer.total_steps}')
-        lr_scheduler = get_linear_schedule_with_warmup(
-            optimizer=optm,
-            num_warmup_steps=self.hparams.warmup_steps_factor
-                             * self.trainer.steps_per_epoch,
-            num_training_steps=self.trainer.total_steps,
-        )
-    elif self.hparams.lr_schedule == "cosine":
-        lr_scheduler = get_cosine_schedule_with_warmup(
-            optimizer=optm,
-            num_warmup_steps=self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch,
-            num_training_steps=self.trainer.total_steps,
-        )
-    elif self.hparams.lr_schedule == "onecycle":
-        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer=optm,
-            max_lr=self.hparams.learning_rate,
-            total_steps=self.trainer.total_steps,
-        )
+        return {"optimizer": optm, "lr_scheduler": lr_scheduler}
 
-    return {"optimizer": optm, "lr_scheduler": lr_scheduler}
+    def lr_scheduler_step(self, schedulers, **kwargs, ) -> None:
+        """
+        默认是per epoch的lr schedule, 改成per step的
+        """
+        for scheduler in schedulers:
+            scheduler.step()
 
+    def eval_network(self, eval_list, eval_path):
+        self.eval()
+        files = []
+        embeddings = {}
+        lines = open(eval_list).read().splitlines()
+        for line in lines:
+            files.append(line.split()[1])
+            files.append(line.split()[2])
+        setfiles = list(set(files))
+        setfiles.sort()
 
-def lr_scheduler_step(self, schedulers, **kwargs, ) -> None:
-    """
-    默认是per epoch的lr schedule, 改成per step的
-    """
-    for scheduler in schedulers:
-        scheduler.step()
+        for idx, file in tqdm(enumerate(setfiles), total=len(setfiles)):
+            audio, _ = soundfile.read(os.path.join(eval_path, file))
+            # Full utterance
+            data_1 = torch.FloatTensor(np.stack([audio], axis=0)).cuda()
 
+            # Spliited utterance matrix
+            max_audio = 300 * 160 + 240
+            if audio.shape[0] <= max_audio:
+                shortage = max_audio - audio.shape[0]
+                audio = np.pad(audio, (0, shortage), 'wrap')
+            feats = []
+            startframe = np.linspace(0, audio.shape[0] - max_audio, num=5)
+            for asf in startframe:
+                feats.append(audio[int(asf):int(asf) + max_audio])
+            feats = np.stack(feats, axis=0).astype(np.float)
+            data_2 = torch.FloatTensor(feats).cuda()
+            # Speaker embeddings
+            with torch.no_grad():
+                embedding_1 = self.speaker_encoder.forward(data_1, aug=False)
+                embedding_1 = F.normalize(embedding_1, p=2, dim=1)
+                embedding_2 = self.speaker_encoder.forward(data_2, aug=False)
+                embedding_2 = F.normalize(embedding_2, p=2, dim=1)
+            embeddings[file] = [embedding_1, embedding_2]
+        scores, labels = [], []
 
-def eval_network(self, eval_list, eval_path):
-    self.eval()
-    files = []
-    embeddings = {}
-    lines = open(eval_list).read().splitlines()
-    for line in lines:
-        files.append(line.split()[1])
-        files.append(line.split()[2])
-    setfiles = list(set(files))
-    setfiles.sort()
+        for line in lines:
+            embedding_11, embedding_12 = embeddings[line.split()[1]]
+            embedding_21, embedding_22 = embeddings[line.split()[2]]
+            # Compute the scores
+            score_1 = torch.mean(torch.matmul(embedding_11, embedding_21.T))  # higher is positive
+            score_2 = torch.mean(torch.matmul(embedding_12, embedding_22.T))
+            score = (score_1 + score_2) / 2
+            score = score.detach().cpu().numpy()
+            scores.append(score)
+            labels.append(int(line.split()[0]))
 
-    for idx, file in tqdm(enumerate(setfiles), total=len(setfiles)):
-        audio, _ = soundfile.read(os.path.join(eval_path, file))
-        # Full utterance
-        data_1 = torch.FloatTensor(np.stack([audio], axis=0)).cuda()
+        # Coumpute EER and minDCF
+        EER = tuneThresholdfromScore(scores, labels, [1, 0.1])[1]
+        fnrs, fprs, thresholds = ComputeErrorRates(scores, labels)
+        minDCF, _ = ComputeMinDcf(fnrs, fprs, thresholds, 0.05, 1, 1)
 
-        # Spliited utterance matrix
-        max_audio = 300 * 160 + 240
-        if audio.shape[0] <= max_audio:
-            shortage = max_audio - audio.shape[0]
-            audio = np.pad(audio, (0, shortage), 'wrap')
-        feats = []
-        startframe = np.linspace(0, audio.shape[0] - max_audio, num=5)
-        for asf in startframe:
-            feats.append(audio[int(asf):int(asf) + max_audio])
-        feats = np.stack(feats, axis=0).astype(np.float)
-        data_2 = torch.FloatTensor(feats).cuda()
-        # Speaker embeddings
-        with torch.no_grad():
-            embedding_1 = self.speaker_encoder.forward(data_1, aug=False)
-            embedding_1 = F.normalize(embedding_1, p=2, dim=1)
-            embedding_2 = self.speaker_encoder.forward(data_2, aug=False)
-            embedding_2 = F.normalize(embedding_2, p=2, dim=1)
-        embeddings[file] = [embedding_1, embedding_2]
-    scores, labels = [], []
-
-    for line in lines:
-        embedding_11, embedding_12 = embeddings[line.split()[1]]
-        embedding_21, embedding_22 = embeddings[line.split()[2]]
-        # Compute the scores
-        score_1 = torch.mean(torch.matmul(embedding_11, embedding_21.T))  # higher is positive
-        score_2 = torch.mean(torch.matmul(embedding_12, embedding_22.T))
-        score = (score_1 + score_2) / 2
-        score = score.detach().cpu().numpy()
-        scores.append(score)
-        labels.append(int(line.split()[0]))
-
-    # Coumpute EER and minDCF
-    EER = tuneThresholdfromScore(scores, labels, [1, 0.1])[1]
-    fnrs, fprs, thresholds = ComputeErrorRates(scores, labels)
-    minDCF, _ = ComputeMinDcf(fnrs, fprs, thresholds, 0.05, 1, 1)
-
-    return EER, minDCF
+        return EER, minDCF
