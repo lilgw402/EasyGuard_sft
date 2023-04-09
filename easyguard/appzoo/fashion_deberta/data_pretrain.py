@@ -1,13 +1,12 @@
 """An customizable fashion_deberta example"""
-import sys
-import os
 import json
-import random
 import math
-from typing import Union, List 
 import numpy as np
+import os
+import random
+import sys
 import torch
-
+from typing import Union, List
 
 try:
     import easyguard
@@ -69,7 +68,8 @@ class TextProcessor:
         return_dict = {'input_ids': input_ids, 'mlm_input_ids': mlm_input_ids, 'mlm_labels': mlm_labels}
         if self._classification_task_enable:
             if not self._text_label_field in data_dict:
-                raise KeyError(f"Unable to find text by keys: {self._text_label_field}, available keys: {data_dict.keys()}")
+                raise KeyError(
+                    f"Unable to find text by keys: {self._text_label_field}, available keys: {data_dict.keys()}")
             if self._multi_label_enable:
                 # multi label
                 multi_label = np.zeros(len(self._multi_label_map), dtype=int)
@@ -97,18 +97,20 @@ class TextProcessor:
         max_len = self._context_length
 
         for ib, ibatch in enumerate(batch_data):
-            mlm_input_ids.append(ibatch['mlm_input_ids'][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch['mlm_input_ids'])))
+            mlm_input_ids.append(
+                ibatch['mlm_input_ids'][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch['mlm_input_ids'])))
             input_ids.append(ibatch['input_ids'][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch['input_ids'])))
-            input_mask.append([1] * len(ibatch['mlm_input_ids'][:max_len]) + [0] * (max_len - len(ibatch['mlm_input_ids'])))
+            input_mask.append(
+                [1] * len(ibatch['mlm_input_ids'][:max_len]) + [0] * (max_len - len(ibatch['mlm_input_ids'])))
             input_segment_ids.append([0] * max_len)
             mlm_labels.append(ibatch['mlm_labels'][:max_len] + [-100] * (max_len - len(ibatch['mlm_labels'])))
 
             if self._classification_task_enable:
                 classification_labels.append(ibatch['classification_labels'])
-        
+
         # for cl, double data
         if self._cl_enable:
-            input_ids.extend(input_ids)    # same data extended in the end
+            input_ids.extend(input_ids)  # same data extended in the end
             input_mask.extend(input_mask)
             input_segment_ids.extend(input_segment_ids)
             if self._classification_task_enable:
@@ -120,10 +122,10 @@ class TextProcessor:
         input_mask = torch.tensor(input_mask)
         input_segment_ids = torch.tensor(input_segment_ids)
 
-        res = {"mlm_labels": mlm_labels,
-               "mlm_input_ids": mlm_input_ids,
-               "input_ids": input_ids,
-               "input_masks": input_mask,
+        res = {"mlm_labels"       : mlm_labels,
+               "mlm_input_ids"    : mlm_input_ids,
+               "input_ids"        : input_ids,
+               "input_masks"      : input_mask,
                "input_segment_ids": input_segment_ids
                }
         if self._classification_task_enable:
@@ -148,7 +150,7 @@ class TextProcessor:
             if 0 <= prob < 0.8:
                 res = self.MASK_IDX
             elif 0.8 <= prob < 0.9:
-                res = random.randint(0, len(self._vocab)-1)
+                res = random.randint(0, len(self._vocab) - 1)
             else:
                 res = token_id
             return res
@@ -165,14 +167,14 @@ class TextProcessor:
             max_span_len = -1
             span_str = ""
             for j in range(self._max_forward_search_step):
-                if i+j+1 > text_token_len:
+                if i + j + 1 > text_token_len:
                     break
-                span_list = text_token_rm_shape[i:i+j+1]
+                span_list = text_token_rm_shape[i:i + j + 1]
                 span_str = "".join(span_list)
                 if span_str in self._span_set:
                     max_span_len = max(j, max_span_len)
             if max_span_len > -1:
-                for inx in range(i, i+max_span_len+1):
+                for inx in range(i, i + max_span_len + 1):
                     mlm_mask_idxs[inx] = 1
             if max_span_len == 0 or max_span_len == -1:
                 i = i + 1
@@ -184,7 +186,7 @@ class TextProcessor:
         #     print(f"text_tokens: {input_tokens}") 
         #     print(f"mlm_mask_idxs: {mlm_mask_idxs}") 
         # 如果span mask不够mlm_mask_num，剩下的用rand mask补齐
-        total_mask_num = math.ceil(len(input_tokens)*self._mlm_probability)
+        total_mask_num = math.ceil(len(input_tokens) * self._mlm_probability)
         total_span_len = min(total_mask_num, sum(mlm_mask_idxs))
         total_rand_len = total_mask_num - total_span_len
         # print(f"total_span_len: {total_span_len}")
@@ -225,8 +227,8 @@ class TextProcessor:
                         mlm_labels.append(-100)
                         mlm_input_ids.append(token_id)
             input_ids.append(token_id)
-            i += 1 
-        # handle [SEP]
+            i += 1
+            # handle [SEP]
         mlm_labels.append(-100)
         mlm_input_ids.append(self.SEP_IDX)
         input_ids.append(self.SEP_IDX)
@@ -242,7 +244,7 @@ class TextProcessor:
         labels = inputs.clone()
         # We sample a few tokens in each sequence for MLM training (with probability `self.mlm_probability`)
         probability_matrix = torch.full(labels.shape, self._mlm_probability)
-        
+
         special_tokens_mask = special_tokens_mask.bool()
 
         probability_matrix.masked_fill_(special_tokens_mask, value=0.0)
@@ -266,8 +268,10 @@ class FashionDataModule(CruiseDataModule):
     def __init__(self,
                  train_batch_size: int = 8,
                  val_batch_size: int = 8,
-                 train_paths: Union[str, List[str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/traindata/part*',
-                 val_paths: Union[str, List[str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/validdata/part*',
+                 train_paths: Union[str, List[
+                     str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/traindata/part*',
+                 val_paths: Union[str, List[
+                     str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/validdata/part*',
                  data_size: int = 1000,
                  val_step: int = 10,
                  classification_task_enable: bool = False,
@@ -317,7 +321,7 @@ class FashionDataModule(CruiseDataModule):
         self.text_field = self.hparams.text_field
         self.cl_enable = self.hparams.cl_enable
 
-        self.tokenizer= AutoTokenizer.from_pretrained(self.hparams.pretrain_model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.hparams.pretrain_model_name)
         self.vocab = build_vocab(self.hparams.vocab_file_path)
         # Entity Mask
         self.span_set = set()
@@ -359,7 +363,7 @@ class FashionDataModule(CruiseDataModule):
                 self.hparams.multi_label_enable,
                 self.multi_label_map,
                 self.multi_label_split_token,
-                mlm_probability = self.hparams.mlm_probability
+                mlm_probability=self.hparams.mlm_probability
             ),
             predefined_steps=self.hparams.data_size // self.hparams.train_batch_size // self.trainer.world_size,
             source_types=['jsonl'],
@@ -387,7 +391,7 @@ class FashionDataModule(CruiseDataModule):
                 self.hparams.multi_label_enable,
                 self.multi_label_map,
                 self.multi_label_split_token,
-                mlm_probability = self.hparams.mlm_probability
+                mlm_probability=self.hparams.mlm_probability
             ),
             predefined_steps=self.hparams.val_step,
             source_types=['jsonl'],

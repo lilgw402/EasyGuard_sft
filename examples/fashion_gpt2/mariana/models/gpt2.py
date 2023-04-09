@@ -19,22 +19,21 @@ originally from: https://github.com/huggingface/transformers/blob/main/src/trans
 Copied from fuxi with its config space for compatibility: https://code.byted.org/nlp/fuxi/blob/master/tasks/alice/model/modeling_gpt2.py
 """
 
-from typing import List, Set
 import logging
 import os
-from dataclasses import dataclass
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
 import torch
 import torch.utils.checkpoint
+from mariana.nn.activations import ACT2FN
 from torch import nn
 from torch.cuda.amp import autocast
-from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
+from torch.nn import CrossEntropyLoss
 
-from mariana.nn.activations import ACT2FN
+from .xperf_training import FTFlashAttention, FTLayerNorm, FTLinear, FTLinearWeightTransposed, pad_input, unpad_input
+
+
 # from ...utils.model_parallel_utils import assert_device_map, get_device_map
-
-from .xperf_training import FTFlashAttention, FTLinear, FTLayerNorm, FTLinearWeightTransposed, pad_input, unpad_input
 
 
 class Conv1D(nn.Module):
@@ -92,7 +91,8 @@ def prune_conv1d_layer(layer: Conv1D, index: torch.LongTensor, dim: int = 1) -> 
 
 
 def find_pruneable_heads_and_indices(
-    heads: List[int], n_heads: int, head_size: int, already_pruned_heads: Set[int]) -> Tuple[Set[int], torch.LongTensor]:
+        heads: List[int], n_heads: int, head_size: int, already_pruned_heads: Set[int]) -> Tuple[
+    Set[int], torch.LongTensor]:
     """
     Finds the heads and their indices taking `already_pruned_heads` into account.
     Args:
@@ -115,6 +115,7 @@ def find_pruneable_heads_and_indices(
 
 
 class GPT2Attention(nn.Module):
+    # 参考huggingface gpt2代码
     def __init__(self, config, is_cross_attention=False, layer_idx=None):
         super().__init__()
 
@@ -194,7 +195,7 @@ class GPT2Attention(nn.Module):
         if not self.is_cross_attention:
             # if only "normal" attention layer implements causal mask
             query_length, key_length = query.size(-2), key.size(-2)
-            causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].to(torch.bool)
+            causal_mask = self.bias[:, :, key_length - query_length: key_length, :key_length].to(torch.bool)
             mask_value = torch.finfo(attn_weights.dtype).min
             # Need to be a tensor, otherwise we get error: `RuntimeError: expected scalar type float but found double`.
             # Need to be on the same device, otherwise `RuntimeError: ..., x and y to be on the same device`
@@ -244,7 +245,7 @@ class GPT2Attention(nn.Module):
         if not self.is_cross_attention:
             # if only "normal" attention layer implements causal mask
             query_length, key_length = query.size(-2), key.size(-2)
-            causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].bool()
+            causal_mask = self.bias[:, :, key_length - query_length: key_length, :key_length].bool()
             mask_value = torch.finfo(attn_weights.dtype).min
             # Need to be a tensor, otherwise we get error: `RuntimeError: expected scalar type float but found double`.
             # Need to be on the same device, otherwise `RuntimeError: ..., x and y to be on the same device`
@@ -288,18 +289,18 @@ class GPT2Attention(nn.Module):
         return tensor.view(new_shape)
 
     def forward(
-        self,
-        hidden_states: Optional[Tuple[torch.FloatTensor]],
-        layer_past: Optional[Tuple[torch.Tensor]] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.Tensor] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = False,
-        output_attentions: Optional[bool] = False,
-        seq_lens: Optional[torch.IntTensor] = None,
-        word_idx: Optional[torch.IntTensor] = None,
-        use_rmpad: Optional[bool] = False,
+            self,
+            hidden_states: Optional[Tuple[torch.FloatTensor]],
+            layer_past: Optional[Tuple[torch.Tensor]] = None,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            encoder_hidden_states: Optional[torch.Tensor] = None,
+            encoder_attention_mask: Optional[torch.FloatTensor] = None,
+            use_cache: Optional[bool] = False,
+            output_attentions: Optional[bool] = False,
+            seq_lens: Optional[torch.IntTensor] = None,
+            word_idx: Optional[torch.IntTensor] = None,
+            use_rmpad: Optional[bool] = False,
     ) -> Tuple[Union[torch.Tensor, Tuple[torch.Tensor]], ...]:
         if encoder_hidden_states is not None:
             if not hasattr(self, "q_attn"):
@@ -348,17 +349,19 @@ class GPT2Attention(nn.Module):
                     value = value.view(value.shape[0], value.shape[1], -1)
 
                 # attn_output = self.ft_flash_attn([query, key, value], self.num_heads, attn_mask=attention_mask, causal=True, attention_dropout=self.attn_pdrop)
-                attn_output = self.ft_flash_attn([query, key, value], self.num_heads, causal=True, attention_dropout=self.attn_pdrop, word_idx=word_idx, cu_seqlens_k=seq_lens, cu_seqlens_q=seq_lens, use_rmpad_attn=use_rmpad)
+                attn_output = self.ft_flash_attn([query, key, value], self.num_heads, causal=True,
+                                                 attention_dropout=self.attn_pdrop, word_idx=word_idx,
+                                                 cu_seqlens_k=seq_lens, cu_seqlens_q=seq_lens, use_rmpad_attn=use_rmpad)
                 if not use_rmpad:
-                    #(batch, seq_length, head * head_features) -> (batch, seq_length, head, head_features)
+                    # (batch, seq_length, head * head_features) -> (batch, seq_length, head, head_features)
                     attn_output = attn_output.view(attn_output.shape[0], attn_output.shape[1], self.num_heads, -1)
-                    #(batch, seq_length, head, head_features) -> (batch, head, seq_length, head_features)
+                    # (batch, seq_length, head, head_features) -> (batch, head, seq_length, head_features)
                     attn_output = attn_output.transpose(-2, -3)
             else:
                 attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
         if not use_rmpad:
             # (batch, head, seq_length, head_features) -> (batch, seq_length, head*head_features)
-            attn_output = self._merge_heads(attn_output, self.num_heads, self.head_dim)# attn_output
+            attn_output = self._merge_heads(attn_output, self.num_heads, self.head_dim)  # attn_output
         attn_output = self.c_proj(attn_output)
         attn_output = self.resid_dropout(attn_output)
         outputs = (attn_output, present)
@@ -427,38 +430,35 @@ class GPT2Block(nn.Module):
         self.mlp = GPT2MLP(inner_dim, config, layer_idx)
 
     def forward(
-        self,
-        hidden_states: Optional[Tuple[torch.FloatTensor]],
-        layer_past: Optional[Tuple[torch.Tensor]] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.Tensor] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = False,
-        output_attentions: Optional[bool] = False,
-        word_idx: Optional[torch.IntTensor] = None,
-        seq_lens: Optional[torch.IntTensor] = None,
-        use_rmpad: Optional[bool] = False,
+            self,
+            hidden_states: Optional[Tuple[torch.FloatTensor]],
+            layer_past: Optional[Tuple[torch.Tensor]] = None,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            encoder_hidden_states: Optional[torch.Tensor] = None,
+            encoder_attention_mask: Optional[torch.FloatTensor] = None,
+            use_cache: Optional[bool] = False,
+            output_attentions: Optional[bool] = False,
+            word_idx: Optional[torch.IntTensor] = None,
+            seq_lens: Optional[torch.IntTensor] = None,
+            use_rmpad: Optional[bool] = False,
     ) -> Union[Tuple[torch.Tensor], Optional[Tuple[torch.Tensor, Tuple[torch.FloatTensor, ...]]]]:
         residual = hidden_states
+        # https://github.com/cybertronai/gradient-checkpointing
+        # https://pytorch.org/docs/stable/checkpoint.html
         if self.gradient_checkpointing_ln:
-            hidden_states = torch.utils.checkpoint.checkpoint(
-                self.ln_1,
-                hidden_states,
-            )
+            hidden_states = torch.utils.checkpoint.checkpoint(self.ln_1, hidden_states)
         else:
             hidden_states = self.ln_1(hidden_states)
-        attn_outputs = self.attn(
-            hidden_states,
-            layer_past=layer_past,
-            attention_mask=attention_mask,
-            head_mask=head_mask,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            seq_lens=seq_lens,
-            word_idx=word_idx,
-            use_rmpad=use_rmpad,
-        )
+        attn_outputs = self.attn(hidden_states,
+                                 layer_past=layer_past,
+                                 attention_mask=attention_mask,
+                                 head_mask=head_mask,
+                                 use_cache=use_cache,
+                                 output_attentions=output_attentions,
+                                 seq_lens=seq_lens,
+                                 word_idx=word_idx,
+                                 use_rmpad=use_rmpad)
         attn_output = attn_outputs[0]  # output_attn: a, present, (attentions)
         outputs = attn_outputs[1:]
         # residual connection
@@ -496,10 +496,10 @@ class GPT2Block(nn.Module):
 
         if self.gradient_checkpointing_mlp:
             feed_forward_hidden_states, last_activation_norm = \
-                    torch.utils.checkpoint.checkpoint(self.mlp, hidden_states,)
+                torch.utils.checkpoint.checkpoint(self.mlp, hidden_states, )
         else:
             feed_forward_hidden_states, last_activation_norm = \
-                    self.mlp(hidden_states)
+                self.mlp(hidden_states)
         # residual connection
         hidden_states = residual + feed_forward_hidden_states
 
@@ -521,7 +521,7 @@ class GPT2Model(nn.Module):
 
         self.wte = nn.Embedding(self.config.vocab_size, self.embed_dim)
         self.wpe = nn.Embedding(self.config.max_position_embeddings, self.embed_dim)
-        if self.embed_dim != self.config.hidden_size: # factorization
+        if self.embed_dim != self.config.hidden_size:  # factorization
             if self.config.use_ft_linear:
                 assert FTLinear is not None
                 self.pre_token_proj = FTLinear(self.embed_dim, self.config.hidden_size)
@@ -539,21 +539,21 @@ class GPT2Model(nn.Module):
         if self.transformer_kernel == 'default':
             self.h = nn.ModuleList([GPT2Block(self.config, layer_idx=i) for i in range(self.config.n_layer)])
         elif self.transformer_kernel == 'deepspeed':
-            from deepspeed import DeepSpeedTransformerLayer, DeepSpeedTransformerConfig, DeepSpeedConfig
+            from deepspeed import DeepSpeedTransformerLayer, DeepSpeedTransformerConfig
             local_rank = int(os.environ.get('LOCAL_RANK', 0))
             seed = 42
             ke_config = DeepSpeedTransformerConfig(
-                batch_size = config.TRAINER.TRAIN_BATCH_SIZE, # TODO: hack
-                hidden_size = self.config.hidden_size,
-                intermediate_size = self.config.n_inner,
-                heads = self.config.n_head,
-                attn_dropout_ratio = self.config.attn_pdrop,
-                hidden_dropout_ratio = self.config.resid_pdrop,
-                num_hidden_layers = self.config.n_layer,
-                initializer_range = self.config.initializer_range,
-                local_rank = local_rank,
-                seed = seed,
-                fp16 = True,
+                batch_size=config.TRAINER.TRAIN_BATCH_SIZE,  # TODO: hack
+                hidden_size=self.config.hidden_size,
+                intermediate_size=self.config.n_inner,
+                heads=self.config.n_head,
+                attn_dropout_ratio=self.config.attn_pdrop,
+                hidden_dropout_ratio=self.config.resid_pdrop,
+                num_hidden_layers=self.config.n_layer,
+                initializer_range=self.config.initializer_range,
+                local_rank=local_rank,
+                seed=seed,
+                fp16=True,
                 pre_layer_norm=False,
                 attn_dropout_checkpoint=False,
                 normalize_invertible=False,
@@ -561,7 +561,6 @@ class GPT2Model(nn.Module):
                 stochastic_mode=False)
             self.h = nn.ModuleList([DeepSpeedTransformerLayer(ke_config) for i in range(self.config.n_layer)])
         elif self.transformer_kernel == 'lightseq':
-            import lightseq
             from lightseq.training.ops.pytorch.gpt_layer import LSHFGptEncoderLayer
             local_rank = int(os.environ.get('LOCAL_RANK', 0))
             ke_config = LSHFGptEncoderLayer.get_config(
@@ -606,17 +605,17 @@ class GPT2Model(nn.Module):
             self.h[layer].attn.prune_heads(heads)
 
     def forward(
-        self,
-        input_ids: Optional[torch.LongTensor] = None,
-        token_type_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        word_idx: Optional[torch.IntTensor] = None,
-        use_rmpad: Optional[bool] = False,
-        ):
+            self,
+            input_ids: Optional[torch.LongTensor] = None,
+            token_type_ids: Optional[torch.LongTensor] = None,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            position_ids: Optional[torch.LongTensor] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            use_cache: Optional[bool] = None,
+            output_attentions: Optional[bool] = None,
+            word_idx: Optional[torch.IntTensor] = None,
+            use_rmpad: Optional[bool] = False,
+    ):
         """
         """
 
@@ -640,14 +639,8 @@ class GPT2Model(nn.Module):
         # move here
 
         if self.gradient_checkpointing and self.training:
-            inputs_embeds = torch.utils.checkpoint.checkpoint(
-                self.wte,
-                input_ids,
-            )
-            position_embeds = torch.utils.checkpoint.checkpoint(
-                self.wpe,
-                position_ids,
-            )
+            inputs_embeds = torch.utils.checkpoint.checkpoint(self.wte, input_ids)
+            position_embeds = torch.utils.checkpoint.checkpoint(self.wpe, position_ids)
         else:
             inputs_embeds = self.wte(input_ids)
             position_embeds = self.wpe(position_ids)
@@ -656,13 +649,13 @@ class GPT2Model(nn.Module):
         if attention_mask is not None and use_rmpad:
             attention_mask2d = attention_mask.max(dim=1)[0]
             del attention_mask
-            attention_mask = None #reduce gpu mem.
+            attention_mask = None  # reduce gpu mem.
 
         if attention_mask is not None:
             if batch_size <= 0:
                 raise ValueError("batch_size has to be defined and > 0")
             attention_mask_shape = attention_mask.shape
-            if len(attention_mask_shape) == 2: # [bsz, seq] 的情况，多二维，第一维给head，第二维给from_seq，这种情况下无上三角mask
+            if len(attention_mask_shape) == 2:  # [bsz, seq] 的情况，多二维，第一维给head，第二维给from_seq，这种情况下无上三角mask
                 attention_mask = attention_mask.view(batch_size, -1)
                 # We create a 3D attention mask from a 2D tensor mask.
                 # Sizes are [batch_size, 1, 1, to_seq_length]
@@ -670,7 +663,7 @@ class GPT2Model(nn.Module):
                 # this attention mask is more simple than the triangular masking of causal attention
                 # used in OpenAI GPT, we just need to prepare the broadcast dimension here.
                 attention_mask = attention_mask[:, None, None, :]
-            elif len(attention_mask_shape) == 3: # [bsz, seq, seq] 的情况，多一维给head，一般这个是训练的情况，提供上三角mask
+            elif len(attention_mask_shape) == 3:  # [bsz, seq, seq] 的情况，多一维给head，一般这个是训练的情况，提供上三角mask
                 attention_mask = attention_mask[:, None, :, :]
 
             # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
@@ -699,14 +692,13 @@ class GPT2Model(nn.Module):
         hidden_states = self.drop(hidden_states)
         output_shape = input_shape + (hidden_states.size(-1),)
 
-        if self.pre_token_proj is not None: # 映射下
+        if self.pre_token_proj is not None:  # 映射下
             hidden_states = self.pre_token_proj(hidden_states)
 
         presents = () if use_cache else None
         all_self_attentions = ()
         all_hidden_states = ()
         for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
-
             # Model parallel
             if self.model_parallel:
                 torch.cuda.set_device(hidden_states.device)
@@ -732,23 +724,24 @@ class GPT2Model(nn.Module):
                     def custom_forward(*inputs):
                         # None for past_key_value
                         return module(
-                                    *inputs,
-                                    use_cache=use_cache,
-                                    output_attentions=output_attentions,
-                                    word_idx=word_idx,
-                                    seq_lens=seq_lens,
-                                    use_rmpad=use_rmpad,
-                               )
+                            *inputs,
+                            use_cache=use_cache,
+                            output_attentions=output_attentions,
+                            word_idx=word_idx,
+                            seq_lens=seq_lens,
+                            use_rmpad=use_rmpad,
+                        )
 
                     return custom_forward
+
                 outputs = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block),
                     hidden_states,
                     None,
                     attention_mask,
                     head_mask[i],
-                    None, # encoder_hidden_states,
-                    None, # encoder_attention_mask,
+                    None,  # encoder_hidden_states,
+                    None,  # encoder_attention_mask,
                 )
             else:
 
@@ -760,7 +753,7 @@ class GPT2Model(nn.Module):
                 else:
                     outputs = block(
                         hidden_states,
-                        #layer_past=layer_past,
+                        # layer_past=layer_past,
                         attention_mask=attention_mask,
                         head_mask=head_mask[i],
                         encoder_hidden_states=None,
@@ -790,8 +783,7 @@ class GPT2Model(nn.Module):
                     if i == v[-1] and "cuda:" + str(k) != self.last_device:
                         hidden_states = hidden_states.to("cuda:" + str(k + 1))
 
-
-        if self.post_token_proj is not None: # 映射下
+        if self.post_token_proj is not None:  # 映射下
             hidden_states = self.post_token_proj(hidden_states)
 
         hidden_states = self.ln_f(hidden_states)
@@ -802,15 +794,16 @@ class GPT2Model(nn.Module):
         all_hidden_states = all_hidden_states + (hidden_states,)
 
         return {
-            'last_hidden_state': hidden_states,
-            'word_idx': word_idx,
-            'seq_lens': seq_lens,
-            #'past_key_values': presents,
-            #'hidden_states': all_hidden_states,
-            #'attentions': attentions,
-            #'cross_attentions': cross_attentions,
+            'last_hidden_state'   : hidden_states,
+            'word_idx'            : word_idx,
+            'seq_lens'            : seq_lens,
+            # 'past_key_values': presents,
+            # 'hidden_states': all_hidden_states,
+            # 'attentions': attentions,
+            # 'cross_attentions': cross_attentions,
             'last_activation_norm': last_activation_norm
         }
+
 
 class GPT2LMHeadModel(nn.Module):
 
@@ -819,7 +812,8 @@ class GPT2LMHeadModel(nn.Module):
         有 head，可以预测loss
         """
         super().__init__()
-        self.config = config.network # 有点丑，主要是因为 transformer kernel 需要传 batch size
+        # 有点丑，主要是因为 transformer kernel 需要传 batch size
+        self.config = config.network
         self.transformer = GPT2Model(config)
         self.lm_head = nn.Linear(self.config.n_embed, self.config.vocab_size, bias=False)
 
@@ -827,7 +821,7 @@ class GPT2LMHeadModel(nn.Module):
         if self.config.get('tie_weight', False):
             self.lm_head.weight = self.transformer.wte.weight
 
-        self.PAD_IDX = self.config.get('pad_idx', 2) # 用来ignore的
+        self.PAD_IDX = self.config.get('pad_idx', 2)  # 用来ignore的
         self.loss_fct = CrossEntropyLoss(ignore_index=self.PAD_IDX)
 
         # Model parallel
@@ -836,17 +830,17 @@ class GPT2LMHeadModel(nn.Module):
         self.gradient_checkpointing = self.config.get('gradient_checkpointing', False)
 
     def forward(
-        self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        token_type_ids: Optional[torch.LongTensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        head_mask: Optional[torch.FloatTensor] = None,
-        labels: Optional[torch.LongTensor] = None,
-        use_cache: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        use_rmpad: Optional[bool] = False,
-        pad_output: Optional[bool] = False,
+            self,
+            input_ids: Optional[torch.LongTensor] = None,
+            attention_mask: Optional[torch.FloatTensor] = None,
+            token_type_ids: Optional[torch.LongTensor] = None,
+            position_ids: Optional[torch.LongTensor] = None,
+            head_mask: Optional[torch.FloatTensor] = None,
+            labels: Optional[torch.LongTensor] = None,
+            use_cache: Optional[bool] = None,
+            output_attentions: Optional[bool] = None,
+            use_rmpad: Optional[bool] = False,
+            pad_output: Optional[bool] = False,
     ):
         r"""
         labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
@@ -874,10 +868,7 @@ class GPT2LMHeadModel(nn.Module):
             torch.cuda.set_device(self.transformer.first_device)
             hidden_states = hidden_states.to(self.lm_head.weight.device)
         if self.gradient_checkpointing and self.training:
-            lm_logits = torch.utils.checkpoint.checkpoint(
-                self.lm_head,
-                hidden_states,
-            )
+            lm_logits = torch.utils.checkpoint.checkpoint(self.lm_head, hidden_states)
         else:
             lm_logits = self.lm_head(hidden_states)
         loss = None
@@ -886,9 +877,10 @@ class GPT2LMHeadModel(nn.Module):
         if labels is not None:
             if use_rmpad:
                 labels = labels.view(-1)[word_idx.long()]
-                shift_labels = torch.cat((labels[1:], labels.new_ones((1))*self.PAD_IDX))
+                shift_labels = torch.cat((labels[1:], labels.new_ones((1)) * self.PAD_IDX))
                 shift_labels.requires_grad = False
-                seq_lens = (seq_lens[1:]-1).long() # first element is 0, ignore it. seq_lens is the cumulative len from 1st seq.
+                # first element is 0, ignore it. seq_lens is the cumulative len from 1st seq.
+                seq_lens = (seq_lens[1:] - 1).long()
                 shift_labels[seq_lens] = self.PAD_IDX
                 loss = self.loss_fct(lm_logits, shift_labels)
                 # aux_loss = lm_logits.log_softmax(dim=1).square()
@@ -903,21 +895,22 @@ class GPT2LMHeadModel(nn.Module):
                 # TODO: 这里没有去掉pad token，虽然loss不算，但可能会增加冗余计算。不过pad应该不多，先不管
                 shift_logits = lm_logits[..., :-1, :].contiguous()
                 shift_labels = labels[..., 1:].contiguous()
-                #Flatten the tokens
+                # Flatten the tokens
                 loss = self.loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
         if use_rmpad and pad_output:
             lm_logits = pad_input(lm_logits, word_idx, bsz, max_seq_len)
 
         return {
-            'loss': loss,
-            'logits': lm_logits,
-            'seq_lens': seq_lens,
-            #'past_key_values': transformer_outputs['past_key_values'],
-            #'hidden_states': transformer_outputs['hidden_states'],
-            #'attentions': transformer_outputs['attentions'],
-            #'cross_attentions': transformer_outputs['cross_attentions'],
+            'loss'                : loss,
+            'logits'              : lm_logits,
+            'seq_lens'            : seq_lens,
+            # 'past_key_values': transformer_outputs['past_key_values'],
+            # 'hidden_states': transformer_outputs['hidden_states'],
+            # 'attentions': transformer_outputs['attentions'],
+            # 'cross_attentions': transformer_outputs['cross_attentions'],
             'last_activation_norm': transformer_outputs['last_activation_norm']
         }
+
 
 def get_subsequent_mask(seq):
     '''
@@ -984,7 +977,7 @@ def load_tf_weights_in_gpt2(model, gpt2_checkpoint_path):
                 pointer = pointer[num]
         try:
             assert (
-                pointer.shape == array.shape
+                    pointer.shape == array.shape
             ), f"Pointer shape {pointer.shape} and array shape {array.shape} mismatched"
         except AssertionError as e:
             e.args += (pointer.shape, array.shape)

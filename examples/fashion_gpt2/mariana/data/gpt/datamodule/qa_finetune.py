@@ -2,17 +2,19 @@
 import logging
 import os
 import tempfile
+from typing import List, Union
+
 import torch
-from typing import Union, List
 from cruise import CruiseDataModule
-from cruise.data_module.tools import create_dataloader_by_cfg
-from torch.utils.data._utils.collate import default_collate
 from cruise.data_module import DistributedCruiseDataLoader
 from cruise.data_module.gpu_wrapper import GPUPrefetcher
-from cruise.utilities.hdfs_io import hlist_files, hcopy
 from cruise.utilities import DIST_ENV
-from ..tokenization import CasterTokenizer
+from cruise.utilities.hdfs_io import hcopy
+from torch.utils.data._utils.collate import default_collate
 from transformers import AutoTokenizer
+
+from ..tokenization import CasterTokenizer
+
 
 class RawTextProcessor:
     r"""
@@ -24,7 +26,9 @@ class RawTextProcessor:
             drop_last: if text length is not divisible by max_seq_len, set this
                        field to False will pad the remainder.
     """
-    def __init__(self, tokenizer: str, text_keys: Union[str, List[str]], max_seq_len:int, drop_last:bool = False, tokenizer_kwargs = None, **kwargs):
+
+    def __init__(self, tokenizer: str, text_keys: Union[str, List[str]], max_seq_len: int, drop_last: bool = False,
+                 tokenizer_kwargs=None, **kwargs):
         if not isinstance(text_keys, list):
             text_keys = [text_keys]
         self.text_keys = text_keys
@@ -95,18 +99,20 @@ class RawTextProcessor:
                         pad_token_id = 0
                     else:
                         pad_token_id = self.tokenizer.pad_token_id
-                    concatenated_examples[key] = concatenated_examples[key] + [pad_token_id] * (self.max_seq_len-total_length)
+                    concatenated_examples[key] = concatenated_examples[key] + [pad_token_id] * (
+                            self.max_seq_len - total_length)
                 total_length = self.max_seq_len
             elif not self.drop_last:
                 for key in concatenated_examples:
-                    concatenated_examples[key] = concatenated_examples[key][:total_length] + concatenated_examples[key][-self.max_seq_len:]
+                    concatenated_examples[key] = concatenated_examples[key][:total_length] + concatenated_examples[key][
+                                                                                             -self.max_seq_len:]
                 total_length = total_length + self.max_seq_len
 
         # Split by chunks of max_len.
         outputs = []
         for i in range(0, total_length, self.max_seq_len):
             result = {
-                k: torch.as_tensor(t[i : i + self.max_seq_len])
+                k: torch.as_tensor(t[i: i + self.max_seq_len])
                 for k, t in concatenated_examples.items()
             }
             # result["labels"] = result["input_ids"].clone()
@@ -119,17 +125,18 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
 
     It supports reading from raw text dataset and process using pretrained tokenizers.
     """
+
     def __init__(self,
-                 train_path: str = 'hdfs://haruna/home/byte_data_aml_research/user/zhangzhi.joshua/data/gpt/qa/sample.parquet',
+                 train_path: str = '',
                  val_path: str = '',
-                 train_size: int = 185,
+                 train_size: int = 369920,
                  train_batch_size: int = 4,
                  train_num_workers: int = 1,
                  val_batch_size: int = 4,
                  val_num_workers: int = 1,
                  max_seq_len: int = 1024,
                  text_keys: List[str] = ['question', 'answer'],
-                 tokenizer: str = 'hdfs://haruna/home/byte_data_aml_research/user/zhangzhi.joshua/tokenizer/zh_0620_newcut_caster_145665_lowercase',
+                 tokenizer: str = 'hdfs://haruna/home/byte_ecom_govern/user/doushihan/tokenizer/tokenizer/zh_0620_newcut_caster_145665_lowercase',
                  tokenizer_type: str = "caster",
                  gpu_prefetch: bool = False,
                  add_sep_token: bool = True,
@@ -165,36 +172,35 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
         train_steps = -1
         if self.hparams.train_size > 0:
             train_steps = self.hparams.train_size // (self.hparams.train_batch_size * DIST_ENV.world_size)
-            assert train_steps > 0, f"train_size={self.hparams.train_size} may be too small to split to batch_size * world_size"
+            assert train_steps > 0, f"train_size={self.hparams.train_size} " \
+                                    f"may be too small to split to batch_size * world_size"
         train_files = [self.hparams.train_path]
         self.rank_zero_info(f"Fetched {len(train_files)} training files.")
         if self.hparams.tokenizer_type == "bbpe":
             tokenizer_kwargs = {"return_token_type_ids": False}
         else:
             tokenizer_kwargs = {}
-        loader = DistributedCruiseDataLoader(
-            data_sources=[train_files],
-            batch_sizes=[self.hparams.train_batch_size],
-            num_workers=self.hparams.train_num_workers,
-            predefined_steps=train_steps,
-            source_types=['parquet'],
-            shuffle=True,
-            drop_last=True,
-            pin_memory=True,
-            parquet_cache_on=True,
-            keys_or_columns=None,
-            num_readers=[1],
-            decode_fn_list=None,
-            processor=RawTextProcessor(
-                tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
-                text_keys=self.hparams.text_keys,
-                max_seq_len=self.hparams.max_seq_len,
-                drop_last=False,
-                add_sep_token=self.hparams.add_sep_token,
-                mask_prompt_loss=self.hparams.mask_prompt_loss,
-                tokenizer_kwargs=tokenizer_kwargs),
-            transform_output_many=True,
-        )
+        loader = DistributedCruiseDataLoader(data_sources=[train_files],
+                                             batch_sizes=[self.hparams.train_batch_size],
+                                             num_workers=self.hparams.train_num_workers,
+                                             predefined_steps=train_steps,
+                                             source_types=['parquet'],
+                                             shuffle=True,
+                                             drop_last=True,
+                                             pin_memory=True,
+                                             parquet_cache_on=True,
+                                             keys_or_columns=None,
+                                             num_readers=[1],
+                                             decode_fn_list=None,
+                                             processor=RawTextProcessor(
+                                                 tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
+                                                 text_keys=self.hparams.text_keys,
+                                                 max_seq_len=self.hparams.max_seq_len,
+                                                 drop_last=False,
+                                                 add_sep_token=self.hparams.add_sep_token,
+                                                 mask_prompt_loss=self.hparams.mask_prompt_loss,
+                                                 tokenizer_kwargs=tokenizer_kwargs),
+                                             transform_output_many=True)
         if self.hparams.gpu_prefetch:
             loader = GPUPrefetcher(loader)
         return loader
@@ -205,29 +211,26 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
         val_steps = -1
         val_files = [self.hparams.val_path]
         self.rank_zero_info(f"Fetched {len(val_files)} val files.")
-        loader = DistributedCruiseDataLoader(
-            data_sources=[val_files],
-            batch_sizes=[self.hparams.val_batch_size],
-            num_workers=self.hparams.val_num_workers,
-            predefined_steps=val_steps,
-            source_types=['parquet'],
-            shuffle=False,
-            drop_last=False,
-            pin_memory=True,
-            parquet_cache_on=True,
-            keys_or_columns=None,
-            num_readers=[1],
-            decode_fn_list=None,
-            processor=RawTextProcessor(
-                tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
-                text_keys=self.hparams.text_keys,
-                max_seq_len=self.hparams.max_seq_len,
-                drop_last=False,
-                add_sep_token=self.hparams.add_sep_token,
-                mask_prompt_loss=self.hparams.mask_prompt_loss),
-            transform_output_many=True,
-        )
+        loader = DistributedCruiseDataLoader(data_sources=[val_files],
+                                             batch_sizes=[self.hparams.val_batch_size],
+                                             num_workers=self.hparams.val_num_workers,
+                                             predefined_steps=val_steps,
+                                             source_types=['parquet'],
+                                             shuffle=False,
+                                             drop_last=False,
+                                             pin_memory=True,
+                                             parquet_cache_on=True,
+                                             keys_or_columns=None,
+                                             num_readers=[1],
+                                             decode_fn_list=None,
+                                             processor=RawTextProcessor(
+                                                 tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
+                                                 text_keys=self.hparams.text_keys,
+                                                 max_seq_len=self.hparams.max_seq_len,
+                                                 drop_last=False,
+                                                 add_sep_token=self.hparams.add_sep_token,
+                                                 mask_prompt_loss=self.hparams.mask_prompt_loss),
+                                             transform_output_many=True)
         if self.hparams.gpu_prefetch:
             loader = GPUPrefetcher(loader)
         return loader
-
