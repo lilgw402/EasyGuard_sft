@@ -18,7 +18,7 @@ trainer:
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: null
+  val_check_interval: [1000, 1.0]
   accumulate_grad_batches: null
   gradient_clip_val: null
   seed: null
@@ -71,30 +71,33 @@ trainer:
         power: 1.0
   grad_norm_layers: []
 model:
-  class_num: 70000
+  class_num: 78769
   hidden_dim: 768
   channel: 1024
   m: 0.2
   s: 30
   optim: AdamW
-  learning_rate: 0.001
+  learning_rate: 0.01
   weight_decay: 0.01
   lr_schedule: cosine
-  warmup_steps_factor: 1
-  low_lr_prefix: []
+  warmup_steps_factor: 0.5
+  low_lr_prefix:
+    - 'speaker_encoder.'
   freeze_prefix: []
-  load_pretrained: null
+  load_pretrained: 'hdfs://haruna/home/byte_ecom_govern/user/wangxian/weights/pretrained/pretrain_sv.th'
   prefix_changes:
     - 'speaker_loss.->abandon_loss.'
   download_files: []
 data:
+  root_path: /mnt/bd/wx-nas/dataset/audio4sv/
   train_files: hdfs://haruna/home/byte_ecom_govern/user/wangxian/datasets/fashionaudio/fashion_sv/train_jsonl
   train_size: 850000
   val_files: hdfs://haruna/home/byte_ecom_govern/user/wangxian/datasets/fashionaudio/fashion_sv/val_jsonl
   val_size: 26000
   train_batch_size: 128
   val_batch_size: 64
-  num_frames: 2000
+  num_frames: 1600
+  sampling_rate: 16000
   num_workers: 8
   exp: default
   download_files: []

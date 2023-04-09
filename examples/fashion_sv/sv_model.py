@@ -43,7 +43,7 @@ class FashionSV(CruiseModule):
 
     def setup(self, stage):
         # ECAPA-TDNN
-        self.speaker_encoder = ECAPA_TDNN(C=self.hparams.C)
+        self.speaker_encoder = ECAPA_TDNN(C=self.hparams.channel)
         # Classifier
         self.speaker_loss = AAMsoftmax(n_class=self.hparams.class_num, m=self.hparams.m, s=self.hparams.s)
 
@@ -84,10 +84,8 @@ class FashionSV(CruiseModule):
     def training_step(self, batch, idx):
         feature = batch['feature']
         labels = batch['labels']
-        labels = torch.LongTensor(labels)
         speaker_embedding = self.forward_step(feature)
         nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
-        nloss.backward()
 
         rep_dict = {
             'loss': nloss,
@@ -99,10 +97,8 @@ class FashionSV(CruiseModule):
     def validation_step(self, batch, idx):
         feature = batch['feature']
         labels = batch['labels']
-        labels = torch.LongTensor(labels)
         speaker_embedding = self.forward_step(feature)
         nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
-        nloss.backward()
 
         rep_dict = {
             'val_loss': nloss,

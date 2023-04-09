@@ -79,7 +79,7 @@ class PreEmphasis(torch.nn.Module):
         super().__init__()
         self.coef = coef
         self.register_buffer(
-            'flipped_filter', torch.FloatTensor([-self.coef, 1.]).unsqueeze(0).unsqueeze(0)
+            'flipped_filter', torch.tensor([-self.coef, 1.]).unsqueeze(0).unsqueeze(0)
         )
 
     def forward(self, input: torch.tensor) -> torch.tensor:

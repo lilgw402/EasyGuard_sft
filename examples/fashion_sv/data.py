@@ -18,7 +18,6 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
     """
     dataset，继承的dataset是 DistLineReadingDataset，是一个逐行读hdfs数据的IterableDataset。
     """
-
     def __init__(self, config, data_path, rank=0, world_size=1, shuffle=True, repeat=False,
                  is_training=False):
         super().__init__(data_path, rank, world_size, shuffle, repeat)
@@ -28,6 +27,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.root_path = self.config.root_path
         self.num_frames = self.config.num_frames
         self.sampling_rate = self.config.sampling_rate
+        self.uid2label = np.load('./examples/fashion_sv/uid2label.npy', allow_pickle=True).item()
 
     def __len__(self):
         # world_size = os.environ.get('WORLD_SIZE') if os.environ.get('WORLD_SIZE') is not None else 1
@@ -43,7 +43,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
                 # label
                 user_id = data_item['user_id']
-                label = int(user_id)
+                label = int(self.uid2label[user_id])
 
                 # audio
                 files = data_item['audios']
@@ -55,9 +55,9 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 if audio.shape[0] <= length:
                     padding_length = length - audio.shape[0]
                     audio = np.pad(audio, (0, padding_length), 'wrap')
-                start_frame = int(random.random() * (audio.shape[0] - length))  # 截断
+                start_frame = int(random.random() * (audio.shape[0] - length))      # 截断
                 audio = audio[start_frame: start_frame + length]
-                audio = torch.from_numpy(audio)
+                audio = torch.from_numpy(audio).float()
 
                 # todo Data Augmentation - add noise
 
@@ -69,14 +69,17 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 print(f'error in dataset: {e}')
 
     def collect_fn(self, data):
-        audios = []
+        feature = []
         labels = []
 
         for ib, ibatch in enumerate(data):
-            audios.append(ibatch['audio'])
+            feature.append(ibatch['audio'])
             labels.append(ibatch["label"])
 
-        res = {"audio": audios, "label": labels}
+        feature = torch.stack(feature, dim=0)
+        labels = torch.tensor(labels, dtype=torch.long)
+
+        res = {"feature": feature, "labels": labels}
 
         return res
 
@@ -84,6 +87,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 class SVDataModule(CruiseDataModule):
     def __init__(
             self,
+            root_path: str = None,
             train_files: str = None,
             train_size: int = 1500000,
             val_files: str = None,
@@ -91,6 +95,7 @@ class SVDataModule(CruiseDataModule):
             train_batch_size: int = 64,
             val_batch_size: int = 32,
             num_frames: int = 200,
+            sampling_rate: int = 16000,
             num_workers: int = 8,
             exp: str = 'default',
             download_files: list = []
