@@ -4,7 +4,8 @@ import random
 import glob
 import numpy as np
 import torch
-import soundfile
+# import soundfile
+import torchaudio
 from cruise.data_module import (
     CruiseDataModule,
     create_cruise_loader,
@@ -49,7 +50,9 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 files = data_item['audios']
                 file = random.choice(files)
                 filepath = f'{self.root_path}/{file}'
-                audio, sr = soundfile.read(filepath)
+                # audio, sr = soundfile.read(filepath)
+                audio, sr = torchaudio.load(filepath)
+                audio = audio.squeeze(0).numpy()
 
                 length = self.num_frames * 160 + 240
                 if audio.shape[0] <= length:

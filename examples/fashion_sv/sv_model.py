@@ -10,7 +10,7 @@ from cruise.utilities.distributed import DIST_ENV
 from easyguard.core.optimizers import *
 from easyguard.core.optimizers import AdamW
 
-import soundfile
+# import soundfile
 from tqdm import tqdm
 from torch import nn
 import torch.nn.functional as F
@@ -212,56 +212,56 @@ class FashionSV(CruiseModule):
         for scheduler in schedulers:
             scheduler.step()
 
-    def eval_network(self, eval_list, eval_path):
-        self.eval()
-        files = []
-        embeddings = {}
-        lines = open(eval_list).read().splitlines()
-        for line in lines:
-            files.append(line.split()[1])
-            files.append(line.split()[2])
-        setfiles = list(set(files))
-        setfiles.sort()
-
-        for idx, file in tqdm(enumerate(setfiles), total=len(setfiles)):
-            audio, _ = soundfile.read(os.path.join(eval_path, file))
-            # Full utterance
-            data_1 = torch.FloatTensor(np.stack([audio], axis=0)).cuda()
-
-            # Spliited utterance matrix
-            max_audio = 300 * 160 + 240
-            if audio.shape[0] <= max_audio:
-                shortage = max_audio - audio.shape[0]
-                audio = np.pad(audio, (0, shortage), 'wrap')
-            feats = []
-            startframe = np.linspace(0, audio.shape[0] - max_audio, num=5)
-            for asf in startframe:
-                feats.append(audio[int(asf):int(asf) + max_audio])
-            feats = np.stack(feats, axis=0).astype(np.float)
-            data_2 = torch.FloatTensor(feats).cuda()
-            # Speaker embeddings
-            with torch.no_grad():
-                embedding_1 = self.speaker_encoder.forward(data_1, aug=False)
-                embedding_1 = F.normalize(embedding_1, p=2, dim=1)
-                embedding_2 = self.speaker_encoder.forward(data_2, aug=False)
-                embedding_2 = F.normalize(embedding_2, p=2, dim=1)
-            embeddings[file] = [embedding_1, embedding_2]
-        scores, labels = [], []
-
-        for line in lines:
-            embedding_11, embedding_12 = embeddings[line.split()[1]]
-            embedding_21, embedding_22 = embeddings[line.split()[2]]
-            # Compute the scores
-            score_1 = torch.mean(torch.matmul(embedding_11, embedding_21.T))  # higher is positive
-            score_2 = torch.mean(torch.matmul(embedding_12, embedding_22.T))
-            score = (score_1 + score_2) / 2
-            score = score.detach().cpu().numpy()
-            scores.append(score)
-            labels.append(int(line.split()[0]))
-
-        # Coumpute EER and minDCF
-        EER = tuneThresholdfromScore(scores, labels, [1, 0.1])[1]
-        fnrs, fprs, thresholds = ComputeErrorRates(scores, labels)
-        minDCF, _ = ComputeMinDcf(fnrs, fprs, thresholds, 0.05, 1, 1)
-
-        return EER, minDCF
+    # def eval_network(self, eval_list, eval_path):
+    #     self.eval()
+    #     files = []
+    #     embeddings = {}
+    #     lines = open(eval_list).read().splitlines()
+    #     for line in lines:
+    #         files.append(line.split()[1])
+    #         files.append(line.split()[2])
+    #     setfiles = list(set(files))
+    #     setfiles.sort()
+    #
+    #     for idx, file in tqdm(enumerate(setfiles), total=len(setfiles)):
+    #         audio, _ = soundfile.read(os.path.join(eval_path, file))
+    #         # Full utterance
+    #         data_1 = torch.FloatTensor(np.stack([audio], axis=0)).cuda()
+    #
+    #         # Spliited utterance matrix
+    #         max_audio = 300 * 160 + 240
+    #         if audio.shape[0] <= max_audio:
+    #             shortage = max_audio - audio.shape[0]
+    #             audio = np.pad(audio, (0, shortage), 'wrap')
+    #         feats = []
+    #         startframe = np.linspace(0, audio.shape[0] - max_audio, num=5)
+    #         for asf in startframe:
+    #             feats.append(audio[int(asf):int(asf) + max_audio])
+    #         feats = np.stack(feats, axis=0).astype(np.float)
+    #         data_2 = torch.FloatTensor(feats).cuda()
+    #         # Speaker embeddings
+    #         with torch.no_grad():
+    #             embedding_1 = self.speaker_encoder.forward(data_1, aug=False)
+    #             embedding_1 = F.normalize(embedding_1, p=2, dim=1)
+    #             embedding_2 = self.speaker_encoder.forward(data_2, aug=False)
+    #             embedding_2 = F.normalize(embedding_2, p=2, dim=1)
+    #         embeddings[file] = [embedding_1, embedding_2]
+    #     scores, labels = [], []
+    #
+    #     for line in lines:
+    #         embedding_11, embedding_12 = embeddings[line.split()[1]]
+    #         embedding_21, embedding_22 = embeddings[line.split()[2]]
+    #         # Compute the scores
+    #         score_1 = torch.mean(torch.matmul(embedding_11, embedding_21.T))  # higher is positive
+    #         score_2 = torch.mean(torch.matmul(embedding_12, embedding_22.T))
+    #         score = (score_1 + score_2) / 2
+    #         score = score.detach().cpu().numpy()
+    #         scores.append(score)
+    #         labels.append(int(line.split()[0]))
+    #
+    #     # Coumpute EER and minDCF
+    #     EER = tuneThresholdfromScore(scores, labels, [1, 0.1])[1]
+    #     fnrs, fprs, thresholds = ComputeErrorRates(scores, labels)
+    #     minDCF, _ = ComputeMinDcf(fnrs, fprs, thresholds, 0.05, 1, 1)
+    #
+    #     return EER, minDCF
