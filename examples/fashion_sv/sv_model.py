@@ -31,7 +31,7 @@ class FashionSV(CruiseModule):
             learning_rate: float = 1.0e-4,
             weight_decay: float = 1.e-4,
             lr_schedule: str = 'linear',
-            warmup_steps_factor: int = 4,
+            warmup_steps_factor: float = 4,
             low_lr_prefix: list = [],
             freeze_prefix: list = [],
             load_pretrained: str = None,
