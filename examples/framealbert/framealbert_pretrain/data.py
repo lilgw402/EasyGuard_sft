@@ -154,7 +154,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
                 special_tokens_mask = input_labels < 3  # do not mask special_tokens
                 # 1 indicates mask
-                mask_matrix = np.random.binomial(n=1, p=0.15, size=input_labels.shape) & (special_tokens_mask == 0)
+                mask_matrix = np.random.binomial(n=1, p=0.4, size=input_labels.shape) & (special_tokens_mask == 0)
 
                 # 不会被Mask掉的位置label设置成-100；
                 input_labels[mask_matrix == 0] = -100
