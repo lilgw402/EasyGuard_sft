@@ -1,8 +1,8 @@
 import math
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
-from tools import *
+from .tools import *
 
 
 class AAMsoftmax(nn.Module):

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import math
 import torchaudio
 import torch
@@ -22,9 +23,9 @@ class SEModule(nn.Module):
         return input * x
 
 
-class Bottle2neck(nn.Module):
+class SE_Res2Block(nn.Module):
     def __init__(self, inplanes, planes, kernel_size=None, dilation=None, scale=8):
-        super(Bottle2neck, self).__init__()
+        super(SE_Res2Block, self).__init__()
         width = int(math.floor(planes / scale))
         self.conv1 = nn.Conv1d(inplanes, width * scale, kernel_size=1)
         self.bn1 = nn.BatchNorm1d(width * scale)
@@ -138,9 +139,9 @@ class ECAPA_TDNN(nn.Module):
         self.conv1 = nn.Conv1d(80, C, kernel_size=5, stride=1, padding=2)
         self.relu = nn.ReLU()
         self.bn1 = nn.BatchNorm1d(C)
-        self.layer1 = Bottle2neck(C, C, kernel_size=3, dilation=2, scale=8)
-        self.layer2 = Bottle2neck(C, C, kernel_size=3, dilation=3, scale=8)
-        self.layer3 = Bottle2neck(C, C, kernel_size=3, dilation=4, scale=8)
+        self.layer1 = SE_Res2Block(C, C, kernel_size=3, dilation=2, scale=8)
+        self.layer2 = SE_Res2Block(C, C, kernel_size=3, dilation=3, scale=8)
+        self.layer3 = SE_Res2Block(C, C, kernel_size=3, dilation=4, scale=8)
         # I fixed the shape of the output from MFA layer, that is close to the setting from ECAPA paper.
         self.layer4 = nn.Conv1d(3 * C, 1536, kernel_size=1)
         self.attention = nn.Sequential(

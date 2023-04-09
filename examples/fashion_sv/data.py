@@ -1,93 +1,150 @@
 import os
-import glob
+import json
 import random
+import glob
 import numpy as np
-import soundfile
 import torch
-from scipy import signal
+import soundfile
+from cruise.data_module import (
+    CruiseDataModule,
+    create_cruise_loader,
+    customized_processor,
+)
+from cruise.utilities.hdfs_io import hopen
+from examples.fashionproduct_xl.fashoinproduct_xl_cat.dist_dataset import DistLineReadingDataset
 
 
-class train_loader(object):
-    def __init__(self, train_list, train_path, musan_path, rir_path, num_frames, **kwargs):
-        self.train_path = train_path
-        self.num_frames = num_frames
-        # Load and configure augmentation files
-        self.noisetypes = ['noise', 'speech', 'music']
-        self.noisesnr = {'noise': [0, 15], 'speech': [13, 20], 'music': [5, 15]}
-        self.numnoise = {'noise': [1, 1], 'speech': [3, 8], 'music': [1, 1]}
-        self.noiselist = {}
-        augment_files = glob.glob(os.path.join(musan_path, '*/*/*/*.wav'))
-        for file in augment_files:
-            if file.split('/')[-4] not in self.noiselist:
-                self.noiselist[file.split('/')[-4]] = []
-            self.noiselist[file.split('/')[-4]].append(file)
-        self.rir_files = glob.glob(os.path.join(rir_path, '*/*/*.wav'))
-        # Load data & labels
-        self.data_list = []
-        self.data_label = []
-        lines = open(train_list).read().splitlines()
-        dictkeys = list(set([x.split()[0] for x in lines]))
-        dictkeys.sort()
-        dictkeys = {key: ii for ii, key in enumerate(dictkeys)}
-        for index, line in enumerate(lines):
-            speaker_label = dictkeys[line.split()[0]]
-            file_name = os.path.join(train_path, line.split()[1])
-            self.data_label.append(speaker_label)
-            self.data_list.append(file_name)
+class TorchvisionLabelDataset(DistLineReadingDataset):
+    """
+    dataset，继承的dataset是 DistLineReadingDataset，是一个逐行读hdfs数据的IterableDataset。
+    """
 
-    def __getitem__(self, index):
-        # Read the utterance and randomly select the segment
-        audio, sr = soundfile.read(self.data_list[index])
-        length = self.num_frames * 160 + 240
-        if audio.shape[0] <= length:
-            shortage = length - audio.shape[0]
-            audio = np.pad(audio, (0, shortage), 'wrap')
-        start_frame = np.int64(random.random() * (audio.shape[0] - length))
-        audio = audio[start_frame:start_frame + length]
-        audio = np.stack([audio], axis=0)
-        # Data Augmentation
-        augtype = random.randint(0, 5)
-        if augtype == 0:  # Original
-            audio = audio
-        elif augtype == 1:  # Reverberation
-            audio = self.add_rev(audio)
-        elif augtype == 2:  # Babble
-            audio = self.add_noise(audio, 'speech')
-        elif augtype == 3:  # Music
-            audio = self.add_noise(audio, 'music')
-        elif augtype == 4:  # Noise
-            audio = self.add_noise(audio, 'noise')
-        elif augtype == 5:  # Television noise
-            audio = self.add_noise(audio, 'speech')
-            audio = self.add_noise(audio, 'music')
-        return torch.FloatTensor(audio[0]), self.data_label[index]
+    def __init__(self, config, data_path, rank=0, world_size=1, shuffle=True, repeat=False,
+                 is_training=False):
+        super().__init__(data_path, rank, world_size, shuffle, repeat)
+        self.config = config
+        self.world_size = world_size
+        self.is_training = is_training
+        self.root_path = self.config.root_path
+        self.num_frames = self.config.num_frames
+        self.sampling_rate = self.config.sampling_rate
 
     def __len__(self):
-        return len(self.data_list)
+        # world_size = os.environ.get('WORLD_SIZE') if os.environ.get('WORLD_SIZE') is not None else 1
+        if self.is_training:
+            return self.config.train_size // self.world_size
+        else:
+            return self.config.val_size // self.world_size
 
-    def add_rev(self, audio):
-        rir_file = random.choice(self.rir_files)
-        rir, sr = soundfile.read(rir_file)
-        rir = np.expand_dims(rir.astype(np.float), 0)
-        rir = rir / np.sqrt(np.sum(rir ** 2))
-        return signal.convolve(audio, rir, mode='full')[:, :self.num_frames * 160 + 240]
+    def __iter__(self):
+        for example in self.generate():
+            try:
+                data_item = json.loads(example)
 
-    def add_noise(self, audio, noisecat):
-        clean_db = 10 * np.log10(np.mean(audio ** 2) + 1e-4)
-        numnoise = self.numnoise[noisecat]
-        noiselist = random.sample(self.noiselist[noisecat], random.randint(numnoise[0], numnoise[1]))
-        noises = []
-        for noise in noiselist:
-            noiseaudio, sr = soundfile.read(noise)
-            length = self.num_frames * 160 + 240
-            if noiseaudio.shape[0] <= length:
-                shortage = length - noiseaudio.shape[0]
-                noiseaudio = np.pad(noiseaudio, (0, shortage), 'wrap')
-            start_frame = np.int64(random.random() * (noiseaudio.shape[0] - length))
-            noiseaudio = noiseaudio[start_frame:start_frame + length]
-            noiseaudio = np.stack([noiseaudio], axis=0)
-            noise_db = 10 * np.log10(np.mean(noiseaudio ** 2) + 1e-4)
-            noisesnr = random.uniform(self.noisesnr[noisecat][0], self.noisesnr[noisecat][1])
-            noises.append(np.sqrt(10 ** ((clean_db - noise_db - noisesnr) / 10)) * noiseaudio)
-        noise = np.sum(np.concatenate(noises, axis=0), axis=0, keepdims=True)
-        return noise + audio
+                # label
+                user_id = data_item['user_id']
+                label = int(user_id)
+
+                # audio
+                files = data_item['audios']
+                file = random.choice(files)
+                filepath = f'{self.root_path}/{file}'
+                audio, sr = soundfile.read(filepath)
+
+                length = self.num_frames * 160 + 240
+                if audio.shape[0] <= length:
+                    padding_length = length - audio.shape[0]
+                    audio = np.pad(audio, (0, padding_length), 'wrap')
+                start_frame = int(random.random() * (audio.shape[0] - length))  # 截断
+                audio = audio[start_frame: start_frame + length]
+                audio = torch.from_numpy(audio)
+
+                # todo Data Augmentation - add noise
+
+                input_dict = {'audio': audio, 'label': label}
+
+                yield input_dict
+
+            except Exception as e:
+                print(f'error in dataset: {e}')
+
+    def collect_fn(self, data):
+        audios = []
+        labels = []
+
+        for ib, ibatch in enumerate(data):
+            audios.append(ibatch['audio'])
+            labels.append(ibatch["label"])
+
+        res = {"audio": audios, "label": labels}
+
+        return res
+
+
+class SVDataModule(CruiseDataModule):
+    def __init__(
+            self,
+            train_files: str = None,
+            train_size: int = 1500000,
+            val_files: str = None,
+            val_size: int = 16000,
+            train_batch_size: int = 64,
+            val_batch_size: int = 32,
+            num_workers: int = 8,
+            exp: str = 'default',
+            download_files: list = []
+    ):
+        super().__init__()
+        self.save_hparams()
+
+    def local_rank_zero_prepare(self) -> None:
+        # download cutter resource
+        if self.hparams.download_files:
+            to_download = [df.split('->') for df in self.hparams.download_files]
+            for src, tar in to_download:
+                if not os.path.exists(tar):
+                    os.makedirs(tar)
+                fdname = src.split('/')[-1]
+                if os.path.exists(f'{tar}/{fdname}'):
+                    print(f'{tar}/{fdname} already existed, pass!')
+                else:
+                    print(f'downloading {src} to {tar}')
+                    os.system(f"hdfs dfs -get {src} {tar}")
+
+    def setup(self, stage) -> None:
+        self.train_dataset = TorchvisionLabelDataset(
+            self.hparams,
+            data_path=self.hparams.train_files,
+            rank=int(os.environ.get('RANK') or 0),
+            world_size=int(os.environ.get('WORLD_SIZE') or 1),
+            shuffle=True,
+            repeat=True,
+            is_training=True)
+        print(f'len of trainset: {len(self.train_dataset)}')
+
+        self.val_dataset = TorchvisionLabelDataset(
+            self.hparams,
+            data_path=self.hparams.val_files,
+            rank=int(os.environ.get('RANK') or 0),
+            world_size=int(os.environ.get('WORLD_SIZE') or 1),
+            # world_size=1,
+            shuffle=False,
+            repeat=False,
+            is_training=False)
+
+    def train_dataloader(self):
+        train_loader = torch.utils.data.DataLoader(self.train_dataset, batch_size=self.hparams.train_batch_size,
+                                                   num_workers=self.hparams.num_workers,
+                                                   pin_memory=True,
+                                                   drop_last=True,
+                                                   collate_fn=self.train_dataset.collect_fn)
+        print(len(train_loader))
+        return train_loader
+
+    def val_dataloader(self):
+        val_loader = torch.utils.data.DataLoader(self.val_dataset, batch_size=self.hparams.val_batch_size,
+                                                 num_workers=1,
+                                                 pin_memory=True,
+                                                 drop_last=False,
+                                                 collate_fn=self.train_dataset.collect_fn)
+        return val_loader
