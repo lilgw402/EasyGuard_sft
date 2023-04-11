@@ -104,6 +104,8 @@ class FashionSV(CruiseModule):
             # allgather
             speaker_embedding = self.all_gather(speaker_embedding.contiguous())
             speaker_embedding = speaker_embedding.flatten(0, 1)
+            labels = self.all_gather(labels.contiguous())
+            labels = labels.flatten(0, 1)
             #
             nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
             rep_dict = {
@@ -143,6 +145,12 @@ class FashionSV(CruiseModule):
         labels = batch['labels']
         if self.hparams.mode == 'aam':
             speaker_embedding = self.forward_step(feature)
+            # allgather
+            speaker_embedding = self.all_gather(speaker_embedding.contiguous())
+            speaker_embedding = speaker_embedding.flatten(0, 1)
+            labels = self.all_gather(labels.contiguous())
+            labels = labels.flatten(0, 1)
+            #
             nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
             rep_dict = {
                 'val_loss': nloss,
