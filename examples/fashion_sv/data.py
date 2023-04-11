@@ -52,6 +52,9 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 filepath = f'{self.root_path}/{file}'
                 # audio, sr = soundfile.read(filepath)
                 audio, sr = torchaudio.load(filepath)
+                if sr != self.sampling_rate:
+                    print(f'source sr: {sr}')
+                    audio = torchaudio.transforms.Resample(sr, self.sampling_rate)(audio)
                 audio = audio.squeeze(0).numpy()
 
                 length = self.num_frames * 160 + 240

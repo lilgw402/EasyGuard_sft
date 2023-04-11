@@ -6,11 +6,11 @@ from .tools import *
 
 
 class AAMsoftmax(nn.Module):
-    def __init__(self, n_class, m, s):
+    def __init__(self, n_class, m, s, hidden_dim):
         super(AAMsoftmax, self).__init__()
         self.m = m
         self.s = s
-        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 192), requires_grad=True)
+        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, hidden_dim), requires_grad=True)
         self.ce = nn.CrossEntropyLoss()
         nn.init.xavier_normal_(self.weight, gain=1)
         self.cos_m = math.cos(self.m)

@@ -23,7 +23,7 @@ class FashionSV(CruiseModule):
     def __init__(
             self,
             class_num: int = 2100,
-            hidden_dim: int = 768,
+            hidden_dim: int = 192,
             channel: int = 512,
             m: float = 0.2,
             s: float = 30,
@@ -45,7 +45,12 @@ class FashionSV(CruiseModule):
         # ECAPA-TDNN
         self.speaker_encoder = ECAPA_TDNN(C=self.hparams.channel)
         # Classifier
-        self.speaker_loss = AAMsoftmax(n_class=self.hparams.class_num, m=self.hparams.m, s=self.hparams.s)
+        self.speaker_loss = AAMsoftmax(
+            n_class=self.hparams.class_num,
+            m=self.hparams.m,
+            s=self.hparams.s,
+            hidden_dim=self.hparams.hidden_dim
+        )
 
         if self.hparams.load_pretrained:
             prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
