@@ -71,7 +71,7 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
-  mode: aam
+  mode: clip
   class_num: 31227
   hidden_dim: 192
   channel: 1024
@@ -95,9 +95,9 @@ data:
   train_size: 3153920
   val_files: hdfs://haruna/home/byte_ecom_govern/user/wangxian/datasets/fashionaudio/fashion_sv/train_jsonl_0409
   val_size: 26000
-  train_batch_size: 360
+  train_batch_size: 256
   val_batch_size: 64
-  num_frames: 500
+  num_frames: 1000
   sampling_rate: 16000
   num_workers: 8
   exp: default

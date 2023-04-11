@@ -116,12 +116,14 @@ class FashionSV(CruiseModule):
                 "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
             }
         elif self.hparams.mode == 'clip':
-            splitlen = feature.shape[1]
+            splitlen = feature.shape[1] // 2
             sf1, sf2 = feature[:, :splitlen], feature[:, splitlen:]
             se1 = self.forward_step(sf1)
             se2 = self.forward_step(sf2)
             allgather_se1 = self.all_gather(se1.contiguous())
+            allgather_se1 = allgather_se1.flatten(0, 1)
             allgather_se2 = self.all_gather(se2.contiguous())
+            allgather_se2 = allgather_se2.flatten(0, 1)
             cl_loss = self.cl_loss(allgather_se1, allgather_se2)
             rep_dict = {
                 'loss': cl_loss,
@@ -150,7 +152,7 @@ class FashionSV(CruiseModule):
                 'val_loss': loss,
             }
         elif self.hparams.mode == 'clip':
-            splitlen = feature.shape[1]
+            splitlen = feature.shape[1] // 2
             sf1, sf2 = feature[:, :splitlen], feature[:, splitlen:]
             se1 = self.forward_step(sf1)
             se2 = self.forward_step(sf2)
