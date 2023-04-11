@@ -71,6 +71,7 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
+  mode: aam
   class_num: 31227
   hidden_dim: 192
   channel: 1024

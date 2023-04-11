@@ -125,7 +125,7 @@ class FbankAug(nn.Module):
 
 
 class ECAPA_TDNN(nn.Module):
-    def __init__(self, C):
+    def __init__(self, C, hidden_dim):
         super(ECAPA_TDNN, self).__init__()
 
         self.torchfbank = torch.nn.Sequential(
@@ -153,7 +153,7 @@ class ECAPA_TDNN(nn.Module):
             nn.Softmax(dim=2),
         )
         self.bn5 = nn.BatchNorm1d(3072)
-        self.fc6 = nn.Linear(3072, 192)
+        self.fc6 = nn.Linear(3072, hidden_dim)
         self.bn6 = nn.BatchNorm1d(192)
 
     def forward(self, x, aug):

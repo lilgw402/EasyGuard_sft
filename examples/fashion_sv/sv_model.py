@@ -15,13 +15,14 @@ from tqdm import tqdm
 from torch import nn
 import torch.nn.functional as F
 from .tools import *
-from .loss import AAMsoftmax
+from .loss import AAMsoftmax, LearnableNTXentLoss
 from .ecapatdnn import ECAPA_TDNN
 
 
 class FashionSV(CruiseModule):
     def __init__(
             self,
+            mode: str = 'aam',
             class_num: int = 2100,
             hidden_dim: int = 192,
             channel: int = 512,
@@ -43,14 +44,23 @@ class FashionSV(CruiseModule):
 
     def setup(self, stage):
         # ECAPA-TDNN
-        self.speaker_encoder = ECAPA_TDNN(C=self.hparams.channel)
+        self.speaker_encoder = ECAPA_TDNN(C=self.hparams.channel, hidden_dim=self.hparams.hidden_dim)
         # Classifier
-        self.speaker_loss = AAMsoftmax(
-            n_class=self.hparams.class_num,
-            m=self.hparams.m,
-            s=self.hparams.s,
-            hidden_dim=self.hparams.hidden_dim
-        )
+        mode = self.hparams.mode
+        if mode == 'aam':
+            self.speaker_loss = AAMsoftmax(
+                n_class=self.hparams.class_num,
+                m=self.hparams.m,
+                s=self.hparams.s,
+                hidden_dim=self.hparams.hidden_dim
+            )
+        elif mode == 'cls':
+            self.classifier = nn.Linear(self.hparams.hidden_dim, self.hparams.class_num)
+            self.ce = nn.CrossEntropyLoss()
+        elif mode == 'clip':
+            self.cl_loss = LearnableNTXentLoss()
+        else:
+            raise Exception(f'unknown training mode, only support aam, cls and clip for now')
 
         if self.hparams.load_pretrained:
             prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
@@ -89,26 +99,72 @@ class FashionSV(CruiseModule):
     def training_step(self, batch, idx):
         feature = batch['feature']
         labels = batch['labels']
-        speaker_embedding = self.forward_step(feature)
-        nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
+        if self.hparams.mode == 'aam':
+            speaker_embedding = self.forward_step(feature)
+            nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
+            rep_dict = {
+                'loss': nloss,
+                'prec': prec,
+                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+            }
+        elif self.hparams.mode == 'cls':
+            speaker_embedding = self.forward_step(feature)
+            logits = self.classifier(speaker_embedding)
+            loss = self.ce(logits, labels)
+            rep_dict = {
+                'loss': loss,
+                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+            }
+        elif self.hparams.mode == 'clip':
+            splitlen = feature.shape[1]
+            sf1, sf2 = feature[:, :splitlen], feature[:, splitlen:]
+            se1 = self.forward_step(sf1)
+            se2 = self.forward_step(sf2)
+            allgather_se1 = self.all_gather(se1.contiguous())
+            allgather_se2 = self.all_gather(se2.contiguous())
+            cl_loss = self.cl_loss(allgather_se1, allgather_se2)
+            rep_dict = {
+                'loss': cl_loss,
+                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+            }
+        else:
+            raise Exception(f'only support aam and cls')
 
-        rep_dict = {
-            'loss': nloss,
-            'prec': prec,
-            "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
-        }
         return rep_dict
 
     def validation_step(self, batch, idx):
         feature = batch['feature']
         labels = batch['labels']
-        speaker_embedding = self.forward_step(feature)
-        nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
+        if self.hparams.mode == 'aam':
+            speaker_embedding = self.forward_step(feature)
+            nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
+            rep_dict = {
+                'val_loss': nloss,
+                'val_prec': prec,
+            }
+        elif self.hparams.mode == 'cls':
+            speaker_embedding = self.forward_step(feature)
+            logits = self.classifier(speaker_embedding)
+            loss = self.ce(logits, labels)
+            rep_dict = {
+                'val_loss': loss,
+            }
+        elif self.hparams.mode == 'clip':
+            splitlen = feature.shape[1]
+            sf1, sf2 = feature[:, :splitlen], feature[:, splitlen:]
+            se1 = self.forward_step(sf1)
+            se2 = self.forward_step(sf2)
+            allgather_se1 = self.all_gather(se1.contiguous())
+            allgather_se1 = allgather_se1.flatten(0, 1)
+            allgather_se2 = self.all_gather(se2.contiguous())
+            allgather_se2 = allgather_se2.flatten(0, 1)
+            cl_loss = self.cl_loss(allgather_se1, allgather_se2)
+            rep_dict = {
+                'val_loss': cl_loss,
+            }
+        else:
+            raise Exception(f'only support aam and cls')
 
-        rep_dict = {
-            'val_loss': nloss,
-            'val_prec': prec,
-        }
         return rep_dict
 
     def validation_epoch_end(self, outputs):
@@ -119,17 +175,17 @@ class FashionSV(CruiseModule):
         for item in gathered_results:
             all_results.extend(item)
         val_loss_all = [out["val_loss"] for out in all_results]
-        val_prec_all = [out["val_prec"] for out in all_results]
+        # val_prec_all = [out["val_prec"] for out in all_results]
 
         val_loss = sum(val_loss_all) / len(val_loss_all)
-        val_prec = sum(val_prec_all) / len(val_prec_all)
+        # val_prec = sum(val_prec_all) / len(val_prec_all)
 
         res_out["val_loss"] = val_loss
-        res_out["val_prec"] = val_prec
+        # res_out["val_prec"] = val_prec
 
         self.log_dict(res_out, console=True)
         self.log("val_loss", val_loss, console=True)
-        self.log("val_prec", val_prec, console=True)
+        # self.log("val_prec", val_prec, console=True)
 
     def configure_optimizers(self):
         no_decay = ["bias", "bn", "norm"]
