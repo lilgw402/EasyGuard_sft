@@ -12,7 +12,7 @@ from easyguard.utils.arguments import print_cfg
 from utils.config import config
 from utils.registry import get_model_module,get_data_module
 from utils.driver import init_device, DIST_CONTEXT
-from utils.util import load_conf, load_from_yaml,load_from_tcc,load_from_bbc,check_config,update_config,init_seeds
+from utils.util import load_conf, load_from_yaml,init_seeds
 from utils.file_util import hmkdir, check_hdfs_exist
 
 def prepare_folder(config):
@@ -26,14 +26,16 @@ def prepare_gandalf_args():
     parser.add_argument("--fit", action="store_true")
     parser.add_argument("--val", action="store_true")
     parser.add_argument("--trace", action="store_true")
+    parser.add_argument("--checkpoint_path", type=str,default='/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1/checkpoints/epoch=0-step=1000-loss=0.655.ckpt')
+    parser.add_argument("--export_dir", type=str,default='/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/base')
     args, config_override = parser.parse_known_args()
-    sys.argv  = [arg for arg in sys.argv if len(re.findall('--fit|--val|--trace',arg))==0]
+    sys.argv  = [arg for arg in sys.argv if len(re.findall('--fit|--val|--trace|--checkpoint_path|--export_dir',arg))==0]
     if args.config:
         config = Dict(load_from_yaml(args.config))
     else:
         raise FileNotFoundError('config file option must be specified')
     config.update({'fit':args.fit,'val':args.val, 'trace':args.trace})
-    # print(config)
+    config.update({'checkpoint_path':args.checkpoint_path,'export_dir':args.export_dir})
     return Dict(config)
 
 def prepare_common_trainer_defaults(config):
@@ -59,7 +61,6 @@ def main():
     trainer_defaults = prepare_common_trainer_defaults(config)
     cli = CruiseCLI(model_module,data_module,trainer_class=CruiseTrainer,trainer_defaults=trainer_defaults)
     cfg, trainer, model, datamodule = cli.parse_args()
-    print('===Trace===',datamodule)
     print_cfg(cfg)
     if config['fit']:
         trainer.fit(model, datamodule=datamodule)
@@ -68,9 +69,10 @@ def main():
     if config['trace']:
         model.setup("val")
         datamodule.setup("val")
-        checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1/checkpoints/epoch=0-step=1000-loss=0.655.ckpt"
-        export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/base"
-        trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=checkpoint_path, export_dir=export_dir)
+        print('===Trace Begin===')
+        # checkpoint_path = "/mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_1/checkpoints/epoch=0-step=1000-loss=0.655.ckpt"
+        # export_dir = "/mnt/bn/renaisance/mlx/models/serving/gandalf/cruise/base"
+        trainer.trace(model_deploy=model, trace_dataloader=datamodule.val_dataloader(), mode = 'anyon',checkpoint_path=config.checkpoint_path, export_dir=config.export_dir)
         
 if __name__ == "__main__":
     main()
