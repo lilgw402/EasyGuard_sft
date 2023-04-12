@@ -1,15 +1,19 @@
 import json
 import time
+import numpy as np
 from tqdm import tqdm
-from cruise.utilities.hdfs_io import hlist_files, hopen
+from easyguard.utils.hdfs_utils import hlist_files, hopen
 
 idx = 0
 skip = 0
-cache_dir = './cache'  # f'/mnt/bd/wx-nas/lost+found/audiosamples'
-cache_limit = 20000
+# cache_dir = './cache'
+cache_dir = f'/mnt/bn/wxnas/hivesamples'
+cache_limit = 50000
 cache = []
-files = hlist_files(['hdfs://haruna/home/byte_ecom_govern/user/wangxian/datasets/fashionaudio/audio4sv/raw_0403_0405'])
+uidcount = dict()
+files = hlist_files(['hdfs://haruna/home/byte_ecom_govern/user/wangxian/datasets/fashionaudio/audio4sv/raw_0408_0409'])
 files = [f for f in files if '_SUCCESS' not in f]
+files = [f for f in files if int(f.split('-')[1]) < 1000]
 # files = ['audio_parts']
 for file in tqdm(files):
     with hopen(file, 'r') as f:
@@ -31,15 +35,18 @@ for file in tqdm(files):
         voice = json.loads(info)
         audio_urls = []
         for audioslice in voice['voice_text']:
-            if len(audioslice['text']) > 20:
+            if len(audioslice['text']) > 25:
                 audio_urls.append(audioslice['audio_url'])
-        if audio_urls:
+        if len(audio_urls) > 2:
             sample = {
                 'user_id': user_id,
                 'room_id': room_id,
                 'snapshot_id': snapshot_id,
                 'audio_urls': audio_urls
             }
+            if user_id not in uidcount:
+                uidcount[user_id] = 0
+            uidcount[user_id] += len(audio_urls)
             cache.append(json.dumps(sample))
 
             if len(cache) >= cache_limit:
@@ -53,3 +60,5 @@ if cache:
         f.writelines('\n'.join(cache))
     cache = []
     idx += 1
+
+np.save('uidcount.npy', uidcount)
