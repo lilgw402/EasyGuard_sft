@@ -927,13 +927,22 @@ class DebertaModel(DebertaBare, ModelBase):
         sentence_label=None,
         masked_lm_positions=None,
         masked_lm_ids=None,
-        output_pooled=False,
+        output_pooled=True,
     ):
-        if attention_mask is not None:
-            mask = attention_mask
-        else:
-            mask = input_ids != self.padding_index
-            mask[:, 0:1] = 1
+        mask = (
+            attention_mask
+            if attention_mask is not None
+            else torch.where(
+                input_ids
+                != torch.tensor(
+                    self.padding_index,
+                    dtype=input_ids.dtype,
+                    device=input_ids.device,
+                ),
+                input_ids,
+                torch.tensor(1, dtype=input_ids.dtype, device=input_ids.device),
+            )
+        )
 
         output = super().forward(
             input_ids=input_ids,
@@ -946,7 +955,7 @@ class DebertaModel(DebertaBare, ModelBase):
 
         sequence_output = output["sequence_output"]
         pooled_output = output["pooled_output"]
-        shrinked_output = output["shrinked_output"]
+        # shrinked_output = output["shrinked_output"]
 
         encoder_last_seq_output = sequence_output
 
@@ -976,8 +985,9 @@ class DebertaModel(DebertaBare, ModelBase):
             return {
                 "sequence_output": decoder_last_seq_output,
                 "pooled_output": pooled_output,
-                "shrinked_output": shrinked_output,
+                # "shrinked_output": shrinked_output,
             }
+            # return decoder_last_seq_output, pooled_output
 
         # Shrink `sequence_output` and `masked_tokens` according to `masked_lm_positions` and `masked_lm_ids`
         positioned = masked_lm_positions is not None
