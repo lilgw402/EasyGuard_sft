@@ -148,7 +148,7 @@ model:
       warmup_steps: 1000
 trainer:
   default_root_dir: /mnt/bn/renaisance/mlx/data/cruise_logs/gandalf/exps/version_2
-  # default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_1
+  # default_hdfs_dir: hdfs://haruna/user/sham_check/ecom_live_gandalf/augustus/NN/exps/version_2
   enable_versions: false
   logger: null
   max_epochs: 25

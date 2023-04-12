@@ -2,25 +2,27 @@
 # Created By augustus at 2022-09-14 10:14:43
 import json
 import math
+import yaml
 import torch
 import numpy as np
 from typing import List, Tuple, Dict
 from transformers import AutoTokenizer, AutoModel
-from dataset.feature_provider.transforms.text_transforms import PtxDebertaTokenizer
 
+config_file = '/mlx_devbox/users/jiangxubin/repo/EasyGuard/examples/gandalf/config/ecom_live_gandalf/live_gandalf_autodis_nn_asr.yaml'
+traced_model_file = '/mlx_devbox/users/jiangxubin/repo/121/ecom_live_gandalf/ecom_live_gandalf_autodis_nn_asr_output_v4_1_202211031116/trace_model_fc_ts/traced_model.pt'
+traced_preprocessor_model_file = '/mlx_devbox/users/jiangxubin/repo/121/maxwell/rh2_deploy/custom_ops/torchscript/ecom_live_gandalf/auto_dis_preprocess.jit'
 
-conf_file = '/opt/tiger/maxwell/config/ecom_live_govern_gandalf/ecom_live_govern_gandalf_autodis_nn_asr_author.json'
-asr_encoder_config = '/opt/tiger/maxwell/models/weights/simcse_bert_base/'
-traced_model_file = '/opt/tiger/ecom_live_gandalf/ecom_live_gandalf_autodis_nn_loss_output/trace_model_fc_onnx/traced_model.pt'
-traced_preprocessor_file = '/opt/tiger/maxwell/rh2_deploy/custom_ops/torchscript/ecom_live_gandalf/auto_dis_preprocess.jit'
-with open(conf_file, 'r') as f:
-        config = json.load(f)
-feature_num = config['feature_provider']['feature_num']
-author_embedding_dim = config['feature_provider']['embedding_conf']['author_embedding']
-asr_max_length = config['model_instance']['asr_max_length']
-slot_mask = config['feature_provider']['slot_mask']
+with open(config_file, "r") as stream:
+    try:
+        config = yaml.safe_load(stream)
+    except yaml.YAMLError as exc:
+        print(exc)
+feature_num = config['data']['feature_provider']['feature_num']
+author_embedding_dim = config['data']['feature_provider']['embedding_conf']['author_embedding']
+asr_max_length = config['data']['feature_provider']['max_length']
+slot_mask = config['data']['feature_provider']['slot_mask']
 active_slot = [i for i in range(feature_num) if i not in slot_mask]
-min_max_mapping = config['feature_provider']['feature_norm_info']
+min_max_mapping = config["data"]['feature_provider']['feature_norm_info']
 
 
 def process_text(text, use_random=False):
@@ -42,6 +44,15 @@ def process_text(text, use_random=False):
                           'token_type_ids': torch.tensor([0.5 for i in range(asr_max_length)], dtype=torch.int32).reshape(1, -1).cuda()}
         return asr_inputs['input_ids'], asr_inputs['attention_mask'], asr_inputs['token_type_ids']
 
+def local_preprocessor_inference(traced_preprocessor_file):
+    features = [idx*0.01 for idx in range(feature_num)]
+    features = torch.tensor(features, dtype=torch.float32).cuda().reshape(1, -1)
+    # 加载preprocess.py打包的jit
+    preprocess_module = torch.jit.load(traced_preprocessor_file).eval().cuda()
+    auto_dis_input, feature_dense = preprocess_module(features)
+    print(auto_dis_input)  # 校对预处理
+    print(feature_dense)  # 校对预处理
+    return auto_dis_input, feature_dense
 
 def local_model_jit_inference(traced_model_file):
     feature_input_num = feature_num - len(slot_mask)
@@ -94,11 +105,11 @@ def local_model_jit_inference(traced_model_file):
     print(prob)
 
 
-def local_preprocessor_local_model_jit_inference(traced_preprocessor_file, traced_model_file):
+def local_preprocessor_local_model_jit_inference(traced_preprocessor_model_file, traced_model_file):
     features = [0.5]*feature_num
     features = torch.tensor(features, dtype=torch.float32).cuda().reshape(1, -1)
     # 加载preprocess.py打包的jit
-    preprocess_module = torch.jit.load(traced_preprocessor_file).eval().cuda()
+    preprocess_module = torch.jit.load(traced_preprocessor_model_file).eval().cuda()
     auto_dis_input, feature_dense = preprocess_module(features)
     print(auto_dis_input)  # 校对预处理
     print(feature_dense)  # 校对预处理
@@ -114,7 +125,12 @@ def local_preprocessor_local_model_jit_inference(traced_preprocessor_file, trace
 
 
 if __name__ == "__main__":
+    text = '家人们这个款式的衣服只要九十八米啊走过路过不要错过'
+    features = [0.5 for idx in range(feature_num+40)]
+    print(len(features))
+    # Local preprocessor jit inference
+    auto_dis_input, feature_dense = local_preprocessor_inference(traced_preprocessor_model_file,features)
     # Local test model jit inference
     local_model_jit_inference(traced_model_file)
     # Local test autodis preprocessor and model jit inference
-    local_preprocessor_local_model_jit_inference(traced_preprocessor_file, traced_model_file)
+    local_preprocessor_local_model_jit_inference(traced_preprocessor_model_file, traced_model_file)
