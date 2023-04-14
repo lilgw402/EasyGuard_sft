@@ -68,7 +68,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
         self.frame_root = config.frame_root
-        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')  # 128
+        self.pipe = Pipeline.from_option(f'file:./examples/framealbert/m_albert_h512a8l12')  # 128
         self.mask_id = 28000
         self.pad_id = 0
         self.preprocess = get_transform(mode='train' if is_training else 'val')
