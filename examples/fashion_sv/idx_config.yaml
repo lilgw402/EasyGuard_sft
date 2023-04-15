@@ -11,7 +11,7 @@ trainer:
   accelerator: gpu
   accelerator_kwargs: { }
   precision: 16
-  max_epochs: 15
+  max_epochs: 3
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: 4
@@ -85,7 +85,7 @@ model:
   low_lr_prefix: [ ]
   #    - 'speaker_encoder.'
   freeze_prefix: [ ]
-  load_pretrained: 'hdfs://haruna/home/byte_ecom_govern/user/wangxian/weights/pretrained/pretrain_sv.th'
+  load_pretrained: 'hdfs://haruna/home/byte_ecom_govern/user/wangxian/projects/fashionaudio/fashoin_sv/version_13299379/checkpoints/epoch=3-step=2188.ckpt'
   prefix_changes:
     - 'speaker_loss.->abandon_loss.'
   download_files: [ ]

@@ -13,7 +13,8 @@ import random
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
-from examples.fashion_sv.data import SVDataModule
+# from examples.fashion_sv.data import SVDataModule
+from examples.fashion_sv.dataset import SVDataModule
 from examples.fashion_sv.sv_model import FashionSV
 
 rand_seed = 42
@@ -45,4 +46,4 @@ if __name__ == '__main__':
 
     trainer.fit(model, datamodule)
 
-# python3 examples/fashion_sv/run_train.py --config examples/fashion_sv/default_config.yaml
+# python3 examples/fashion_sv/run_train.py --config examples/fashion_sv/idx_config.yaml

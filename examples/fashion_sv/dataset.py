@@ -24,15 +24,14 @@ class SVDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        data_item = self.data[index]
+        data_item = self.data[index].strip()
 
         # label
         user_id = data_item.split('/')[-2]
         label = int(self.uid2label[user_id])
 
         # audio
-        file = data_item
-        audio, sr = torchaudio.load(file)
+        audio, sr = torchaudio.load(data_item)
         if sr != self.sampling_rate:
             print(f'source sr: {sr}')
             audio = torchaudio.transforms.Resample(sr, self.sampling_rate)(audio)
@@ -50,7 +49,7 @@ class SVDataset(Dataset):
 
         input_dict = {'audio': audio, 'label': label}
 
-        yield input_dict
+        return input_dict
 
     def collect_fn(self, data):
         feature = []
