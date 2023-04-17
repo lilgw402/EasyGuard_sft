@@ -15,12 +15,12 @@ class TestXLMR(unittest.TestCase):
         from easyguard import AutoModel, AutoTokenizer
 
         text = "good good study, day day up!"
-        archive = "fashion-deberta-ner"
-        tokenizer = AutoTokenizer.from_pretrained(
-            archive, rm_prefix="debertax."
-        )
-        inputs = tokenizer(text)
-        model = AutoModel.from_pretrained(archive)
+        archive = "fashionproduct-xl-general-v1"
+        # tokenizer = AutoTokenizer.from_pretrained(
+        #     archive, rm_prefix="debertax."
+        # )
+        # inputs = tokenizer(text)
+        model = AutoModel.from_pretrained(archive, if_cache=False)
         model.eval()
         new_inputs = dict()
         new_inputs["input_ids"] = torch.tensor(
