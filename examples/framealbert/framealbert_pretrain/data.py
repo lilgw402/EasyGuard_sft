@@ -68,7 +68,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
         self.frame_root = config.frame_root
-        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')  # 128
+        self.pipe = Pipeline.from_option(f'file:./examples/framealbert/m_albert_h512a8l12')  # 128
         self.mask_id = 28000
         self.pad_id = 0
         self.preprocess = get_transform(mode='train' if is_training else 'val')
@@ -154,7 +154,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
                 special_tokens_mask = input_labels < 3  # do not mask special_tokens
                 # 1 indicates mask
-                mask_matrix = np.random.binomial(n=1, p=0.15, size=input_labels.shape) & (special_tokens_mask == 0)
+                mask_matrix = np.random.binomial(n=1, p=0.4, size=input_labels.shape) & (special_tokens_mask == 0)
 
                 # 不会被Mask掉的位置label设置成-100；
                 input_labels[mask_matrix == 0] = -100
