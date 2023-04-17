@@ -27,6 +27,22 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 _whitespace_re = re.compile(r'\s+')
 
 
+def text_preprocess(text):
+    if text is None:
+        return text
+
+    try:
+        text = text.replace("\n", " ").replace("\t", " ").replace("\"", "").replace("\\", "").strip()
+        text = re.sub(r"\<.*?\>", " ", text)
+        text = emoji.replace_emoji(text, replace=' ')
+        text = re.sub(r'(.)\1{5,}', r'\1', text)
+        text = re.sub(_whitespace_re, ' ', text)
+        return text
+    except Exception as e:
+        print(f'error occurred during cleaning: {e}')
+        return text
+
+
 class TorchvisionLabelDataset(DistLineReadingDataset):
     """
     dataset，继承的dataset是 DistLineReadingDataset，是一个逐行读hdfs数据的IterableDataset。
@@ -42,7 +58,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
 
-        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
+        self.pipe = Pipeline.from_option(f'file:./examples/framealbert/m_albert_h512a8l12')
         self.preprocess = get_transform(mode='train' if is_training else 'val')
 
         with hopen('./examples/fashionproduct_xl/black_image.jpeg', 'rb') as f:
@@ -66,16 +82,21 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
                 # 图像
                 frames = []
-                frames_raw = data_item['img_base64'][:self.frame_len]
-                for frame_str in frames_raw:
-                    try:
-                        image_tensor = self.image_preprocess(frame_str)
-                        frames.append(image_tensor)
-                    except:
-                        continue
+                frames_raw = data_item['img_base64']
+                num_frames = len(frames_raw)
+                if num_frames <= self.frame_len:
+                    select_inds = list(range(num_frames))
+                else:
+                    step = num_frames // self.frame_len
+                    select_inds = list(range(0, num_frames, step))
+                    select_inds = select_inds[:self.frame_len]
+
+                for ind in select_inds:
+                    image_tensor = self.image_preprocess(frames_raw[ind])
+                    frames.append(image_tensor)
 
                 # 文本
-                text = data_item['text']
+                text = text_preprocess(data_item['text'])
                 if len(text) == 0:
                     # log.error('empty input: %s, will skip, %s/%s=%s' % (text, self.emp, self.tot, round(self.emp/self.tot, 4)))
                     continue
@@ -101,25 +122,23 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_ids = []
 
         for ib, ibatch in enumerate(data):
-
             labels.append(ibatch["label"])
             input_ids.append(ibatch['input_ids'])
 
             img_np = ibatch['frames']
             frames_mask_cur = []
-            # 如果不够8帧，要补帧
+            # 判断补帧
             if len(img_np) < self.frame_len:
                 # print('encouter not %s frames: %s ' % (self.frame_len, len(img_np)))
-                for i, img in enumerate(img_np):
-                    frames.append(img)
+                for i in range(len(img_np)):
+                    frames.append(img_np[i])
                     frames_mask_cur.append(1)
-                for i in range(len(img_np), self.frame_len):
+                for i in range(self.frame_len - len(img_np)):
                     frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
                     frames_mask_cur.append(0)
             else:
-                # 够的话就冲啊
-                for i, img in enumerate(img_np):
-                    frames.append(img)
+                for i in range(self.frame_len):
+                    frames.append(img_np[i])
                     frames_mask_cur.append(1)
 
             frames_mask.append(frames_mask_cur)

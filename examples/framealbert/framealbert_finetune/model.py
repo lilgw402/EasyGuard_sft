@@ -26,7 +26,7 @@ class FrameAlbertTune(CruiseModule):
             learning_rate: float = 1.0e-4,
             weight_decay: float = 1.e-4,
             lr_schedule: str = 'linear',
-            warmup_steps_factor: int = 4,
+            warmup_steps_factor: float = 4,
             low_lr_prefix: list = [],
             freeze_prefix: list = [],
             load_pretrained: str = None,
@@ -243,8 +243,6 @@ class FrameAlbertTune(CruiseModule):
 
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
-            # elif n.startswith("albert"):
-            #     low_lr_params_dict["params"].append(p)
             else:
                 normal_params_dict["params"].append(p)
 
@@ -279,14 +277,13 @@ class FrameAlbertTune(CruiseModule):
             print(f'total step: {self.trainer.total_steps}')
             lr_scheduler = get_linear_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.hparams.warmup_steps_factor
-                                 * self.trainer.steps_per_epoch,
+                num_warmup_steps=int(self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch),
                 num_training_steps=self.trainer.total_steps,
             )
         elif self.hparams.lr_schedule == "cosine":
             lr_scheduler = get_cosine_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch,
+                num_warmup_steps=int(self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch),
                 num_training_steps=self.trainer.total_steps,
             )
         elif self.hparams.lr_schedule == "onecycle":

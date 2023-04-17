@@ -1,6 +1,6 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: null
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/fa_finetune/mfe_8frames
   logger: true
   log_every_n_steps: 50
   benchmark: false
@@ -9,16 +9,16 @@ trainer:
   detect_anomaly: false
   deterministic: false
   accelerator: gpu
-  accelerator_kwargs: {}
-  precision: 32
-  max_epochs: 1
+  accelerator_kwargs: { }
+  precision: 16
+  max_epochs: 6
   max_steps: -1
   limit_train_batches: null
-  limit_val_batches: 10
+  limit_val_batches: 50
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: [1000, 1.0]
+  val_check_interval: [ 500, 1.0 ]
   accumulate_grad_batches: null
   gradient_clip_val: null
   seed: null
@@ -26,7 +26,7 @@ trainer:
   resume_ckpt_path: null
   callbacks: null
   enable_checkpoint: true
-  checkpoint_monitor: step
+  checkpoint_monitor: val_top1_acc
   checkpoint_mode: max
   dataloader_timeout: -1
   dataloader_retry_limit: 100
@@ -38,15 +38,15 @@ trainer:
   reload_dataloaders_every_n_epochs: -1
   strategy: ddp
   enable_qat: false
-  qat_kwargs: {}
+  qat_kwargs: { }
   optimizer_kwargs:
     optimizer:
       type: torch.optim.AdamW
       params:
         lr: 0.0001
         betas:
-        - 0.9
-        - 0.999
+          - 0.9
+          - 0.999
         eps: 1.0e-06
         weight_decay: 0.01
         correct_bias: true
@@ -68,7 +68,7 @@ trainer:
         num_cycles: 0.5
         lr_end: 1.0e-07
         power: 1.0
-  grad_norm_layers: []
+  grad_norm_layers: [ ]
 model:
   backbone: ./examples/framealbert/framealbert_finetune/config_backbone/config_backbone.yaml
   class_num: 2
@@ -76,25 +76,28 @@ model:
   optim: AdamW
   learning_rate: 0.0001
   weight_decay: 0.0001
-  lr_schedule: linear
-  warmup_steps_factor: 0
-  low_lr_prefix: []
-  freeze_prefix: []
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/ckpt/FrameALBERT_v2_2/model_state_epoch_150000.th
+  lr_schedule: cosine
+  warmup_steps_factor: 0.5
+  low_lr_prefix: [ ]
+#    - backbone.visual
+  freeze_prefix: #[ ]
+    - backbone.visual
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/fa_pretrain/v1.1/checkpoints/epoch=4-step=230000-val_loss=1.775.ckpt
+  # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/fa_pretrain/v1/checkpoints/epoch=4-step=230000-val_loss=1.483.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/ckpt/FrameALBERT_v2_2/model_state_epoch_150000.th
   # hdfs://harunava/home/byte_magellan_va/user/liutingting.kiwi/ckpt/FrameALBERT_v4_1/model_state_epoch_20000.th
-  prefix_changes: []
-  download_files: []
+  prefix_changes: [ ]
+  download_files: [ ]
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/huotianjiao/misleading_multimodal/train/
-  train_size: 470000
+  train_size: 300000
   val_files: hdfs://harunava/home/byte_magellan_va/user/huotianjiao/misleading_multimodal/validation/
-  val_size: 16000
-  train_batch_size: 64
-  val_batch_size: 32
+  val_size: 100000
+  train_batch_size: 16
+  val_batch_size: 16
   num_workers: 4
-  text_len: 128
-  frame_len: 2
+  text_len: 256
+  frame_len: 8
   exp: default
-  download_files: []
+  download_files: [ ]
 log_level: INFO
