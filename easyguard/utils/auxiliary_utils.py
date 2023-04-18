@@ -172,15 +172,18 @@ def cache_file(
         file_temp_path = os.path.join(model_path_local, file_temp_)
 
         if os.path.exists(file_temp_path):
-            logger.info(
-                f"there is a another process which is downloading the target file {file_name}"
-            )
+            # logger.info(
+            #     f"there is a another process which is downloading the target file {file_name}"
+            # )
             while os.path.exists(file_temp_path):
                 time.sleep(2)
 
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
             if model_file_local not in PRINT_HELP:
+                time.sleep(5)
+                while os.path.exists(file_temp_path):
+                    time.sleep(2)
                 logger.info(f"obtain the local file `{model_file_local}`")
             PRINT_HELP.append(model_file_local)
             return model_file_local
