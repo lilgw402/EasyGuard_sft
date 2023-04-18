@@ -195,6 +195,7 @@ class AutoImageProcessor:
                 image_processor_config = file_read(
                     image_processor_config_file_path
                 )
+                image_processor_config.update(kwargs)
                 image_processor = image_processor_class(
                     **image_processor_config
                 )

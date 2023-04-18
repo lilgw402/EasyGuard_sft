@@ -8,22 +8,22 @@ import requests
 from progressbar import *
 from prettytable import PrettyTable
 from .logging import get_logger
+from . import (
+    BUCKET_CN,
+    BUCKET_SG,
+    CDN_VA,
+    TOS_HTTP_CN,
+    TOS_HTTP_VA,
+    AK_CN,
+    ENDPOINT_CN,
+)
 
 logger = get_logger(__name__)
-
-BUCKET_CN = "ecom-govern-easyguard-zh"
-BUCKET_SG = "ecom-govern-easyguard-sg"
-CDN_VA = "lf0-ecom-govern-easyguard-sg.byteintl.net"
-TOS_HTTP_VA = f"​http://{CDN_VA}/obj/{BUCKET_SG}"
-TOS_HTTP_VA = TOS_HTTP_VA.strip("\u200b")
-TOS_HTTP_CN = r"http://tosv.byted.org/obj/ecom-govern-easyguard-zh"
-AK_CN = "SHZ0CK8T8963R1AVC3WT"  # dangerous ak
-ENDPOINT_CN = "tos-cn-north.byted.org"
 
 TIMEOUT = 500
 TIMEOUT_CONNECT = 500
 
-IDC_MAPPING = {"hl": "cn", "maliva": "va"}
+IDC_MAPPING = {"hl": "va", "maliva": "va"}
 
 
 class TOS:
@@ -136,60 +136,67 @@ class TOS:
             FileTransferSpeed(),
         ]
 
-        total_length = int(requests.head(url).headers["content-length"])
+        total_length = int(requests.head(url).headers.get("content-length", -1))
         temp_size = 0
+        default_size = 100
         pbar = None
         timeout_time_ = 0
-
-        while True:
-            if os.path.exists(target_path):
-                temp_size = os.path.getsize(target_path)
-                if temp_size >= total_length:
-                    if pbar:
-                        pbar.update(total_length)
-                        pbar.finish()
-                    else:
+        if total_length == -1:
+            pbar = ProgressBar(widgets=widgets, maxval=default_size).start()
+            with requests.get(url) as r:
+                with open(target_path, "wb") as f:
+                    f.write(r.content)
+                    pbar.update(default_size)
+        else:
+            while True:
+                if os.path.exists(target_path):
+                    temp_size = os.path.getsize(target_path)
+                    if temp_size >= total_length:
+                        if pbar:
+                            pbar.update(total_length)
+                            pbar.finish()
+                        else:
+                            logger.warning(
+                                f"target file {target_path} exist, please check~"
+                            )
+                        break
+                if timeout_time_ >= timeout_time:
+                    if temp_size < total_length:
                         logger.warning(
-                            f"target file {target_path} exist, please check~"
+                            f"\n the size of `{url}` is not same as the downloaded one~"
                         )
                     break
-            if timeout_time_ >= timeout_time:
-                if temp_size < total_length:
-                    logger.warning(
-                        f"\n the size of `{url}` is not same as the downloaded one~"
-                    )
-                break
 
-            headers = {
-                "Range": f"bytes={temp_size}-",
-                "User-Agent": "bytedance-ecom-govern",
-            }
-            if total_length < 1000:
-                part_size = total_length
-            else:
-                part_size = int(total_length / part_number)
+                headers = {
+                    "Range": f"bytes={temp_size}-",
+                    "User-Agent": "bytedance-ecom-govern",
+                }
+                if total_length < 1000:
+                    part_size = total_length
+                else:
+                    part_size = int(total_length / part_number)
 
-            with requests.get(url, stream=True, headers=headers) as r:
-                # r.raise_for_status()
-                if not pbar:
-                    pbar = ProgressBar(
-                        widgets=widgets, maxval=total_length
-                    ).start()
-                receive_size = temp_size
-                try:
-                    with open(target_path, "ab") as f:
-                        for chunk in r.iter_content(part_size):
-                            receive_size += part_size
-                            pbar.update(
-                                receive_size
-                                if receive_size < total_length
-                                else total_length
-                            )
-                            if chunk:
-                                f.write(chunk)
-                except:
-                    ...
-            timeout_time_ += 1
+                with requests.get(url, stream=True, headers=headers) as r:
+                    # r.raise_for_status()
+                    if not pbar:
+                        pbar = ProgressBar(
+                            widgets=widgets, maxval=total_length
+                        ).start()
+                    receive_size = temp_size
+                    try:
+                        with open(target_path, "ab") as f:
+                            for chunk in r.iter_content(part_size):
+                                receive_size += part_size
+                                pbar.update(
+                                    receive_size
+                                    if receive_size < total_length
+                                    else total_length
+                                )
+                                if chunk:
+                                    f.write(chunk)
+                    except:
+                        ...
+                timeout_time_ += 1
 
     def size_show(self, size: int):
         div_, unit_ = 1, "B"
@@ -367,7 +374,9 @@ class TOS:
         region = IDC_MAPPING.get(idc, "cn")
 
         get_files = self._get_obj_info(key_name)
-        local_files = list(map(lambda x: os.path.join(save_dir, x), get_files))
+        local_files = list(
+            map(lambda x: os.path.join(save_dir, x.split("/")[-1]), get_files)
+        )
         save_dir_ = os.path.dirname(local_files[0])
         os.makedirs(save_dir_, exist_ok=True)
         for index, file_ in enumerate(get_files):

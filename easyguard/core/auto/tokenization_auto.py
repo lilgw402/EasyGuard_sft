@@ -224,6 +224,7 @@ class AutoTokenizer:
             ), f"tokenizer config file does not exist"
 
             tokenizer_config = file_read(tokenizer_config_file_path)
+            tokenizer_config.update(kwargs)
             return tokenizer_class(
                 vocab_file=vocab_file_path, **tokenizer_config, **extra_dict
             )

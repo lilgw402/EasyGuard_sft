@@ -24,7 +24,17 @@ SPIECE_UNDERLINE = SENTENCEPIECE_UNDERLINE  # Kept for backward compatibility
 # for pretrained model parse
 HDFS_HUB_CN = "hdfs://haruna/home/byte_ecom_govern/easyguard"
 HDFS_HUB_VA = "hdfs://harunava/home/byte_magellan_va/easyguard"
-SERVER_MAPPING = OrderedDict([["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)]])
+BUCKET_CN = "ecom-govern-easyguard-zh"
+BUCKET_SG = "ecom-govern-easyguard-sg"
+CDN_VA = "lf0-ecom-govern-easyguard-sg.byteintl.net"
+TOS_HTTP_VA = f"​http://{CDN_VA}/obj/{BUCKET_SG}"
+TOS_HTTP_VA = TOS_HTTP_VA.strip("\u200b")
+TOS_HTTP_CN = r"http://tosv.byted.org/obj/ecom-govern-easyguard-zh"
+AK_CN = "SHZ0CK8T8963R1AVC3WT"  # dangerous ak
+ENDPOINT_CN = "tos-cn-north.byted.org"
+SERVER_MAPPING = OrderedDict(
+    [["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]]
+)
 REGION_MAPPING = OrderedDict([["CN", 0], ["VA", 1]])
 _import_structure = {
     "yaml_utils": [
@@ -205,6 +215,7 @@ _import_structure = {
         "pretrained_model_archive_parse",
     ],
     "type_utils": ["typecheck"],
+    "tos_utls": ["TOS"],
 }
 
 # keep each module independent
@@ -380,6 +391,7 @@ if TYPE_CHECKING:
     )
     from .type_utils import typecheck
     from .yaml_utils import *
+    from .tos_utils import TOS
 else:
     import sys
 
