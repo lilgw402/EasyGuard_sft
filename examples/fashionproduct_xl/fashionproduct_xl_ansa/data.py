@@ -26,18 +26,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 _whitespace_re = re.compile(r'\s+')
 
 
-def rmEmoji(line):
-    return emoji.replace_emoji(line, replace=' ')
-
-
-def rmRepeat(line):
-    return re.sub(r'(.)\1{5,}', r'\1', line)
-
-
-def collapse_whitespace(text):
-    return re.sub(_whitespace_re, ' ', text)
-
-
 def text_preprocess(text):
     if text is None:
         return text
@@ -45,9 +33,12 @@ def text_preprocess(text):
     try:
         text = text.replace("\n", " ").replace("\t", " ").replace("\"", "").replace("\\", "").strip()
         text = re.sub(r"\<.*?\>", " ", text)
-        text = collapse_whitespace(rmRepeat(rmEmoji(text)))
+        text = emoji.replace_emoji(text, replace=' ')
+        text = re.sub(r'(.)\1{5,}', r'\1', text)
+        text = re.sub(_whitespace_re, ' ', text)
         return text
-    except Exception:
+    except Exception as e:
+        print(f'error occurred during cleaning: {e}')
         return text
 
 
@@ -159,21 +150,19 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
             img_np = ibatch['frames']
             frames_mask_cur = []
-            # 如果不够帧数，要补帧
+            # 判断补帧
             if len(img_np) < self.frame_len:
-                for i, img in enumerate(img_np):
-                    frames.append(img)
+                # print('encouter not %s frames: %s ' % (self.frame_len, len(img_np)))
+                for i in range(len(img_np)):
+                    frames.append(img_np[i])
                     frames_mask_cur.append(1)
-                for i in range(len(img_np), self.frame_len):
+                for i in range(self.frame_len - len(img_np)):
                     frames.append(self.black_frame)  # 如果这个视频没有帧，就用黑帧来替代
                     frames_mask_cur.append(0)
             else:
-                # 帧数足够，无需补帧
-                frames = img_np[:self.frame_len]
-                frames_mask_cur = [1] * self.frame_len
-                # for i, img in enumerate(img_np):
-                #     frames.append(img)
-                #     frames_mask_cur.append(1)
+                for i in range(self.frame_len):
+                    frames.append(img_np[i])
+                    frames_mask_cur.append(1)
 
             frames_mask.append(frames_mask_cur)
 

@@ -17,9 +17,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
 from cruise.utilities.hdfs_io import hopen
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import FacDataModule
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.model import FrameAlbertClassify
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import text_concat
+from examples.fashionproduct_xl.fashionproduct_xl_cat.data import FacDataModule
+from examples.fashionproduct_xl.fashionproduct_xl_cat.model import FrameAlbertClassify
+from examples.fashionproduct_xl.fashionproduct_xl_cat.data import text_concat
 
 max_len = 128
 gec = np.load('./examples/fashionproduct_xl/fashionproduct_xl_cat/GEC_cat.npy', allow_pickle=True).item()
@@ -218,4 +218,4 @@ if __name__ == "__main__":
     for k, v in allres.items():
         print(k, v)
 
-# python3 examples/fashionproduct_xl/infer.py --config examples/fashionproduct_xl/default_config.yaml
+# python3 examples/fashionproduct_xl/fashionproduct_xl_cat/infer.py --config examples/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml
