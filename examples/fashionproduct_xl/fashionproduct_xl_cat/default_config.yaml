@@ -82,7 +82,7 @@ model:
     - backbone
   freeze_prefix: [ ]
   head_num: 5
-  use_multihead: false
+  use_multihead: true
   load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0317_ema_fix_GB/model_state_epoch_5468.th
 # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
   prefix_changes: # [ ]
