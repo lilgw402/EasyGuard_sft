@@ -371,7 +371,7 @@ class TOS:
 
         idc = self.get_idc()
 
-        region = IDC_MAPPING.get(idc, "cn")
+        region = IDC_MAPPING.get(idc, "va")
 
         get_files = self._get_obj_info(key_name)
         local_files = list(
