@@ -92,7 +92,7 @@ def cache_file(
     file_name: Optional[Union[str, set]] = None,
     remote_url: Optional[str] = None,
     model_type: Optional[str] = None,
-    download_retry_number: Optional[int] = RETYR_TIMES,
+    download_retry_number: int = RETYR_TIMES,
     if_cache: Optional[bool] = False,
     *args,
     **kwargs,
@@ -170,7 +170,6 @@ def cache_file(
         )
         # a temp file to indicate whether the download is in progress
         file_temp_path = os.path.join(model_path_local, file_temp_)
-
         if os.path.exists(file_temp_path):
             # logger.info(
             #     f"there is a another process which is downloading the target file {file_name}"
@@ -210,22 +209,23 @@ def cache_file(
                         file_name,
                     )
                 )
-            # diffent servers, different processes
-            if model_path_remote.startswith("hdfs://"):
-                model_file_path_remote = None
-                for remote_path_ in model_file_remote_list:
-                    if hexists(remote_path_):
-                        model_file_path_remote = remote_path_
-                        break
-                if model_file_path_remote:
-                    if model_file_path_remote not in PRINT_HELP:
-                        logger.info(
-                            f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
-                        )
-                    try:
-                        # if start to download, create a temp file to indicate
-                        file_temp_f = open(file_temp_path, "w")
-                        file_temp_f.close()
+
+            try:
+                # if start to download, create a temp file to indicate
+                file_temp_f = open(file_temp_path, "w")
+                file_temp_f.close()
+                # diffent servers, different processes
+                if model_path_remote.startswith("hdfs://"):
+                    model_file_path_remote = None
+                    for remote_path_ in model_file_remote_list:
+                        if hexists(remote_path_):
+                            model_file_path_remote = remote_path_
+                            break
+                    if model_file_path_remote:
+                        if model_file_path_remote not in PRINT_HELP:
+                            logger.info(
+                                f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                            )
                         retry_number = 2
                         while download_retry_number > 0:
                             hmget([model_file_path_remote], model_path_local)
@@ -247,30 +247,21 @@ def cache_file(
                                 else:
                                     PRINT_HELP.append(model_file_path_remote)
                                     break
-                    finally:
-                        # just delete the temp file whether the download is successful or not
-                        if os.path.exists(file_temp_path):
-                            os.remove(file_temp_path)
-
-                else:
-                    raise FileNotFoundError(
-                        f"`{model_file_remote_list}` can not be found in remote server"
-                    )
-            elif model_path_remote.startswith("tos"):
-                model_file_path_remote = None
-                for remote_path_ in model_file_remote_list:
-                    if tos.exist(remote_path_[4:]):
-                        model_file_path_remote = remote_path_[4:]
-                        break
-                if model_file_path_remote:
-                    if model_file_path_remote not in PRINT_HELP:
-                        logger.info(
-                            f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                    else:
+                        raise FileNotFoundError(
+                            f"`{model_file_remote_list}` can not be found in remote server"
                         )
-                    try:
-                        # if start to download, create a temp file to indicate
-                        file_temp_f = open(file_temp_path, "w")
-                        file_temp_f.close()
+                elif model_path_remote.startswith("tos"):
+                    model_file_path_remote = None
+                    for remote_path_ in model_file_remote_list:
+                        if tos.exist(remote_path_[4:]):
+                            model_file_path_remote = remote_path_[4:]
+                            break
+                    if model_file_path_remote:
+                        if model_file_path_remote not in PRINT_HELP:
+                            logger.info(
+                                f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                            )
                         retry_number = 2
                         while download_retry_number > 0:
                             tos.get(
@@ -296,15 +287,14 @@ def cache_file(
                                 else:
                                     PRINT_HELP.append(model_file_path_remote)
                                     break
-                    finally:
-                        # just delete the temp file whether the download is successful or not
-                        if os.path.exists(file_temp_path):
-                            os.remove(file_temp_path)
-                else:
-                    raise FileNotFoundError(
-                        f"`{model_file_remote_list}` can not be found in remote server"
-                    )
-
+                    else:
+                        raise FileNotFoundError(
+                            f"`{model_file_remote_list}` can not be found in remote server"
+                        )
+            finally:
+                # just delete the temp file whether the download is successful or not
+                if os.path.exists(file_temp_path):
+                    os.remove(file_temp_path)
             final_file_path = file_exist(model_path_local, file_name)
             if final_file_path:
                 return final_file_path
