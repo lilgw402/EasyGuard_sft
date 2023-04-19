@@ -8,8 +8,8 @@ def mixgen(data, lam=0.5):
     index = np.random.permutation(batch_size)
     for i in range(batch_size):
         # image mixup
-        for j, image in enumerate(data[i]['frames']):
-            image = lam * image + (1 - lam) * data[index[i]]['frames'][j]
+        for j in range(len(data[i]['frames'])):
+            data[i]['frames'][j] = lam * data[i]['frames'][j] + (1 - lam) * data[index[i]]['frames'][j]
         # text concat
         data[i]['input_ids'] = data[i]['input_ids'] + data[index[i]]['input_ids'] 
     return data

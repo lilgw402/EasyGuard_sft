@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from cruise import CruiseCLI, CruiseTrainer
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import FacDataModule
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.model import FrameAlbertClassify
+from examples.fashionproduct_xl.fashionproduct_xl_cat.data import FacDataModule
+from examples.fashionproduct_xl.fashionproduct_xl_cat.model import FrameAlbertClassify
 
 if __name__ == "__main__":
     cli = CruiseCLI(FrameAlbertClassify,
@@ -26,4 +26,4 @@ if __name__ == "__main__":
         export_dir=export_dir
     )
 
-# python3 examples/framealbert_classification/trace.py --config examples/framealbert_classification/default_config.yaml
+# python3 examples/fashionproduct_xl/fashionproduct_xl_cat/trace.py --config examples/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml

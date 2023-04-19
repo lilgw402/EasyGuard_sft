@@ -13,8 +13,8 @@ import random
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.data import FacDataModule
-from examples.fashionproduct_xl.fashoinproduct_xl_cat.model import FrameAlbertClassify
+from examples.fashionproduct_xl.fashionproduct_xl_cat.data import FacDataModule
+from examples.fashionproduct_xl.fashionproduct_xl_cat.model import FrameAlbertClassify
 
 rand_seed = 42
 
