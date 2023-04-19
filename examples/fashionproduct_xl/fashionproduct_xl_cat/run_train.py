@@ -45,4 +45,4 @@ if __name__ == '__main__':
 
     trainer.fit(model, datamodule)
 
-# python3 examples/fashionproduct_xl/fashionproduct_xl_cat/run_train.py examples/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml
+# python3 examples/fashionproduct_xl/fashionproduct_xl_cat/run_train.py --config examples/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml

@@ -1,16 +1,24 @@
 # This is an example of fashionproduct-xl finetune demo.
 
 ```bash
-# 0. pip3 install ptx if needed
-pip3 install https://d.scm.byted.org/api/v2/download/nlp.lib.ptx2_1.0.0.176.tar.gz
-# 1. can dump default configs as initial config file (in your local machine)
-python3 example/fashoinproduct_xl/run_pretrain.py --print_config > example/fashoinproduct/default_config.yaml
-# 2. modify the file
-cat example/fashoinproduct_xl/default_config.yaml
-# 3. load the modified config back
-python3 example/fashoinproduct_xl/run_pretrain.py --config example/fashoinproduct/default_config.yaml
+# 0. environment preparation
+pip3 install https://d.scm.byted.org/api/v2/download/nlp.lib.ptx2_1.0.0.568.tar.gz
+pip3 install byted-matxscript==1.8.2
+pip3 install http://d.scm.byted.org/api/v2/download/ceph:nlp.tokenizer.py_1.0.0.115.tar.gz
+pip3 install https://luban-source.byted.org/repository/scm/search.nlp.libcut_py_matx4_2.3.1.1.tar.gz
+
+download hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/libcut_model_ml_20201229 to /opt/tiger when you train on local machine
 or
-python3 example/fashoinproduct_xl/run_pretrain.py --config hdfs://path/to/your/default_config.yaml 
+SET SCM repo "search/nlp/mlcut_files", version "1.0.0.4", path "/opt/tiger/libcut_model_ml_20201229" on merlin or arnold
+
+# 1. can dump default configs as initial config file (in your local machine)
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --print_config > example/fashoinproduct/fashionproduct_xl_cat/default_config.yaml
+# 2. modify the file
+cat example/fashoinproduct_xl/fashionproduct_xl_cat/default_config.yaml
+# 3. load the modified config back
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --config example/fashoinproduct/fashionproduct_xl_cat/default_config.yaml
+or
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --config hdfs://path/to/your/default_config.yaml 
 # 4. customize extra configs manually
-python3 example/fashoinproduct_xl/run_pretrain.py --config example/fashoinproduct/default_config.yaml --model.hidden_size=1024
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --config example/fashoinproduct/fashionproduct_xl_cat/default_config.yaml --model.hidden_size=1024
 ```

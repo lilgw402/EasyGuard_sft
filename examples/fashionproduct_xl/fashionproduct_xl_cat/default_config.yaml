@@ -1,33 +1,33 @@
 trainer:
   default_root_dir: null
-  default_hdfs_dir: null
+  default_hdfs_dir: hdfs://harunava/home/byte_magellan_va/user/wangxian/tmp/demo_show     # path to save ckpt
   logger: true
-  log_every_n_steps: 100
+  log_every_n_steps: 100                # log frequence
   benchmark: false
   enable_speedmonitor: true
-  enable_versions: false
+  enable_versions: true
   detect_anomaly: false
   deterministic: false
   accelerator: gpu
   accelerator_kwargs: { }
   precision: fp16
-  max_epochs: 4
+  max_epochs: 4                         # train epoch
   max_steps: -1
   limit_train_batches: null
   limit_val_batches: 2
   limit_test_batches: null
   sync_batchnorm: false
   sync_fit_metrics: null
-  val_check_interval: [ 400, 1.0 ]
+  val_check_interval: [ 400, 1.0 ]      # val frequence, [step(int), epoch(float)]
   accumulate_grad_batches: null
   gradient_clip_val: 1.0
   seed: 42
   summarize_model_depth: 3
   resume_ckpt_path: null
   callbacks: null
-  enable_checkpoint: 10
-  checkpoint_monitor: val_top1_acc
-  checkpoint_mode: max
+  enable_checkpoint: 10                 # bool or int to set the max num of ckpt files
+  checkpoint_monitor: val_top1_acc      # delete ckpt based on monitor
+  checkpoint_mode: max                  # min monitor or max monitor, for example min for loss, max for acc or step
   dataloader_timeout: -1
   dataloader_retry_limit: 100
   dataloader_retry_persistent_limit: 5
@@ -70,31 +70,31 @@ trainer:
         power: 1.0
   grad_norm_layers: [ ]
 model:
-  backbone: fashionproduct-xl-general-v1
-  class_num: 4
+  backbone: fashionproduct-xl-hr-v1
+  class_num: 2100
   hidden_dim: 768
   optim: AdamW
   learning_rate: 0.0001
   weight_decay: 0.0001
   lr_schedule: linear
-  warmup_steps_factor: 2
+  warmup_steps_factor: 0.5
   low_lr_prefix:
     - backbone
   freeze_prefix: [ ]
   head_num: 5
   use_multihead: false
-  load_pretrained: null
+  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0317_ema_fix_GB/model_state_epoch_5468.th
 # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/tts_all_cat_1013/0322_maxlen512_finetune/model_state_epoch_17060.th
-  prefix_changes: [ ]
-#    - backbone.vision.->backbone.falbert.visual.
-#    - backbone.->backbone.falbert.
+  prefix_changes: # [ ]
+    - backbone.vision.->backbone.falbert.visual.
+    - backbone.->backbone.falbert.
   download_files: [ ]
 #    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
 data:
-  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/sh_dataset/train_jsonl
-  train_size: 89600
-  val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/sh_dataset/val_jsonl
-  val_size: 10240
+  train_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG/train_jsonl_country
+  train_size: 300000
+  val_files: hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country_slices
+  val_size: 16000
   train_batch_size: 64
   val_batch_size: 32
   num_workers: 2
@@ -103,6 +103,4 @@ data:
   head_num: 5
   exp: 0322_cruise_exp
   download_files: [ ]
-#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/m_albert_h512a8l12->/opt/tiger/easyguard
-#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/libcut_model_ml_20201229->/opt/tiger
 log_level: INFO
