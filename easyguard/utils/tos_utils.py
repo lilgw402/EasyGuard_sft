@@ -2,12 +2,12 @@ from typing import Optional, Dict, Union
 import bytedtos
 import os
 import json
-import yaml
 import bytedenv
 import requests
 from progressbar import *
 from prettytable import PrettyTable
 from .logging import get_logger
+from .yaml_utils import load_yaml, json2yaml
 from . import (
     BUCKET_CN,
     BUCKET_SG,
@@ -16,6 +16,11 @@ from . import (
     TOS_HTTP_VA,
     AK_CN,
     ENDPOINT_CN,
+)
+from easyguard.modelzoo.config import (
+    MODEL_ARCHIVE_CONFIG,
+    MODEL_ARCHIVE_PATH_BACKUP,
+    TOS_FILES_PATH,
 )
 
 logger = get_logger(__name__)
@@ -64,13 +69,19 @@ class TOS:
         self.endpoint_ = endpoint
         self.http_va_ = http_cdn_va
         self.http_cn_ = http_cn
-        self.tos_client = bytedtos.Client(
-            self.bucket_name,
-            access_key,
-            endpoint=endpoint,
-            timeout=timeout,
-            connect_timeout=timeout_connect,
-        )
+        self.tos_client = None
+        try:
+            x
+            self.tos_client = bytedtos.Client(
+                self.bucket_name,
+                access_key,
+                endpoint=endpoint,
+                timeout=timeout,
+                connect_timeout=timeout_connect,
+            )
+        except:
+            logger.info("will load file base on local file records~")
+            self.file_info_local = load_yaml(TOS_FILES_PATH)
 
     @property
     def bucket(self):
@@ -92,7 +103,8 @@ class TOS:
     def endpoint(self):
         return self.endpoint_
 
-    def get_idc(self) -> str:
+    @classmethod
+    def get_idc(cls) -> str:
         """get the region
 
         Returns
@@ -102,8 +114,9 @@ class TOS:
         """
         return bytedenv.get_idc_name()
 
+    @classmethod
     def request_file(
-        self,
+        cls,
         url: str,
         target_path: str,
         part_number: int = 100,
@@ -198,6 +211,28 @@ class TOS:
                         ...
                 timeout_time_ += 1
 
+    def update_local(self):
+        archive_dict = load_yaml(MODEL_ARCHIVE_PATH_BACKUP)
+        model_dir_dict = dict()
+        for key_ in archive_dict.keys():
+            key_ = key_.replace("-", "_")
+            try:
+                files_ = list(
+                    map(
+                        lambda x: {
+                            "key": x["key"],
+                            "lastModified": x["lastModified"],
+                            "size": x["size"],
+                        },
+                        self.ls(key_, if_log=False),
+                    )
+                )
+                model_dir_dict[key_] = files_
+            except:
+                ...
+
+        json2yaml(TOS_FILES_PATH, model_dir_dict)
+
     def size_show(self, size: int):
         div_, unit_ = 1, "B"
         if size / self.gb > 1:
@@ -246,18 +281,31 @@ class TOS:
         bool
             True: exist, False: None
         """
-        try:
-            self.tos_client.head_object(name)
-            return True
-        except:
-            ...
-
-        try:
-            dir_obj = self.ls(name, if_log=False)
-            if dir_obj:
-                return True
-        except:
-            ...
+        if "." in name:
+            if self.tos_client:
+                try:
+                    self.tos_client.head_object(name)
+                    return True
+                except:
+                    ...
+            else:
+                if (
+                    requests.head("/".join([self.http_va_, name])).status_code
+                    == 200
+                ):
+                    return True
+                else:
+                    return False
+        else:
+            if self.tos_client:
+                try:
+                    dir_obj = self.ls(name, if_log=False)
+                    if dir_obj:
+                        return True
+                except:
+                    ...
+            else:
+                return name in self.file_info_local
 
         return False
         ...
@@ -281,12 +329,15 @@ class TOS:
             size, unit_name = self.size_show(file_obj["size"])
             return [name, f"{size}{unit_name}", modified_time]
 
-        response = self.tos_client.list_prefix(
-            f"{dir_name}/", "", "", max_number
-        ).data
+        if self.tos_client:
+            response = self.tos_client.list_prefix(
+                f"{dir_name}/", "", "", max_number
+            ).data
+            dir_obj = json.loads(response)
+            object_arr = dir_obj["payload"]["objects"]
+        else:
+            object_arr = self.file_info_local[dir_name]
 
-        dir_obj = json.loads(response)
-        object_arr = dir_obj["payload"]["objects"]
         if not object_arr:
             return None
         object_arr_new = list(map(object_parse, object_arr))
@@ -456,6 +507,7 @@ class TOS:
             logger.info(
                 f"failed to upload these files: {error_files}, they may do not exist, please check!"
             )
+        self.update_local()
         return True
 
     def rm(self, name: str):
@@ -493,7 +545,7 @@ class TOS:
                     unrm_files.pop()
             except:
                 ...
-
+        self.update_local()
         if len(unrm_files) == 0:
             logger.info(f"delete all files successfully!")
             return True

@@ -7,6 +7,7 @@ MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
 MODEL_ARCHIVE_PATH_BACKUP = os.path.join(
     os.path.dirname(__file__), "archive.yaml"
 )
+TOS_FILES_PATH = os.path.join(os.path.dirname(__file__), "tos_files.yaml")
 MODELZOO_NAME = "models"
 YAML_DEEP = 3
 
