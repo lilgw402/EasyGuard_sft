@@ -12,13 +12,13 @@ or
 SET SCM repo "search/nlp/mlcut_files", version "1.0.0.4", path "/opt/tiger/libcut_model_ml_20201229" on merlin or arnold
 
 # 1. can dump default configs as initial config file (in your local machine)
-python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --print_config > example/fashoinproduct/fashionproduct_xl_cat/default_config.yaml
-# 2. modify the file
-cat example/fashoinproduct_xl/fashionproduct_xl_cat/default_config.yaml
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_train.py --print_config > example/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml
+# 2. modify the file (remove useless non-config text at the beginning of the document)
+vim example/fashoinproduct_xl/fashionproduct_xl_cat/default_config.yaml
 # 3. load the modified config back
-python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --config example/fashoinproduct/fashionproduct_xl_cat/default_config.yaml
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_train.py --config example/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml
 or
-python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --config hdfs://path/to/your/default_config.yaml 
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_train.py --config hdfs://path/to/your/default_config.yaml 
 # 4. customize extra configs manually
-python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_pretrain.py --config example/fashoinproduct/fashionproduct_xl_cat/default_config.yaml --model.hidden_size=1024
+python3 example/fashoinproduct_xl/fashionproduct_xl_cat/run_train.py --config example/fashionproduct_xl/fashionproduct_xl_cat/default_config.yaml --model.hidden_size=1024
 ```
