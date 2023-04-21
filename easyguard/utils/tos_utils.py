@@ -71,7 +71,6 @@ class TOS:
         self.http_cn_ = http_cn
         self.tos_client = None
         try:
-            x
             self.tos_client = bytedtos.Client(
                 self.bucket_name,
                 access_key,
