@@ -203,6 +203,21 @@ class BasicTokenizer(object):
             split_tokens.extend(self._run_split_on_punc(token))
 
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
+        # orig_tokens = whitespace_tokenize(text)
+        # split_tokens = []
+        # for token in orig_tokens:
+        #     if token not in self.never_split:
+        #         if self.do_lower_case:
+        #             token = token.lower()
+        #             if self.strip_accents is not False:
+        #                 token = self._run_strip_accents(token)
+        #         elif self.strip_accents:
+        #             token = self._run_strip_accents(token)
+        #     split_tokens.extend(
+        #         self._run_split_on_punc(token, self.never_split)
+        #     )
+
+        # output_tokens = whitespace_tokenize(" ".join(split_tokens))
         return output_tokens
 
     def _run_strip_accents(self, text):
