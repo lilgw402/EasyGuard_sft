@@ -9,7 +9,7 @@ from xml.parsers.expat import model
 import torch
 from prettytable import PrettyTable
 
-from ..modelzoo.config import MODEL_ARCHIVE_PATH
+from ..modelzoo.config import MODEL_ARCHIVE_PATH_BACKUP
 from . import (
     EASYGUARD_CACHE,
     EASYGUARD_MODEL_CACHE,
@@ -401,7 +401,7 @@ def hf_name_or_path_check(
 
 def list_pretrained_models() -> None:
     """list all pretrained models from archive.yaml"""
-    model_archive = file_read(MODEL_ARCHIVE_PATH)
+    model_archive = file_read(MODEL_ARCHIVE_PATH_BACKUP)
     model_archive_table = PrettyTable()
     filed_names = list()
     for key_, value_ in model_archive.items():
