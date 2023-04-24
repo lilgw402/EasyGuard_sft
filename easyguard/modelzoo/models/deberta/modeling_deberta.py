@@ -454,7 +454,7 @@ class DebertaBare(nn.Module):
     def forward(
         self,
         input_ids=None,
-        segment_ids=None,
+        token_type_ids=None,
         attention_mask=None,
         output_pooled=False,
         output_rel_pos=False,
@@ -468,7 +468,7 @@ class DebertaBare(nn.Module):
 
         embedding_output = self.embedding(
             input_ids=input_ids,
-            token_type_ids=segment_ids,
+            token_type_ids=token_type_ids,
             # position_ids=position_ids,
             mask=attention_mask,
         )
@@ -691,7 +691,7 @@ class DebertaBarePinyin(nn.Module):
     def forward(
         self,
         input_ids=None,
-        segment_ids=None,
+        token_type_ids=None,
         attention_mask=None,
         output_pooled=False,
         output_rel_pos=False,
@@ -706,7 +706,7 @@ class DebertaBarePinyin(nn.Module):
 
         embedding_output = self.embedding(
             input_ids=input_ids,
-            token_type_ids=segment_ids,
+            token_type_ids=token_type_ids,
             # position_ids=position_ids,
             mask=attention_mask,
             pinyin_ids=pinyin_ids,
@@ -921,7 +921,7 @@ class DebertaModel(DebertaBare, ModelBase):
         self,
         input_ids,
         position_ids=None,
-        segment_ids=None,
+        token_type_ids=None,
         attention_mask=None,
         masked_tokens=None,
         sentence_label=None,
@@ -947,7 +947,7 @@ class DebertaModel(DebertaBare, ModelBase):
         output = super().forward(
             input_ids=input_ids,
             attention_mask=mask,
-            segment_ids=segment_ids,
+            token_type_ids=token_type_ids,
             # position_ids=position_ids,
             output_pooled=output_pooled or sentence_label is not None,
             output_rel_pos=self.use_emd,
@@ -1188,7 +1188,7 @@ class DebertaModelPinyin(DebertaBarePinyin):
         self,
         input_ids,
         position_ids=None,
-        segment_ids=None,
+        token_type_ids=None,
         attention_mask=None,
         masked_tokens=None,
         sentence_label=None,
@@ -1206,7 +1206,7 @@ class DebertaModelPinyin(DebertaBarePinyin):
         output = super().forward(
             input_ids=input_ids,
             attention_mask=mask,
-            segment_ids=segment_ids,
+            token_type_ids=token_type_ids,
             # position_ids=position_ids,
             output_pooled=output_pooled or sentence_label is not None,
             output_rel_pos=self.use_emd,

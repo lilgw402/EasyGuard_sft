@@ -107,7 +107,7 @@ class TokenizerBase(ABC, AutoHubClass):
             return OrderedDict(
                 input_ids=input_ids,
                 attention_mask=input_mask,
-                segment_ids=input_segment_ids,
+                token_type_ids=input_segment_ids,
             )
 
         if isinstance(input_text, str):
