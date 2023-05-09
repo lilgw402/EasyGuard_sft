@@ -113,18 +113,9 @@ class RawTextProcessor:
 
 class UnsupGPTDatamodule(CruiseDataModule):
     """GPT pretrain dataset module.
-
-    It supports reading from raw text dataset and process using pretrained tokenizers.
-
-    Data v1: hdfs://haruna/home/byte_data_aml_research/user/xuwei.yi/dataset/normal_split
-    Data v1+: hdfs://haruna/home/byte_data_aml_research/user/xuwei.yi/dataset/dataset_v1
-    Data v2: hdfs://haruna/home/byte_data_aml_research/user/corpus/sampled/
-    Data v2.1: hdfs://haruna/home/byte_data_aml_research/user/corpus/sampled_v2.1
-    Data v2.2: hdfs://haruna/home/byte_data_aml_research/user/corpus/sampled_v2.2
-    Data v2.2.0 core 300B: hdfs://haruna/home/byte_data_aml_research/user/corpus_300B/sampled_v2.2.0/
     """
     def __init__(self,
-                 train_path: Union[List[str], str] = 'hdfs://haruna/home/byte_data_aml_research/user/corpus_300B/sampled_v2.2.0/',
+                 train_path: Union[List[str], str] = '',
                  val_path: str = '',
                  train_size: int = 300_000_000_000,  # num of tokens when dyn_bsz True, else num of docs
                  train_batch_size: int = 32,
@@ -133,7 +124,7 @@ class UnsupGPTDatamodule(CruiseDataModule):
                  val_num_workers: int = 1,
                  max_seq_len: int = 1024,
                  text_keys: List[str] = ['content_split'],
-                 tokenizer: str = 'hdfs://haruna/home/byte_data_aml_research/user/zhangzhi.joshua/tokenizer/zh_0620_newcut_caster_145665_lowercase',
+                 tokenizer: str = '',
                  gpu_prefetch: bool = False,
                  dyn_bsz: bool = False,
                  dyn_bsz_margin: float = 0.0,

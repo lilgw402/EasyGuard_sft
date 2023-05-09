@@ -3,7 +3,6 @@ import logging
 import os
 import tempfile
 import collections
-import warnings
 from pydantic import NoneIsAllowedError
 import torch
 import re
@@ -17,6 +16,7 @@ from cruise.utilities.hdfs_io import hlist_files, hcopy
 from cruise.utilities import DIST_ENV
 from ..tokenization import CasterTokenizer
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
+import warnings
 
 try:
     from promptsource.templates import DatasetTemplates, Template
@@ -93,6 +93,8 @@ class MultiChoiceDataProcessor:
             target = targets[0].strip()
         
         target_idx = answer_choices_list.index(target)
+
+        # metrics = self.prompt_template.metadata.metrics
         transformed_answer_choice_list = [
             answer_choice if 'en' not in languages else ' ' + answer_choice  for answer_choice in answer_choices_list
         ]
@@ -210,7 +212,7 @@ class CtxPplDataProcessor:
 
 
 class NextWordDataProcessor:
-    def __init__(self, tokenizer: str, max_seq_len:int, prompt_template: Template, dataset_name: str, **kwargs):
+    def __init__(self, tokenizer: str, max_seq_len:int, prompt_template: Template, finetune_type_is_qa: bool, dataset_name: str, **kwargs):
         if not isinstance(tokenizer, str):
             # from created tokenizer object
             self.tokenizer = tokenizer
@@ -218,38 +220,45 @@ class NextWordDataProcessor:
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer, max_len=-1)
         self.max_seq_len = max_seq_len
         self.prompt_template = prompt_template
+        self.finetune_type_is_qa = finetune_type_is_qa
         self.dataset_name = dataset_name
         # We will automatically convert token list to tensor
         kwargs.pop('return_tensors', None)
         self.kwargs = kwargs
 
     def transform(self, data_dict):
-        outputs = self.prompt_template.apply(data_dict)
-        languages = self.prompt_template.metadata.languages
+        if self.finetune_type_is_qa:
+            data_dict['text'] = data_dict['question']+data_dict['answer']
 
-        prompt, target = None, None
-        if len(outputs) >= 2:
-            prompt = outputs[0]
-            targets = outputs[1]
+        # outputs = self.prompt_template.apply(data_dict)
+        # languages = self.prompt_template.metadata.languages
+
+        # prompt, target = None, None
+        # if len(outputs) >= 2:
+        #     prompt = outputs[0]
+        #     targets = outputs[1]
             
-            if 'en' in languages:
-                target = ' ' + targets[0].strip()
-            else:
-                target = targets[0].strip()
+        #     if 'en' in languages:
+        #         target = ' ' + targets[0].strip()
+        #     else:
+        #         target = targets[0].strip()
 
+        prompt = data_dict['text']
         prompt_outputs = self.tokenizer(prompt, **self.kwargs)
-        target_outputs = self.tokenizer(target, **self.kwargs)
 
-        context_enc = prompt_outputs['input_ids']
-        context_mask = prompt_outputs['attention_mask']
+        # prompt_outputs = self.tokenizer(prompt, **self.kwargs)
+        # target_outputs = self.tokenizer(target, **self.kwargs)
 
-        # remove start token: </s> if PreTrainedTokenizer
-        if isinstance(self.tokenizer, PreTrainedTokenizer):
-            continuation_enc = target_outputs['input_ids'][1:]
-            continuation_mask = target_outputs['attention_mask'][1:]
-        else:
-            continuation_enc = target_outputs['input_ids']
-            continuation_mask = target_outputs['attention_mask']
+        context_enc = [self.tokenizer.bos_token_id]+prompt_outputs['input_ids']+[self.tokenizer.eos_token_id]
+        context_mask = [1]+prompt_outputs['attention_mask']+[1]
+
+        # # remove start token: </s> if PreTrainedTokenizer
+        # if isinstance(self.tokenizer, PreTrainedTokenizer):
+        #     continuation_enc = target_outputs['input_ids'][1:]
+        #     continuation_mask = target_outputs['attention_mask'][1:]
+        # else:
+        #     continuation_enc = target_outputs['input_ids']
+        #     continuation_mask = target_outputs['attention_mask']
         
         # print(f'prompt: {prompt}')
         # print(f'target: {target}')
@@ -258,20 +267,26 @@ class NextWordDataProcessor:
         # print(f'target_id_to_tokens: {self.tokenizer.convert_ids_to_tokens(continuation_enc)}')
         # print(f'target_id_to_text: {self.tokenizer._decode(continuation_enc)}')
 
-        full_enc = context_enc + continuation_enc
-        full_mask = context_mask + continuation_mask
+        # full_enc = context_enc + continuation_enc
+        # full_mask = context_mask + continuation_mask
+        full_enc = context_enc
+        full_mask = context_mask
 
-        input_ids = full_enc[-(self.max_seq_len + 1):][:-1]
-        attention_mask = full_mask[-(self.max_seq_len + 1):][:-1]
+        input_ids = full_enc[-(self.max_seq_len):]
+        attention_mask = full_mask[-(self.max_seq_len):]
         input_len = len(input_ids)
 
-        input_ids = input_ids + [self.tokenizer.pad_token_id] * (self.max_seq_len - input_len)
-        attention_mask = attention_mask + [0] * (self.max_seq_len - input_len)
+        input_ids = [self.tokenizer.pad_token_id] * (self.max_seq_len - input_len) + input_ids
+        attention_mask = [0] * (self.max_seq_len - input_len) + attention_mask
+
+        # print(prompt)
+        # print(input_ids)
+        # print(attention_mask)
 
         outputs = [{
             'input_ids': torch.as_tensor(input_ids),
             'attention_mask': torch.as_tensor(attention_mask),
-            'target_tokens_list': continuation_enc,
+            # 'target_tokens_list': continuation_enc,
             'input_lens': input_len,
             'dataset_name': self.dataset_name,
             'task_name': 'next_word_prediction'
@@ -283,51 +298,13 @@ class NextWordDataProcessor:
         return customize_collate(batch_data)
 
 
-class LLMPplDataProcessor:
-    def __init__(self, tokenizer: str, max_seq_len:int, prompt_template: Template, dataset_name: str, **kwargs):
-        if not isinstance(tokenizer, str):
-            # from created tokenizer object
-            self.tokenizer = tokenizer
-        else:
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer, max_len=-1)
-        self.max_seq_len = max_seq_len
-        self.prompt_template = prompt_template
-        self.dataset_name = dataset_name
-        # We will automatically convert token list to tensor
-        kwargs.pop('return_tensors', None)
-        self.kwargs = kwargs
-
-    def transform(self, data_dict):
-        prompt = data_dict['text']
-        # print(f'prompt: {prompt}')
-
-        prompt_outputs = self.tokenizer(prompt, **self.kwargs)
-
-        context_enc = prompt_outputs['input_ids']
-        context_mask = prompt_outputs['attention_mask']
-
-        input_ids = context_enc[-(self.max_seq_len + 1):][:-1]
-        attention_mask = context_mask[-(self.max_seq_len + 1):][:-1]
-        input_len = len(input_ids)
-
-        input_ids = input_ids + [self.tokenizer.pad_token_id] * (self.max_seq_len - input_len)
-        attention_mask = attention_mask + [0] * (self.max_seq_len - input_len)
-
-        outputs = [{
-            'input_ids': torch.as_tensor(input_ids),
-            'attention_mask': torch.as_tensor(attention_mask),
-            'dataset_name': self.dataset_name,
-            'task_name': 'llm_ppl'
-        }]
- 
-        return outputs
-
-    def batch_transform(self, batch_data):
-        return customize_collate(batch_data)
-
 class ZeroShotGPTDatamodule(CruiseDataModule):
     def __init__(self,
+                 train_path: str = "",
                  val_path: str = '',
+                 train_size: int = 2490,
+                 train_batch_size: int = 4,
+                 train_num_workers: int = 4,
                  val_batch_size: int = 32,
                  val_num_workers: int = 1,
                  max_seq_len: int = 2048,
@@ -336,6 +313,7 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
                  dataset_name: str = '',
                  subset_name: str = '',
                  template_name: str = '',
+                 finetune_type_is_qa = False,
                  from_hf_tokenizer: bool = False,
                  hf_tokenizer_use_fast: bool = False,
                  drop_last: bool = False,
@@ -351,7 +329,10 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
         if self.hparams.tokenizer.startswith('hdfs'):
             # try download it to local once per node and load it in setup
             tmp_dir = os.path.join(tempfile.gettempdir(), os.path.basename(self.hparams.tokenizer))
-            hcopy(self.hparams.tokenizer, tmp_dir)
+            logging.info(f'tokenizer tmp path is {tmp_dir}')
+            if not os.path.exists(tmp_dir):
+                logging.info('tokenizer tmp path does not exist, hcopy...')
+                hcopy(self.hparams.tokenizer, tmp_dir)
         else:
             logging.info(f"Prefetching HF tokenizers {self.hparams.tokenizer} on local rank zero...")
             from transformers import AutoTokenizer
@@ -368,12 +349,12 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.hparams.tokenizer, max_len=-1)
         
-        if self.hparams.template_name != '':
-            self.templates = DatasetTemplates(self.hparams.dataset_name, self.hparams.subset_name)
-            template_name = " ".join(self.hparams.template_name.split("+"))
-            self.prompt_template = self.templates[template_name]
+        self.templates = DatasetTemplates(self.hparams.dataset_name, self.hparams.subset_name)
+        template_name = " ".join(self.hparams.template_name.split("+"))
+        self.prompt_template = self.templates[template_name]
+        self.finetune_type_is_qa = self.hparams.finetune_type_is_qa
         
-        if self.hparams.dataset_name in ['ai2_arc', 'super_glue', 'hellaswag', 'story_cloze', 'logi_qa', 'piqa', 'openbookqa', 'logi_qa_zh', 'piqa_zh', 'openbookqa_zh'] \
+        if self.hparams.dataset_name in ['ai2_arc', 'super_glue', 'hellaswag', 'story_cloze'] \
             or self.hparams.subset_name in ['ocnli']:
             self.processor = MultiChoiceDataProcessor(
                 tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
@@ -385,6 +366,7 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
                 tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
                 max_seq_len=self.hparams.max_seq_len,
                 prompt_template=self.prompt_template,
+                finetune_type_is_qa=self.finetune_type_is_qa,
                 dataset_name=self.hparams.subset_name if self.hparams.subset_name is not None and self.hparams.subset_name != "" else self.hparams.dataset_name)
         elif self.hparams.subset_name in ['chid']:
             self.processor = CtxPplDataProcessor(
@@ -392,13 +374,35 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
                 max_seq_len=self.hparams.max_seq_len,
                 prompt_template=self.prompt_template,
                 dataset_name=self.hparams.subset_name if self.hparams.subset_name is not None and self.hparams.subset_name != "" else self.hparams.dataset_name)
-        elif self.hparams.dataset_name in ['ptb']:
-            self.processor = LLMPplDataProcessor(
-                tokenizer=self.tokenizer if self.tokenizer is not None else self.hparams.tokenizer,
-                max_seq_len=self.hparams.max_seq_len,
-                prompt_template=None,
-                dataset_name=self.hparams.dataset_name)
 
+
+    def train_dataloader(self):
+        # used val_path for test
+        if not self.hparams.train_path:
+            return iter([])
+        train_steps = -1
+        train_files = [x for x in hlist_files([self.hparams.train_path]) if x.endswith('.parquet')]
+        self.rank_zero_info(f"Fetched {len(train_files)} train files.")
+        loader = DistributedCruiseDataLoader(
+            data_sources=[train_files],
+            batch_sizes=[self.hparams.train_batch_size],
+            num_workers=self.hparams.train_num_workers,
+            predefined_steps=train_steps,
+            source_types=['parquet'],
+            shuffle=True,
+            drop_last=False,
+            pin_memory=True,
+            parquet_cache_on=True,
+            keys_or_columns=None,
+            num_readers=[1],
+            decode_fn_list=None,
+            processor=self.processor,
+            transform_output_many=True,
+            # no_sharding=True,
+        )
+        if self.hparams.gpu_prefetch:
+            loader = GPUPrefetcher(loader)
+        return loader
 
     def val_dataloader(self):
         if not self.hparams.val_path:
@@ -426,4 +430,3 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
         if self.hparams.gpu_prefetch:
             loader = GPUPrefetcher(loader)
         return loader
-

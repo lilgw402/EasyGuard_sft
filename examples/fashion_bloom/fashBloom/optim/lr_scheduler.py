@@ -105,6 +105,42 @@ def get_cosine_schedule_with_warmup(
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
+def get_cosine_schedule_with_warmup_lrdecay(
+    optimizer, num_warmup_steps: int, num_training_steps: int, lr_decay_rate: float = 0.87, last_epoch: int = -1, lr_end: float = 1e-7,
+):
+    """
+    Create a schedule with a learning rate that decreases following the values of the cosine function between the
+    initial lr set in the optimizer to lr_end, after a warmup period during which it increases linearly between 0 and the
+    initial lr set in the optimizer. Finally, the learning rate keeps as lr_end.
+    Args:
+        optimizer (:class:`~torch.optim.Optimizer`):
+            The optimizer for which to schedule the learning rate.
+        num_warmup_steps (:obj:`int`):
+            The number of steps for the warmup phase.
+        num_training_steps (:obj:`int`):
+            The total number of training steps.
+        last_epoch (:obj:`int`, `optional`, defaults to -1):
+            The index of the last epoch when resuming training.
+        lr_decay_rate: (:obj:`float`, `optional`, defaults to 1e9): After lr_decay_rate*num_training_steps, the lr remains unchanged.
+        lr_end: (:obj:`int`, `optional`, defaults to 1e-7): Final lr rate.
+    Return:
+        :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+    """
+
+    def lr_lambda(current_step):
+        lr_decay_steps = int(lr_decay_rate*num_training_steps)
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        if current_step > lr_decay_steps:
+            return lr_end
+
+        decay_ratio = (current_step - num_warmup_steps) / (lr_decay_steps - num_warmup_steps)
+        assert 0 <= decay_ratio <= 1
+        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
+        return lr_end + coeff * (1 - lr_end)
+    return LambdaLR(optimizer, lr_lambda, last_epoch)
+
+
 
 def get_cosine_with_hard_restarts_schedule_with_warmup(
     optimizer: Optimizer, num_warmup_steps: int, num_training_steps: int, num_cycles: int = 1, last_epoch: int = -1
