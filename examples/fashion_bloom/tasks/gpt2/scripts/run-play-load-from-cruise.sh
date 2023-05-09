@@ -3,28 +3,33 @@ set -x
 
 declare -A model_dir
 model_dir=(
-    ['bloom_7b1']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/hf_models/bloom-7b1'
-    ['bloom_560m']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/hf_models/bloom560m/bloomz-560m'
+    ['bloom_7b1_finetune']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/models/bloom/global_step_608/zero3_merge_states.pt'
 )
 
-trainer_config=(
-    ['bloom_7b1']='tasks/gpt2/zero_shot_eval/zero3-hf-bloom-175b-offload-param-none-optim-cpu.yaml'
-    ['bloom_560m']='tasks/gpt2/zero_shot_eval/zero3-hf-bloom-175b-offload-param-none-optim-cpu.yaml'
+tokenizer_dir=(
+    ['bloom_7b1_finetune']='hdfs://haruna/home/byte_ecom_govern/user/doushihan/hf_models/bloom-7b1'
 )
+
+
+
+# --data.dataset_name="${dataset_name_array[$i]}" 
+# --data.subset_name="${subset_name_array[$i]}" 
+# --data.template_name="${template_name_array[$i]}"
 
 chkpt_path=${model_dir[$@]}
+tokenizer_path=${tokenizer_dir[$@]}
 
 bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
-  --model.use_hf_ckpt=True \
+  --model.use_hf_ckpt=False \
   --data.from_hf_tokenizer=True \
-  --data.tokenizer="$chkpt_path" \
+  --data.tokenizer="$tokenizer_path" \
   --data.hf_tokenizer_use_fast=False \
-  --data.max_seq_len=1024 \
+  --data.max_seq_len=200 \
   --model=tasks/gpt2/zero_shot_eval/1b.yaml \
   --model.partial_pretrain="$chkpt_path" \
-  --model.model_config="$chkpt_path/config.json" \
+  --model.model_config="$tokenizer_path" \
   --data.train_num_workers=1 \
-  --data.train_batch_size=6 \
+  --data.train_batch_size=1 \
   --data.val_num_workers=1 \
   --data.val_batch_size=1 \
   --trainer.val_check_interval=0.5 \
@@ -37,7 +42,8 @@ bash launch.sh tasks/gpt2/zero_shot_eval/model.py \
   --model.network.use_rmpad_lnmlp=false \
   --model.network.use_rmpad_attn=false \
   --model.network.pad_idx=3 \
-  --trainer.max_epochs=5 \
+  --trainer.max_epochs=20 \
   --trainer.optimizer_kwargs.optimizer.params.lr=1e-5 \
-  --trainer.default_hdfs_dir=hdfs://haruna/home/byte_ecom_govern/user/doushihan/models/bloom/testSpeed_bsz6 \
-  --trainer=tasks/gpt2/zero_shot_eval/zero3-hf-bloom-175b-offload-param-none-optim-cpu.yaml
+  --play \
+  --generate-temp 0.7
+

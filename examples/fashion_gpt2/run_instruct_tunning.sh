@@ -3,7 +3,7 @@ bash launch.sh tasks/gpt2/unsup/model_qa.py \
     --model=tasks/gpt2/unsup/1b3_v1.yaml \
     --trainer=tasks/gpt2/unsup/zero2-small.yaml \
     --generate-steps=32 \
-    --data.tokenizer=hdfs://haruna/home/byte_ecom_govern/user/doushihan/tokenizer/tokenizer/zh_0620_newcut_caster_145665_lowercase \
+    --data.tokenizer=hdfs://tokenizer \
     --data.train_path=hdfs://haruna/home/byte_ecom_govern/user/wanli.0815/experiments/gpt2/data/ccr_multi_choice_train.parquet \
     --data.train_batch_size=8 \
     --model.network.use_ft_flash_attn=true \

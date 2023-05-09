@@ -136,7 +136,7 @@ class QAFinetuneGPTDatamodule(CruiseDataModule):
                  val_num_workers: int = 1,
                  max_seq_len: int = 1024,
                  text_keys: List[str] = ['question', 'answer'],
-                 tokenizer: str = 'hdfs://haruna/home/byte_ecom_govern/user/doushihan/tokenizer/tokenizer/zh_0620_newcut_caster_145665_lowercase',
+                 tokenizer: str = '',
                  tokenizer_type: str = "caster",
                  gpu_prefetch: bool = False,
                  add_sep_token: bool = True,

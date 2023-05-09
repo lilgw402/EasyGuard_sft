@@ -9,13 +9,14 @@ from torch import nn
 import numpy as np
 
 from transformers import AutoConfig, AutoModelForCausalLM
+# from transformers import LlamaTokenizer
 from transformers.deepspeed import HfDeepSpeedConfig
 from cruise import CruiseModule, CruiseCLI, CruiseConfig
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.hdfs_io import hcopy
 from fashBloom.data.gpt.datamodule.zero_shot import ZeroShotGPTDatamodule
 from fashBloom.utils.exp_helper import ExpHelper
-from fashBloom.utils.generate import play_console, play_file, few_shot_play_file, play_file_qa, play_file_qa_batch
+from fashBloom.utils.generate import play_console, play_file, few_shot_play_file, play_file_qa, play_file_qa_batch, play_file_qa_batch_from_offical_generate
 from fashBloom.optim import mariana_optimizer_kwargs_defaults
 
 
@@ -75,7 +76,7 @@ network_config = {
     "initializer_range": 0.02,
     "gradient_checkpointing": False,
     "tie_weight": True,
-    "pad_idx": 2,
+    "pad_idx": 3,
     "use_ft_flash_attn": False,
     "use_ft_linear": False,
     "use_ft_layernorm": False,
@@ -100,7 +101,7 @@ class GPT2Model(CruiseModule):
         #TODO: check if this is needed
         self.best_val_performance_value = 0.0
 
-        self.loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.hparams.network.pad_idx, reduction='none')
+        self.loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.hparams.network.pad_idx)
 
         if self.hparams.use_hf_ckpt:
             if self.hparams.partial_pretrain.startswith('hdfs'):
@@ -133,7 +134,12 @@ class GPT2Model(CruiseModule):
         if self.hparams.use_hf_ckpt:
             if self.hparams.partial_pretrain.startswith('hdfs'):
                 hcopy(self.hparams.partial_pretrain, self.local_dir)
-            if self.hparams.model_config.startswith('hdfs'):
+            if self.hparams.model_config.startswith('hdfs') and self.local_dir != self.local_config:
+                hcopy(self.hparams.model_config, self.local_config)
+        else:
+            if self.hparams.partial_pretrain.startswith('hdfs'):
+                hcopy(self.hparams.partial_pretrain, self.local_dir)
+            if self.hparams.model_config.startswith('hdfs') and self.local_dir != self.local_config:
                 hcopy(self.hparams.model_config, self.local_config)
 
     def setup(self):
@@ -177,6 +183,7 @@ class GPT2Model(CruiseModule):
 
                 self.freeze_params(self.hparams.freeze_prefix or [])
             elif 'mp_rank' in self.hparams.partial_pretrain:
+                self.rank_zero_print('******** zero2... ********')
                 # zero2 checkpoints has key 'module'
                 from cruise.utilities.cloud_io import load as crs_load
                 state_dict = crs_load(self.hparams.partial_pretrain, map_location='cpu')['module']
@@ -208,21 +215,21 @@ class GPT2Model(CruiseModule):
         input_ids,
         attention_mask,
         labels=None,
+        loss_mask=None,
         dataset_name=None,
         task_name=None,
         input_lens=None,
-        target_tokens_list=None,
         target_idx=None,
         answer_choice_tokens_list=None,
     ):
-        if not self.hparams.use_hf_ckpt:
+        if not self.hparams.use_hf_ckpt and labels is None:
             #print(f'before_attention_mask: {attention_mask.size()}')
             attention_mask = get_subsequent_mask(attention_mask)
             #print(f'after_attention_mask: {attention_mask.size()}')
         
         # TODO: log, remove later
         # print("print: attention_mask={}, \n input_ids={}, \n labels={} \n".format(attention_mask, input_ids, labels))
-        # print(attention_mask.shape, input_ids.shape)
+        # print(attention_mask.shape, input_ids.shape, labels.shape)
         # print(attention_mask[0, :100])
         # print(input_ids[0, :100])
 
@@ -241,6 +248,7 @@ class GPT2Model(CruiseModule):
             self.log('lr', scheduler.get_lr()[0], console=True)
         else:
             self.log('lr', scheduler.get_last_lr()[0], console=True)
+
         # in hf model, labels will be shifted by 1, so here labels = input_ids
         batch['labels'] = batch['input_ids']
         #TODO: remove debug log below
@@ -248,225 +256,65 @@ class GPT2Model(CruiseModule):
         # self.rank_zero_print("batch information: {}, with batch_idx: {}".format(batch, batch_idx))
 
         model_out = self.forward(**batch)
-        loss = model_out['loss']
+        loss = None
 
-        # classification_logits = model_out['classification_logits']
-        # preds = torch.argmax(classification_logits, dim=-1).long()
+        if 'loss_mask' in batch:
+            batch['labels'] = batch['labels'].clone().detach()
+            loss_mask = batch.pop('loss_mask')
+            batch['labels'][torch.where(loss_mask == 0)] = self.hparams.network.pad_idx
+            del loss_mask
+            loss_mask = None
 
-        # acc_nums = (torch.squeeze(batch['classification_labels']) == preds).sum().float()
-
-        # batch_size = batch['classification_labels'].numel() * 1.0
-        
-        # acc = acc_nums / batch_size
-        
-        output = {
-            "loss": loss,
-        }
-        # if batch_idx % 100 == 0:
-        #     print("Training: loss: {}, batch_idx: {}".format(
-        #                     loss, batch_idx))
-        return output
-
-    def ctx_ppl_validation(self, batch):
-        batch_size, answer_choice_num, _ = batch['input_ids'].size()
-        dataset_name = batch['dataset_name'][0]
-        target_idx = batch['target_idx'].cpu().numpy().astype(int)
-        # print(f'target_idx: {target_idx}')
-        # print(f'batch_size: {batch_size}')
-        # print(f'answer_choice_num: {answer_choice_num}')
-
-        batch_ppl = []
-        for answer_index in range(answer_choice_num):
-            input_ids = batch['input_ids'][:,answer_index,:]
-            labels = input_ids
-            attention_mask = batch['attention_mask'][:,answer_index,:]
-            model_out = self.forward(input_ids, attention_mask, labels)
-
-            lm_logits = model_out['logits']
-            # print(f'input_id_size: {input_ids.size()}, attention_mask_size: {attention_mask.size()}, lm_logits_size: {lm_logits.size()}')
-            shift_logits = lm_logits[..., :-1, :].contiguous().permute(0,2,1)
-            shift_labels = labels[..., 1:].contiguous()
-            # print(f'shift_logits_size: {shift_logits.size()}')
-            # print(f'shift_labels_size: {shift_labels.size()}')
-
-            # logits: [bz x vocab x max_seq_len], labels: [bz x max_seq_len]
-            # nlls: [bz x max_seq_len]
-            nlls = self.loss_fct(shift_logits, shift_labels)
-            answer_nlls = nlls.sum(dim=1)
-            answer_counts = attention_mask.sum(dim=1)
-            # print(f'nlls_size: {nlls.size()}')
-            # print(f'answer_nlls: {answer_nlls.size()}')
-            # print(f'answer_counts: {answer_counts.size()}')
-
-            answer_ppl = torch.exp(answer_nlls / answer_counts).float().cpu().numpy()
-            # print(f'answer_ppl: {answer_ppl}')
-
-            batch_ppl.append(answer_ppl)
-        
-        pred = np.argmin(batch_ppl, 0)
-        # print(f'batch_ppl: {batch_ppl}')
-        # print(f'pred: {pred}')
-        num_correct = sum(pred == target_idx)
-        # print(f'num_sample: {batch_size}, num_correct: {num_correct}')
-        
-        return {'num_sample': batch_size, 'num_correct': num_correct, 'dataset_name': dataset_name}
-
-    def multi_choice_validation(self, batch):
-        batch_size, answer_choice_num, _ = batch['input_ids'].size()
-        dataset_name = batch['dataset_name'][0]
-        target_idx = batch['target_idx'].cpu().numpy().astype(int)
-        # print(f'batch_size: {batch_size}')
-        # print(f'answer_choice_num: {answer_choice_num}')
-
-        logits_probs = []
-        for answer_index in range(answer_choice_num):
-            input_ids = batch['input_ids'][:,answer_index,:]
-            attention_mask = batch['attention_mask'][:,answer_index,:]
-            input_lens = [batch['input_lens'][i][answer_index] for i in range(batch_size)]
-            answer_choice_tokens_list = [batch['answer_choice_tokens_list'][i][answer_index] for i in range(batch_size)]
-            model_out = self.forward(input_ids, attention_mask)
-
-            # bz x max_seq_len x vocab_size
-            multi_logits = torch.nn.functional.log_softmax(model_out['logits'], dim=-1)
-            # print(f'multi_logits: {multi_logits.size()}')
-            
-            logits_single_probs = []
-            for input, input_len, cont_tokens, logits in zip(input_ids, input_lens, answer_choice_tokens_list, multi_logits):
-                # Slice to original seq length
-                cont_len = len(cont_tokens)
-                # print(f'logits_size: {logits.size()}')
-                # print(f'cont_token: {cont_tokens}')
-                # [1, seq, vocab]
-                logits = logits[input_len - cont_len : input_len, :].unsqueeze(0)
-                # print(f'input_len: {input_len}, cont_len: {cont_len}')
-                # print(f'logits_size: {logits.size()}')
-                # Check if per-token argmax is exactly equal to continuation
-                greedy_tokens = logits.argmax(dim=-1)
-                # print(f'greedy_tokens: {greedy_tokens}')
-                # [1, seq]
-                cont_tokens = torch.as_tensor(cont_tokens, dtype=torch.long).cuda().unsqueeze(0)
-                max_equal = (greedy_tokens == cont_tokens).all()
-
-                # Obtain logprobs at the corresponding continuation token indices
-                # last_token_slice = logits[:, -1, :].squeeze(0).tolist()
-                # [1, seq]
-                # print(f'before_logits: {logits.size()}')
-                logits = torch.gather(logits, 2, cont_tokens.unsqueeze(-1)).squeeze(-1)
-                # print(f'cont_tokens: {cont_tokens}')
-                # print(f'fixed_logits: {logits}')
-                # Answer: (log prob, is-exact-match)
-                # answer = (float(logits.sum()), bool(max_equal))
-                logits_single_probs.append(float(logits.sum()))
-            logits_probs.append(logits_single_probs)
-        
-        # print(logits_probs)
-        pred = np.argmax(logits_probs, 0)
-
-        # print(f'compare: {pred == target_idx}')
-
-        num_correct = sum(pred == target_idx)
-        # print(f'pred: {pred}, target_idx: {target_idx}')
-        # print(f'num_correct: {num_correct}')
-        
-        return {'num_sample': batch_size, 'num_correct': num_correct, 'dataset_name': dataset_name}
-    
-    def next_word_validation(self, batch):
-        # print(f'batch: {batch}')
-        batch_size, _ = batch['input_ids'].size()
-        dataset_name = batch['dataset_name'][0]
-
-        input_ids = batch['input_ids']
-        attention_mask = batch['attention_mask']
-        input_lens = [batch['input_lens'][i] for i in range(batch_size)]
-        target_tokens_list = [batch['target_tokens_list'][i] for i in range(batch_size)]
-        model_out = self.forward(input_ids, attention_mask)
-
-        #print(f'input_ids: {input_ids.size()}')
-        #print(f'attention_mask: {attention_mask.size()}')
-        # print(f'model_out: {model_out["logits"]}')
-
-        # bz x max_seq_len x vocab_size
-        multi_logits = torch.nn.functional.log_softmax(model_out['logits'], dim=-1)
-        #print('multi_logits: ', multi_logits.size())
-
-        num_correct = 0
-        for input_len, cont_tokens, logits in zip(input_lens, target_tokens_list, multi_logits):
-            cont_len = len(cont_tokens)
-            #print(f'input_len: {input_len}, cont_len: {cont_len}')
-
-            # [1, seq, vocab]
-            logits = logits[input_len - cont_len : input_len, :].unsqueeze(0)
-            greedy_tokens = logits.argmax(dim=-1)
-            #print(f'cont_tokens: {cont_tokens}, greedy_tokens: {greedy_tokens}')
-
-            # [1, seq]
-            cont_tokens = torch.as_tensor(cont_tokens, dtype=torch.long).cuda().unsqueeze(0)
-            max_equal = (greedy_tokens == cont_tokens).all().cpu().numpy()
-            # print('greedy_tokens: ', greedy_tokens)
-            # print('cont_tokens: ', cont_tokens)
-            # print('max_equal: ', max_equal)
-
-            # total correct num
-            num_correct += max_equal
-        
-        # print(f'num_sample: {batch_size}, num_correct: {num_correct}')
-
-        return {'num_sample': batch_size, 'num_correct': num_correct, 'dataset_name': dataset_name}
-
-    @torch.no_grad()
-    def validation_step(self, batch, batch_idx):
-        task_name = batch['task_name'][0]
-        if task_name == 'multi_choice_task':
-            return self.multi_choice_validation(batch)
-        elif task_name == 'next_word_prediction':
-            return self.next_word_validation(batch)
-        elif task_name == 'ctx_ppl_task':
-            return self.ctx_ppl_validation(batch)
+            # Shift so that tokens < n predict n
+            shift_logits = model_out['logits'][..., :-1, :].contiguous()
+            shift_labels = batch['labels'][..., 1:].contiguous()
+            batch_size, seq_length, vocab_size = shift_logits.shape
+            # Flatten the tokens
+            loss = self.loss_fct(
+                shift_logits.view(batch_size * seq_length, vocab_size), shift_labels.view(batch_size * seq_length)
+            )
+            # print('my loss')
+            # print(loss)
         else:
-            return None
+            loss = model_out['loss']
+
+        return {'loss': loss}
+
+
+    def validation_step(self, batch, batch_idx):
+        # in hf model, labels will be shifted by 1, so here labels = input_ids
+        batch['labels'] = batch['input_ids']
+        model_out = self.forward(**batch)
+        loss = model_out['loss']
+        return {'val_loss': loss}
     
-    def validation_epoch_end(self, outputs) -> None:
-        rank_total_sample = torch.as_tensor([out['num_sample'] for out in outputs])
-        # all_rank_total_sample = self.all_gather_object(rank_total_sample, sync_grads=False).reshape(-1).cpu().numpy()
-        # all_rank_total_sample_list = self.all_gather_object(rank_total_sample)
-        all_rank_total_sample_list = self.all_gather(rank_total_sample, sync_grads=False)
-        all_rank_total_sample = [sum(num) for num in all_rank_total_sample_list]
-        # print("all_rank_total_sample: {}".format(all_rank_total_sample))
-        # .reshape(-1).cpu().numpy()
 
-        # print(f'all_rank_total_sample: {all_rank_total_sample}')
-        
-        # all_rank_total_sample = rank_total_sample.cpu().numpy()
-        # print(f'all_rank_total_sample: {all_rank_total_sample}')
+    # def validation_epoch_end(self, outputs):
+    #     rank_total_sample = torch.as_tensor([out['num_sample'] for out in outputs])
+    #     all_rank_total_sample_list = self.all_gather(rank_total_sample, sync_grads=False)
+    #     all_rank_total_sample = [sum(num) for num in all_rank_total_sample_list]
 
-        rank_total_correct = torch.as_tensor([out['num_correct'] for out in outputs])
-        # all_rank_total_correct = self.all_gather_object(rank_total_correct, sync_grads=False).reshape(-1).cpu().numpy()
-        # all_rank_total_correct_list = self.all_gather_object(rank_total_correct)#.reshape(-1).cpu().numpy()
-        all_rank_total_correct_list = self.all_gather(rank_total_correct, sync_grads=False)
-        all_rank_total_correct = [sum(num) for num in all_rank_total_correct_list]
-        # print("all_rank_total_correct: {}".format(all_rank_total_correct))
-        # print(f'all_rank_total_correct: {all_rank_total_correct}')
-        # print(f'rank_total_correct: {rank_total_correct.size()}')
-        # all_rank_total_correct = rank_total_correct.cpu().numpy()
-        # print(f'all_rank_total_correct: {all_rank_total_correct}')
+    #     rank_total_correct = torch.as_tensor([out['val_loss'] for out in outputs])
 
-        dataset_name = outputs[0]['dataset_name']
+    #     all_rank_total_correct_list = self.all_gather(rank_total_correct, sync_grads=False)
+    #     all_rank_total_correct = [sum(num) for num in all_rank_total_correct_list]
 
-        acc = sum(all_rank_total_correct) * 1.0 / sum(all_rank_total_sample)
 
-        if acc >= self.best_val_performance_value:
-            self.best_val_performance_value = acc
+    #     acc = sum(all_rank_total_correct) * 1.0 / sum(all_rank_total_sample)
 
-        self.rank_zero_info(f"Zero Shot Learning Acc: all_rank_total_sample:{sum(all_rank_total_sample)}, all_rank_total_correct:{sum(all_rank_total_correct)}, val_acc_per_epoch of current step: {acc}")
-        self.rank_zero_info(f"Zero Shot Learning Acc: best val_acc_per_epoch so far: {self.best_val_performance_value}")
+    #     if acc >= self.best_val_performance_value:
+    #         self.best_val_performance_value = acc
 
-        self.log_dict({
-            f'{dataset_name}/acc': acc,
-            f'{dataset_name}/num_sample': sum(all_rank_total_sample),
-            f'{dataset_name}/num_correct': sum(all_rank_total_correct)
-        }, console=True)
+    #     self.rank_zero_info(f"Zero Shot Learning Acc: all_rank_total_sample:{sum(all_rank_total_sample)}, all_rank_total_loss:{sum(all_rank_total_correct)}, avg_loss of current step: {acc}")
+    #     self.rank_zero_info(f"Zero Shot Learning Acc: best val_acc_per_epoch so far: {self.best_val_performance_value}")
 
-        return acc
+    #     self.log_dict({
+    #         f'avg_loss': acc,
+    #         f'num_sample': sum(all_rank_total_sample),
+    #         f'all_loss': sum(all_rank_total_correct)
+    #     }, console=True)
+
+    #     return acc
 
     @torch.no_grad()
     def decode(self, input_ids: torch.Tensor, input_mask: torch.Tensor, *args, **kwargs):
@@ -514,9 +362,9 @@ if __name__ == '__main__':
     ckpter = ModelCheckpoint(monitor='step',
                              save_last=False,
                              save_top_k=-1,
-                             every_n_train_steps=10000,
+                             every_n_train_steps=5000,
                              every_n_epochs=1,
-                             save_on_train_epoch_end=True,
+                             save_on_train_epoch_end=False,
                              enable_trace=False)
     cli = CruiseCLI(
         GPT2Model,
@@ -544,12 +392,13 @@ if __name__ == '__main__':
     cli.add_argument('--subset-name', default='', type=str, help='subset name', dest='subset_name')
     cli.add_argument('--template-name', default='', type=str, help='template name', dest='template_name')
     cli.add_argument('--play-file-type', default='none', type=str, help='generate by samples loaded from file for qa')
+    cli.add_argument('--play-file-bsz', default=4, type=int, help='val batch size for inference')
     cli.add_argument('--play-file-limit', default=-1, type=int, help="If >0, limit how many lines to generate.")
     cli.add_argument('--generate-trial-num', default=1, type=int, help="generation trial num, default is 5")
-    cli.add_argument('--generate-steps', default=256, type=int, help='decode sequence length/steps')
-    cli.add_argument('--generate-temp', default=0.7, type=float, help='Smaller tempreature logits become more steep')
-    cli.add_argument('--generate-do-sample', default=True, type=bool, help='multinomial sample if True')
-    cli.add_argument('--generate-topk', default=5, type=int, help='sample top-k')
+    cli.add_argument('--generate-steps', default=100, type=int, help='decode sequence length/steps')
+    cli.add_argument('--generate-temp', default=0.5, type=float, help='Smaller tempreature logits become more steep')
+    cli.add_argument('--generate-do-sample', default=False, type=bool, help='multinomial sample if True')
+    cli.add_argument('--generate-topk', default=1, type=int, help='sample top-k')
     cli.add_argument('--generate-topp', default=None, type=float, help='sample at least top-p probability')
     cli.add_argument('--generate-dynamic-topp', default=None, type=float, help='sample at least dynamic top-p probability')
     cli.add_argument('--generate-dynamic-topp-omega', default=0.3, type=float, help='omega for dynamic topp')
@@ -557,6 +406,7 @@ if __name__ == '__main__':
     cli.add_argument('--generate-n-eos', default=1, type=int, help='Stop until n-eos tokens')
     cli.add_argument('--num-fewshot', default=0, type=int, help='fewshot to control')
     cli.add_argument('--fewshot-file-path', default='', type=str, help='few shot file path')
+    cli.add_argument('--generate-policy', default=False, action='store_true', help='decode from .generate or custom policy')
 
 
     cfg, trainer, model, datamodule = cli.parse_args()
@@ -583,11 +433,20 @@ if __name__ == '__main__':
         if cfg.play_file:
             print("\nFile play mode.")
             if cfg.play_file_type == "qa_batch":
-                play_file_qa_batch(cfg.play_file, cfg.play_out_file, datamodule, tokenizer, model.cuda(), cfg.generate_trial_num,
-                      steps=cfg.generate_steps, temperature=cfg.generate_temp, do_sample=cfg.generate_do_sample,
-                      top_k=cfg.generate_topk, top_p=cfg.generate_topp,
-                      until_n_eos=cfg.generate_n_eos,
-                      limit_samples=cfg.play_file_limit)                
+                if not cfg.generate_policy:
+                    print("\nqa_batch: custom")
+                    play_file_qa_batch(cfg.play_file, cfg.play_out_file, tokenizer, model.cuda(), cfg.generate_trial_num, val_bsz=cfg.play_file_bsz,
+                        steps=cfg.generate_steps, temperature=cfg.generate_temp, do_sample=cfg.generate_do_sample,
+                        top_k=cfg.generate_topk, top_p=cfg.generate_topp,
+                        until_n_eos=cfg.generate_n_eos,
+                        limit_samples=cfg.play_file_limit)
+                else:
+                    print("\nqa_batch: generate by generate_policy")
+                    play_file_qa_batch_from_offical_generate(cfg.play_file, cfg.play_out_file, tokenizer, model.cuda(), cfg.generate_trial_num, val_bsz=cfg.play_file_bsz,
+                        steps=cfg.generate_steps, temperature=cfg.generate_temp, do_sample=cfg.generate_do_sample,
+                        top_k=cfg.generate_topk, top_p=cfg.generate_topp,
+                        until_n_eos=cfg.generate_n_eos,
+                        limit_samples=cfg.play_file_limit)                  
             elif cfg.play_file_type == "qa":
                 play_file_qa(cfg.play_file, cfg.play_out_file, tokenizer, model.cuda(), cfg.generate_trial_num,
                       steps=cfg.generate_steps, temperature=cfg.generate_temp, do_sample=cfg.generate_do_sample,
