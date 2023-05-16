@@ -939,8 +939,8 @@ class DebertaModel(DebertaBare, ModelBase):
                     dtype=input_ids.dtype,
                     device=input_ids.device,
                 ),
-                input_ids,
                 torch.tensor(1, dtype=input_ids.dtype, device=input_ids.device),
+                torch.tensor(0, dtype=input_ids.dtype, device=input_ids.device),
             )
         )
 
