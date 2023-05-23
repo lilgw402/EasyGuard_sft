@@ -1,1 +1,0 @@
-nohup ./examples/high_quality_live/train.sh ./example/hq_live/train.py > ./examples/high_quality_live/logs/train_1k_0.log 2>&1 &
