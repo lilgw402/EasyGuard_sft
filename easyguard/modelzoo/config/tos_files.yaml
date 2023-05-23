@@ -121,6 +121,26 @@ fashion_swin_base_224_fashionvtp:
 - key: fashion_swin_base_224_fashionvtp/pytorch_model.pth
   lastModified: Mon, 17 Apr 2023 13:39:33 GMT
   size: 350758505
+fashion_universal_product_vit_base_224:
+- key: fashion_universal_product_vit_base_224/config.yaml
+  lastModified: Tue, 23 May 2023 03:41:09 GMT
+  size: 235
+- key: fashion_universal_product_vit_base_224/preprocessor_config.yaml
+  lastModified: Tue, 23 May 2023 03:41:09 GMT
+  size: 105
+- key: fashion_universal_product_vit_base_224/pytorch_model.pth
+  lastModified: Tue, 23 May 2023 03:41:17 GMT
+  size: 807927191
+fashion_universal_vit_base_224:
+- key: fashion_universal_vit_base_224/config.yaml
+  lastModified: Tue, 23 May 2023 03:31:13 GMT
+  size: 227
+- key: fashion_universal_vit_base_224/preprocessor_config.yaml
+  lastModified: Tue, 23 May 2023 03:31:13 GMT
+  size: 105
+- key: fashion_universal_vit_base_224/pytorch_model.pth
+  lastModified: Tue, 23 May 2023 03:31:15 GMT
+  size: 807927191
 fashionbert_base:
 - key: fashionbert_base/config.yaml
   lastModified: Mon, 17 Apr 2023 13:39:37 GMT
