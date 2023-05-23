@@ -1,27 +1,19 @@
-# This is an example of fashion-swin finetune demo.
+# This is an example of fashion-universal demo.
 
-```python
-# modify the config file
-vi examples/image_classification/default_config.yaml
-# if no config file found, can dump default configs as initial file (in your local machine)
-python3 examples/image_classification/run_model_finetuning.py  --print_config > examples/image_classification/default_config.yaml
-```
-### Data prepare
-Refer to [`DATA.md`](data/DATA.md)
+https://bytedance.feishu.cn/docx/TjxVd6ne9o5uAMxocScclwpxnOi
 
-### Feature extraction demo:
+### Model Selection
 ```
-python3 examples/image_classification/feature_extractor.py
+fashion-universal-vit-base-224: universal embedding
+fashion-universal-product-vit-base-224: product universal embedding
 ```
 
-### Train on single cpu/gpu:
+### Feature extraction by auto model:
 ```
-python3 examples/image_classification/run_model_finetuning.py \
-    --config examples/image_classification/default_config.yaml
+python3 automodel/feature_extractor.py
 ```
 
 ### Distributed training:
 ```
-/path/to/EasyGuard/tools/TORCHRUN examples/image_classification/run_model_finetuning.py \
-    --config examples/image_classification/default_config.yaml
+sh scripts/universal_vit_b_16.sh
 ```
