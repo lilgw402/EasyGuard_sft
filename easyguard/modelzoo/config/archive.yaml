@@ -54,6 +54,14 @@ fashion-swin-base-224-fashionvtp:
   type: fashion_swin
   server: hdfs/tos
   description: fashionvtp的多模态视觉backbone
+fashion-universal-vit-base-224:
+  type: fashion_universal
+  server: hdfs/tos
+  description: fashion universal image encoding
+fashion-universal-product-vit-base-224:
+  type: fashion_universal
+  server: hdfs/tos
+  description: fashion universal product encoding
 fashionbert-base:
   type: fashionbert
   server: hdfs/tos
