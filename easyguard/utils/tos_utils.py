@@ -46,6 +46,7 @@ class TOS:
         timeout_connect: int = TIMEOUT_CONNECT,
         http_cdn_va: str = TOS_HTTP_VA,
         http_cn: str = TOS_HTTP_CN,
+        just_download: bool = True,
     ) -> None:
         """create a tos client and set a cdn url for va
 
@@ -63,6 +64,8 @@ class TOS:
             how long onect time, by default TIMEOUT_CONNECT
         http_cdn_va : str, optional
             cdn url for request in va region, by default TOS_HTTP_VA
+        just_download: bool, optional
+            if just download, not connect to cn tos, by default True
         """
         self.bucket_name = bucket_name
         self.timeout_ = timeout
@@ -70,7 +73,7 @@ class TOS:
         self.http_va_ = http_cdn_va
         self.http_cn_ = http_cn
         self.tos_client = None
-        try:
+        if just_download == False:
             self.tos_client = bytedtos.Client(
                 self.bucket_name,
                 access_key,
@@ -78,7 +81,7 @@ class TOS:
                 timeout=timeout,
                 connect_timeout=timeout_connect,
             )
-        except:
+        else:
             logger.info("will load file base on local file records~")
             self.file_info_local = load_yaml(TOS_FILES_PATH)
 
