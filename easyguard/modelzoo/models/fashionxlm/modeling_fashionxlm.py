@@ -867,8 +867,21 @@ class DisentangledSelfAttention(nn.Module):
             attention_scores.size(-1),
         )
 
-        # bsz x height x length x dimension
-        attention_probs = XSoftmax.apply(attention_scores, attention_mask, -1)
+        # # bsz x height x length x dimension
+        # attention_probs = XSoftmax.apply(attention_scores, attention_mask, -1)
+
+        if attention_mask is not None:
+            # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
+            # masked positions, this operation will create a tensor which is 0.0 for
+            # positions we want to attend and -10000.0 for masked positions.
+            # Since we are adding it to the raw scores before the softmax, this is
+            # effectively the same as removing these entirely.
+            attention_mask_new = (1.0 - attention_mask) * -10000.0
+            # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+            attention_scores_new = attention_scores + attention_mask_new
+            # Normalize the attention scores to probabilities.
+        attention_probs = nn.functional.softmax(attention_scores_new, dim=-1)
+
         attention_probs = self.dropout(attention_probs)
         context_layer = torch.bmm(
             attention_probs.view(
