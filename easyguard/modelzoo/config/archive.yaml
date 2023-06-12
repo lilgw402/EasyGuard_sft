@@ -30,11 +30,9 @@ fashionxlm-base:
 fashionxlm-moe-base:
   server: hdfs/tos
   type: fashionxlm_moe
-  region: CN
 fashionxlm-softmoe-base:
   server: hdfs/tos
   type: fashionxlm_moe
-  region: CN
   description: soft-moe for CCR
 xlmr-base:
   server: hdfs/tos
