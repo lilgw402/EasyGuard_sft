@@ -9,7 +9,7 @@ from xml.parsers.expat import model
 import torch
 from prettytable import PrettyTable
 
-from ..modelzoo.config import MODEL_ARCHIVE_PATH
+from ..modelzoo.config import MODEL_ARCHIVE_PATH_BACKUP
 from . import (
     EASYGUARD_CACHE,
     EASYGUARD_MODEL_CACHE,
@@ -21,6 +21,8 @@ from .hdfs_utils import hdfs_open, hexists, hlist_files, hmget
 from .logging import get_logger
 from .type_utils import typecheck
 from .yaml_utils import file_read
+from .tos_utils import TOS
+
 
 PRINT_HELP = []
 # hdfs may fail to download target file, wo we use this variable to control the number of download
@@ -29,6 +31,7 @@ FILE_TEMP = ".temp_{}"
 
 
 logger = get_logger(__name__)
+tos = TOS()
 
 
 class HiddenPrints:
@@ -89,7 +92,7 @@ def cache_file(
     file_name: Optional[Union[str, set]] = None,
     remote_url: Optional[str] = None,
     model_type: Optional[str] = None,
-    download_retry_number: Optional[int] = RETYR_TIMES,
+    download_retry_number: int = RETYR_TIMES,
     if_cache: Optional[bool] = False,
     *args,
     **kwargs,
@@ -124,7 +127,7 @@ def cache_file(
     """
     if os.path.exists(model_name_path):
         return model_name_path
-    elif not if_cache:
+    elif not if_cache and not remote_url.startswith("tos"):
         model_path_remote = remote_url
         assert (
             model_path_remote is not None
@@ -167,23 +170,29 @@ def cache_file(
         )
         # a temp file to indicate whether the download is in progress
         file_temp_path = os.path.join(model_path_local, file_temp_)
-
         if os.path.exists(file_temp_path):
-            logger.info(
-                f"there is a another process which is downloading the target file {file_name}"
-            )
+            # logger.info(
+            #     f"there is a another process which is downloading the target file {file_name}"
+            # )
             while os.path.exists(file_temp_path):
                 time.sleep(2)
 
         model_file_local = file_exist(model_path_local, file_name)
         if model_file_local:
             if model_file_local not in PRINT_HELP:
+                time.sleep(5)
+                while os.path.exists(file_temp_path):
+                    time.sleep(2)
                 logger.info(f"obtain the local file `{model_file_local}`")
             PRINT_HELP.append(model_file_local)
             return model_file_local
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
-            model_path_remote = remote_url
+            model_path_remote = (
+                ("tos:" + model_name_path.replace("-", "_"))
+                if remote_url.startswith("tos")
+                else remote_url
+            )
             assert (
                 model_path_remote is not None
             ), f"the argument `remote_url` doesn't exist"
@@ -200,22 +209,23 @@ def cache_file(
                         file_name,
                     )
                 )
-            # diffent servers, different processes
-            if model_path_remote.startswith("hdfs://"):
-                model_file_path_remote = None
-                for remote_path_ in model_file_remote_list:
-                    if hexists(remote_path_):
-                        model_file_path_remote = remote_path_
-                        break
-                if model_file_path_remote:
-                    if model_file_path_remote not in PRINT_HELP:
-                        logger.info(
-                            f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
-                        )
-                    try:
-                        # if start to download, create a temp file to indicate
-                        file_temp_f = open(file_temp_path, "w")
-                        file_temp_f.close()
+
+            try:
+                # if start to download, create a temp file to indicate
+                file_temp_f = open(file_temp_path, "w")
+                file_temp_f.close()
+                # diffent servers, different processes
+                if model_path_remote.startswith("hdfs://"):
+                    model_file_path_remote = None
+                    for remote_path_ in model_file_remote_list:
+                        if hexists(remote_path_):
+                            model_file_path_remote = remote_path_
+                            break
+                    if model_file_path_remote:
+                        if model_file_path_remote not in PRINT_HELP:
+                            logger.info(
+                                f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                            )
                         retry_number = 2
                         while download_retry_number > 0:
                             hmget([model_file_path_remote], model_path_local)
@@ -237,16 +247,54 @@ def cache_file(
                                 else:
                                     PRINT_HELP.append(model_file_path_remote)
                                     break
-                    finally:
-                        # just delete the temp file whether the download is successful or not
-                        if os.path.exists(file_temp_path):
-                            os.remove(file_temp_path)
-
-                else:
-                    raise FileNotFoundError(
-                        f"`{model_file_remote_list}` can not be found in remote server"
-                    )
-
+                    else:
+                        raise FileNotFoundError(
+                            f"`{model_file_remote_list}` can not be found in remote server"
+                        )
+                elif model_path_remote.startswith("tos"):
+                    model_file_path_remote = None
+                    for remote_path_ in model_file_remote_list:
+                        if tos.exist(remote_path_[4:]):
+                            model_file_path_remote = remote_path_[4:]
+                            break
+                    if model_file_path_remote:
+                        if model_file_path_remote not in PRINT_HELP:
+                            logger.info(
+                                f"start to download `{model_file_path_remote}` to local path `{model_path_local}`"
+                            )
+                        retry_number = 2
+                        while download_retry_number > 0:
+                            tos.get(
+                                model_file_path_remote,
+                                model_path_local,
+                                verbose=False,
+                            )
+                            # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
+                            model_file_path_local = os.path.join(
+                                model_path_local,
+                                model_file_path_remote.split(REMOTE_PATH_SEP)[
+                                    -1
+                                ],
+                            )
+                            if os.path.exists(model_file_path_local):
+                                if os.path.getsize(model_file_path_local) == 0:
+                                    os.remove(model_file_path_local)
+                                    logger.warning(
+                                        f"fail to download `{model_file_path_remote}`, please check the network or the remote file path, we are trying to download the {retry_number}th time"
+                                    )
+                                    download_retry_number -= 1
+                                    retry_number += 1
+                                else:
+                                    PRINT_HELP.append(model_file_path_remote)
+                                    break
+                    else:
+                        raise FileNotFoundError(
+                            f"`{model_file_remote_list}` can not be found in remote server"
+                        )
+            finally:
+                # just delete the temp file whether the download is successful or not
+                if os.path.exists(file_temp_path):
+                    os.remove(file_temp_path)
             final_file_path = file_exist(model_path_local, file_name)
             if final_file_path:
                 return final_file_path
@@ -295,7 +343,14 @@ def hf_name_or_path_check(
     if not model_url:
         return pretrained_model_name_or_path
     else:
-        file_list = hlist_files([model_url])
+        if model_url.startswith("tos"):
+            file_list = tos.ls(
+                pretrained_model_name_or_path.replace("-", "_"), if_log=False
+            )
+            if file_list:
+                file_list = list(map(lambda x: x["key"], file_list))
+        else:
+            file_list = hlist_files([model_url])
         if file_list:
             target_file_path = ""
             for file_path in file_list:
@@ -319,7 +374,7 @@ def hf_name_or_path_check(
             )
         else:
             raise FileExistsError(
-                f"not file found in server, please check the url {model_url}"
+                f"not file found in server, please check the url `{model_url}`"
             )
         # if isinstance(file_name, (str, set)):
         #     target_file_path = cache_file(
@@ -346,7 +401,7 @@ def hf_name_or_path_check(
 
 def list_pretrained_models() -> None:
     """list all pretrained models from archive.yaml"""
-    model_archive = file_read(MODEL_ARCHIVE_PATH)
+    model_archive = file_read(MODEL_ARCHIVE_PATH_BACKUP)
     model_archive_table = PrettyTable()
     filed_names = list()
     for key_, value_ in model_archive.items():
@@ -380,19 +435,22 @@ def pretrained_model_archive_parse(
     model_config : Dict[str, Any]
         a dict from model archive
     target_region : Optional[str], optional
-        CN, VA, CN/VA, by default "CN"
+        CN, VA, CN/VA, by default "CN", deprecated
 
     Returns
     -------
     Dict[str, Any]
         a updated `model_config`
     """
+    server_default = "tos"
     model_name_ = model_name.replace("-", "_")
-    server = model_config.get("server", None)
+    servers = model_config.get("server", None)
 
-    if not server:
+    if not servers:
         return model_config
     else:
+        severs = servers.split("/")
+        server = server_default if server_default in severs else severs[0]
         region = model_config.get("region", "CN")
         regions = region.split("/")
         target_region_ = (
@@ -400,9 +458,12 @@ def pretrained_model_archive_parse(
         )
         region_index = REGION_MAPPING[target_region_]
         model_dir_remote = SERVER_MAPPING[server][region_index]
-        model_config["url_or_path"] = REMOTE_PATH_SEP.join(
-            [model_dir_remote, "models", model_name_]
-        )
+        if server == "tos":
+            model_config["url_or_path"] = "tos"
+        elif server == "hdfs":
+            model_config["url_or_path"] = REMOTE_PATH_SEP.join(
+                [model_dir_remote, "models", model_name_]
+            )
         return model_config
 
 

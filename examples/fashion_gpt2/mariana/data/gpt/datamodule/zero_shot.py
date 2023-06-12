@@ -331,7 +331,7 @@ class ZeroShotGPTDatamodule(CruiseDataModule):
                  val_batch_size: int = 32,
                  val_num_workers: int = 1,
                  max_seq_len: int = 2048,
-                 tokenizer: str = 'hdfs://haruna/home/byte_data_aml_research/user/zhangzhi.joshua/tokenizer/zh_0620_newcut_caster_145665_lowercase',
+                 tokenizer: str = '',
                  gpu_prefetch: bool = False,
                  dataset_name: str = '',
                  subset_name: str = '',

@@ -116,6 +116,15 @@ models:
       image_processor: FashionSwinProcessor
     modeling_fashion_swin:
       model: FashionSwinModel
+  fashion_universal:
+    name: FashionUniversal
+    backend: default
+    configuration_fashion_universal:
+      config: FashionUniversalConfig
+    image_processing_fashion_universal:
+      image_processor: FashionUniversalProcessor
+    modeling_fashion_universal:
+      model: FashionUniversalModel
   deberta_erlangshen:
     name: DeBERTaErlangshen
     backend: hf

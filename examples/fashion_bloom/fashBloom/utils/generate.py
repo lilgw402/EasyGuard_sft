@@ -5,15 +5,22 @@ Copied from FUXI, 参考标准类似：https://huggingface.co/spaces/THUDM/GLM-1
 
 """
 from builtins import print
+import tempfile
 import sys
+import os
 import json
 import traceback
 import torch
+import pandas as pd
 from torch.nn import functional as F
 import warnings
-from cruise.utilities.hdfs_io import hopen
+from cruise.utilities.hdfs_io import hopen, hcopy
 from promptsource.templates import DatasetTemplates, Template
 from fashBloom.utils.processor import ocnli_processor, rte_processor, lambada_processor
+from fashBloom.data.gpt.datamodule.zero_shot import NextWordDataProcessor
+from torch.utils.data import DataLoader
+from fashBloom.data.gpt.datamodule.load_utils import local_dataset, local_collator
+
 
 @torch.no_grad()
 def sample(model_decode_func, x, steps, temperature=1.0, do_sample=False, top_k=None, top_p=None, eos=3, until_n_eos=1):
@@ -226,28 +233,153 @@ def sample_generate(model, input_ids,
     return decoded_sentence.tolist()[0]
 
 
+def sample_console(model_decode_func, x, steps, temperature=1.0, do_sample=False, top_k=None, top_p=None, eos=3, until_n_eos=1):
+    """
+    Take a conditioning sequence of indices in x (of shape (b,t)) and predict the next token in
+    the sequence, feeding the predictions back into the model each time.
+
+    函数实现了几个 sample strategy：
+    1. Tempreature Sampling (通过 temperature 来控制)
+    2. Top-K Sampling （通过 top_k 来控制）
+    3. Top-P Sampling （通过 top_p 来控制）
+    注意这里的实现是Top-K 和 Top-P 是互斥的
+
+    model_decode_func: 解码函数，输入x，输出模型的解码logits（注意没有做softmax）
+    x：输入，可以理解为前n个词。这里需要遍历 steps 次，每次把新 decode 出来的term 拼到 x 后面
+    steps：解码的长度
+    tempreature：对logits 做 / tempreature 的操作，tempreature 越小，logits 分布越陡峭，越确定性的预测高概率的term
+    do_sample：是否有采样的过程，是的话，按probability 进行 multinomial 的采样，否则直接取最高概率的
+    top_k：是否有 top k 的过程，top_k 表示 k 的个数。
+    top_p：是否有 top p 的过程，top_p 表示 要高于的概率。
+    eos：end of sentence token。当遇到这个 token 时，停止生成。
+    until_n_eos：默认为1。有一些情况，我们希望多生成一些，这个参数用来控制直到的 n 次遇到 eos，才停止生成。
+
+    默认支持的是单条。没测过batch level。
+
+    """
+    if top_k is not None and top_p is not None:
+        raise ValueError('Either Top-K or Top-P, cannot chooes both')
+    meet_eos_count = 0
+
+    for k in range(steps):
+        logits = model_decode_func(x)
+        # pluck the logits at the final step and scale by temperature
+        logits = logits[:, -1, :] / temperature
+        # optionally crop probabilities to only the top k options
+        if top_k is not None:
+            logits = top_k_logits(logits, top_k)
+        # optionally crop probabilities to only the options whose prob larger than p
+        elif top_p is not None:
+            logits = top_p_logits(logits, top_p)
+        probs = F.softmax(logits, dim=-1)
+
+        # print(probs, probs.shape, 'probs')
+        # sample from the distribution or take the most likely
+        if do_sample:
+            ix = torch.multinomial(probs, num_samples=1)
+        else:
+            _, ix = torch.topk(probs, k=1, dim=-1)
+        # append to the sequence and continue
+        if ix.tolist()[0][0] == eos: # 遇到eos 就停止生成
+            meet_eos_count += 1
+            if meet_eos_count >= until_n_eos:
+                break
+        if x is not None:
+            x = torch.cat((x, ix), dim=1)
+        else:
+            x = ix
+    return x
+
+
+@torch.no_grad()
+def sample_generate_console(model, input_ids,
+           steps=32, temperature=1.0, do_sample=False, top_k=None, top_p=None,
+           eos=5, until_n_eos=1):
+    """
+    take a conditioning sequence of indices in x (of shape (b,t)) and predict the next token in
+    the sequence, feeding the predictions back into the model each time. Clearly the sampling
+    has quadratic complexity unlike an RNN that is only linear, and has a finite context window
+    of block_size, unlike an RNN that has an infinite context window.
+    """
+
+    # 2. 构造 模型解码的func wrapper
+    def model_decode_func(x):
+        input_mask = torch.ones_like(x, device=x.device)
+        res = model.decode(input_ids=x,
+                           input_mask=input_mask)
+        return res['logits']
+
+    # 3. 生成结果
+    decoded_sentence = sample_console(model_decode_func=model_decode_func,
+                              x=input_ids,
+                              steps=steps,
+                              temperature=temperature,
+                              do_sample=do_sample,
+                              top_k=top_k,
+                              top_p=top_p,
+                              eos=eos,
+                              until_n_eos=until_n_eos
+                           )
+    return decoded_sentence.tolist()[0]
+
+
+
 def play_console(tokenizer, model, trial_num=5,
                  steps=256, temperature=0.6, do_sample=True,
                  top_k=5, top_p=None, until_n_eos=1):
     print('Input your prompt here...')
+
+    total_dialog = ''
+    max_length = 256
+
     for line in sys.stdin:
         try:
             text = line.strip()
-            print('prompt: ', text)
-            print('tokens: ', tokenizer.tokenize(text))
-            input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
+            if '/reset' in text:
+                total_dialog = ''
+                print('对话已清空')
+                continue
+            text = ' user: ' + text
+
+            total_dialog = text
+            # print('prompt: ', text)
+            # print('tokens: ', tokenizer.tokenize(text))
+            input_ids = tokenizer((total_dialog + ' assistant: ').strip())['input_ids']
+            if len(input_ids) > max_length:
+                input_ids = input_ids[-max_length:]
+
+            input_ids = torch.tensor(input_ids).unsqueeze(0).long()
+
             for i in range(trial_num):
-                y = sample_generate(model,
-                                    input_ids=input_ids.to(model.device),
-                                    steps=steps, temperature=temperature, do_sample=do_sample,
-                                    top_k=top_k,
-                                    top_p=top_p,
-                                    eos=tokenizer.eos_token_id,
-                                    until_n_eos=until_n_eos)
-                #y = y.tolist()[0][1:]
-                completion = ''.join(tokenizer.decode(y))
+                # y = sample_generate_console(model,
+                #                     input_ids=input_ids.to(model.device),
+                #                     steps=steps, temperature=temperature, do_sample=do_sample,
+                #                     top_k=top_k,
+                #                     top_p=top_p,
+                #                     eos=tokenizer.eos_token_id,
+                #                     until_n_eos=until_n_eos)
+                # y = y.tolist()[0][1:]
+                y = model.gpt.generate(
+                    input_ids.to(model.device),
+                    max_new_tokens=steps,
+                    do_sample=True,
+                    num_beams=1,
+                    temperature=temperature,
+                    top_p=0.95,
+                    top_k=50,
+                    repetition_penalty=1.2,
+                    pad_token_id=tokenizer.pad_token_id,
+                    bos_token_id=tokenizer.bos_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    )
+
+                completion = ''.join(tokenizer.decode(y[0]))
+                completion = completion[-(len(completion) - len(total_dialog)):]
                 completion.replace('##', '')
-                print(f'[{i}]: {completion}')
+                print(f'{completion}')
+
+                # total_dialog += 'assistant: ' + completion
+
             print('Input your prompt here...')
         except Exception as e:
             print(e)
@@ -288,81 +420,46 @@ def play_file(fname, tokenizer, model, trial_num=5,
                 print(e)
                 print(traceback.format_exc())
 
-# def play_file_qa(fname, tokenizer, model, trial_num=5,
-#               steps=256, temperature=0.6, do_sample=True,
-#               top_k=5, top_p=None, until_n_eos=1, limit_samples=-1):
-#     print(f"Generating by prompts from {fname}...")
-#     # full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
-#     full_stop_input_ids = None
-#     count = 0
-#     with hopen(fname) as f:
-#         for line in f:
-#             count += 1
-#             if limit_samples > 0 and count >= limit_samples:
-#                 print(f"Reach limit_samples: {limit_samples}, stop.")
-#                 break
-#             try:
-#                 xAndY = ''
-
-#                 jl = json.loads(line)
-#                 text = jl['page_info']['query'].strip()
-#                 # print('prompt/query: ', text)
-#                 xAndY=xAndY+'prompt/query: '+text+'\n'
-#                 xAndY=xAndY+f'tokens: {tokenizer.tokenize(text)}'+'\n'
-#                 # print('origin content', jl['page_info']['query'][:steps])
-#                 # print("ground truth answer: {}".format(jl['page_info']['answer']))
-#                 xAndY=xAndY+"ground truth answer: {}".format(jl['page_info']['answer'])+'\n'
-#                 input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
-#                 # print("input_ids: {}".format(input_ids))
-#                 for i in range(trial_num):
-#                     y = sample_generate(model,
-#                                         input_ids=input_ids.to(model.device),
-#                                         steps=steps, temperature=temperature, do_sample=do_sample,
-#                                         top_k=top_k,
-#                                         top_p=top_p, 
-#                                         eos=tokenizer.eos_token_id,
-#                                         until_n_eos=until_n_eos)
-#                     #y = y.tolist()[0][1:]
-#                     completion = ''.join(tokenizer.decode(y))
-#                     completion.replace('##', '')
-#                     # print(f'[{i}]: {completion}')
-#                     xAndY=xAndY+f'[{i}]: {completion}'+'\n'
-#                 print(xAndY)
-#             except Exception as e:
-#                 print(e)
-#                 print(traceback.format_exc())
-
 
 def play_file_qa(fname, outfile, tokenizer, model, trial_num=5,
               steps=256, temperature=0.6, do_sample=True,
               top_k=5, top_p=None, until_n_eos=1, limit_samples=-1):
     print(f"Generating by prompts from {fname}...")
     # full_stop_input_ids = get_input_ids_of_stop_tokens(tokenizer)
-    full_stop_input_ids = None
+    # full_stop_input_ids = None
     count = 0
-    with hopen(fname) as f:
+
+    ori_outfile = None
+    if outfile.startswith('hdfs'):
+        ori_outfile = outfile
+        outfile = os.path.join(tempfile.gettempdir(), os.path.basename(outfile))
+
+    fname_tmp_path = None
+    if fname.startswith('hdfs'):
+        fname_tmp_path = os.path.join(tempfile.gettempdir(), os.path.basename(fname))
+        hcopy(fname, fname_tmp_path)
+    else:
+        fname_tmp_path = fname
+    
+    val_df = pd.read_parquet(fname_tmp_path)
+
+    if True:
         with open(outfile, "w", encoding="utf-8") as fout:
-            for line in f:
+            # for line in f:
+            for _,jl in val_df.iterrows():
                 count += 1
+
+                if(count%100==1):
+                    print(f'[{count}/{len(val_df)}]...')
+
                 if limit_samples > 0 and count >= limit_samples:
                     print(f"Reach limit_samples: {limit_samples}, stop.")
                     break
                 try:
-                    xAndY = ''
-
-                    jl = json.loads(line)
-                    # text = jl['page_info']['query'].strip()
+                    # jl = json.loads(line)
                     text = jl['question'].strip()
                     true_label = jl['answer']
                     # print('prompt/query: ', text)
-                    xAndY=xAndY+'question: '+text+'\n'
-                    # xAndY=xAndY+f'tokens: {tokenizer.tokenize(text)}'+'\n'
-                    # print('origin content', jl['page_info']['query'][:steps])
-                    # print("ground truth answer: {}".format(jl['page_info']['answer']))
-                    # xAndY=xAndY+"ground truth answer: {}".format(jl['page_info']['answer'])+'\n'
-
-                    xAndY=xAndY+f"ground truth answer: {true_label}"+'\n'
-
                     input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
                     # print("input_ids: {}".format(input_ids))
                     
@@ -379,7 +476,6 @@ def play_file_qa(fname, outfile, tokenizer, model, trial_num=5,
                         completion.replace('##', '')
 
                         # print(f'[{i}]: {completion}')
-                        xAndY=xAndY+f'[{i}]: {completion}'+'\n'
                         id = jl['id']
                         sent1 = jl['sent1']
 
@@ -388,84 +484,319 @@ def play_file_qa(fname, outfile, tokenizer, model, trial_num=5,
                                 'id': f'{id}',
                                 'sent1': f'{sent1}',
                                 'question': f'{text}', 
-                                'ground truth answer': f'ground truth answer: {true_label}',
+                                'ground truth answer': f'{true_label}',
                                 'output': f'[{i}]: {completion}'
                             }, 
                             ensure_ascii=False
                         )
 
+                        if(count%2==1):
+                            print(f'{json_str}')
+
                         fout.write(json_str + "\n")
-                    print(xAndY)
+
                 except Exception as e:
                     print(e)
                     print(traceback.format_exc())
+        
+        if ori_outfile!=None:
+            os.system(f"hdfs dfs -put -f {outfile} {ori_outfile}")
 
 
-def play_file_qa_batch(fname, outfile, datamodule, tokenizer, model, trial_num=5,
+@torch.no_grad()
+def batch_sample(model_decode_func, x, attention_mask, steps, temperature=1.0, do_sample=False, top_k=None, top_p=None, eos=3, until_n_eos=1):
+    """
+    Take a conditioning sequence of indices in x (of shape (b,t)) and predict the next token in
+    the sequence, feeding the predictions back into the model each time.
+    """
+    if top_k is not None and top_p is not None:
+        raise ValueError('Either Top-K or Top-P, cannot chooes both')
+    meet_eos_count = 0
+
+    check_eos_list = [-1]*x.size(0)
+    # print('check_eos_list', len(check_eos_list))
+
+    for k in range(steps):
+        logits = model_decode_func(x, attention_mask)
+
+        # print('x size', x.size())
+        # print('logits size', logits.size())
+        # pluck the logits at the final step and scale by temperature
+        logits = logits[:, -1, :] / temperature
+        # optionally crop probabilities to only the top k options
+        if top_k is not None:
+            logits = top_k_logits(logits, top_k)
+        # optionally crop probabilities to only the options whose prob larger than p
+        elif top_p is not None:
+            logits = top_p_logits(logits, top_p)
+        probs = F.softmax(logits, dim=-1)
+
+        # print(probs, probs.shape, 'probs')
+        # sample from the distribution or take the most likely
+        if do_sample:
+            ix = torch.multinomial(probs, num_samples=1)
+        else:
+            _, ix = torch.topk(probs, k=1, dim=-1)
+        # append to the sequence and continue
+
+        ix_list = ix.tolist()
+
+        # print('ix list is', ix.tolist())
+        for j in range(x.size(0)):
+            if check_eos_list[j]==-1 and ix_list[j][0]==eos:
+                check_eos_list[j] = x.size(1)
+                meet_eos_count += 1
+
+        if meet_eos_count >= x.size(0):
+            break
+
+        if x is not None:
+            x = torch.cat((x, ix), dim=1)
+            attention_mask = torch.cat((attention_mask, torch.ones_like(ix, device=attention_mask.device)), dim=1)
+        else:
+            x = ix
+            attention_mask = torch.ones_like(x, device=x.device)
+
+        # print('='*50)
+
+    return x, check_eos_list
+
+
+
+@torch.no_grad()
+def batch_sample_generate(model, input_ids, attention_mask,
+           steps=32, temperature=1.0, do_sample=False, top_k=None, top_p=None,
+           eos=5, until_n_eos=1, seq_len=None):
+    """
+    take a conditioning sequence of indices in x (of shape (b,t)) and predict the next token in
+    the sequence, feeding the predictions back into the model each time. Clearly the sampling
+    has quadratic complexity unlike an RNN that is only linear, and has a finite context window
+    of block_size, unlike an RNN that has an infinite context window.
+    """
+
+    # 2. 构造 模型解码的func wrapper
+    def model_decode_func(x, mask):
+        # input_mask = torch.ones_like(x, device=x.device)
+        res = model.decode(input_ids=x,
+                           input_mask=mask)
+        return res['logits']
+
+    # 3. 生成结果
+    decoded_sentence, check_eos_list = batch_sample(model_decode_func=model_decode_func,
+                              x=input_ids,
+                              attention_mask=attention_mask,
+                              steps=steps,
+                              temperature=temperature,
+                              do_sample=do_sample,
+                              top_k=top_k,
+                              top_p=top_p,
+                              eos=eos,
+                              until_n_eos=until_n_eos
+                           )
+    
+    decoded_sentence = decoded_sentence.tolist()
+    max_len = max(seq_len)
+    # print('check_eos_list', check_eos_list)
+    # print('seq len', seq_len)
+    for i in range(len(decoded_sentence)):
+        # print(decoded_sentence[i])
+        if check_eos_list[i] != -1:
+            decoded_sentence[i] = decoded_sentence[i][max_len - seq_len[i]:check_eos_list[i]]
+        else:
+            decoded_sentence[i] = decoded_sentence[i][max_len - seq_len[i]:]
+        # print(decoded_sentence[i])
+        # print('\n')
+
+    return decoded_sentence
+
+
+
+def play_file_qa_batch(fname, outfile, tokenizer, model, trial_num=1, val_bsz=4,
               steps=256, temperature=0.6, do_sample=True,
               top_k=5, top_p=None, until_n_eos=1, limit_samples=-1):
     
     print(f"Generating by prompts from {fname}...")
+    count = 0
+    ori_outfile = None
+    if outfile.startswith('hdfs'):
+        ori_outfile = outfile
+        outfile = os.path.join(tempfile.gettempdir(), os.path.basename(outfile))
 
-    val_steps = -1
-    val_files = [x for x in hlist_files([datamodule.hparams.val_path]) if x.endswith('.parquet')]
-    datamodule.rank_zero_info(f"Fetched {len(val_files)} val files.")
-        
-    data_loader = datamodule.val_dataloader()
+    fname_tmp_path = None
+    if fname.startswith('hdfs'):
+        fname_tmp_path = os.path.join(tempfile.gettempdir(), os.path.basename(fname))
+        hcopy(fname, fname_tmp_path)
+    else:
+        fname_tmp_path = fname
 
-    print(data_loader)
+    collator = local_collator(pad_token_id=tokenizer.pad_token_id)
+    test_dataset = local_dataset(fname_tmp_path, tokenizer, data_type='parquet', shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=val_bsz, shuffle=False, collate_fn=collator)
 
-    # count = 0
-    # with hopen(fname) as f:
-    #     with open(outfile, "w", encoding="utf-8") as fout:
-    #         for line in f:
-    #             count += 1
-    #             if limit_samples > 0 and count >= limit_samples:
-    #                 print(f"Reach limit_samples: {limit_samples}, stop.")
-    #                 break
-    #             try:
-    #                 xAndY = ''
+    dataset_len = len(test_dataset)
 
-    #                 jl = json.loads(line)
-    #                 text = jl['page_info']['query'].strip()
-    #                 # print('prompt/query: ', text)
-    #                 xAndY=xAndY+'prompt/query: '+text+'\n'
-    #                 xAndY=xAndY+f'tokens: {tokenizer.tokenize(text)}'+'\n'
-    #                 # print('origin content', jl['page_info']['query'][:steps])
-    #                 # print("ground truth answer: {}".format(jl['page_info']['answer']))
-    #                 xAndY=xAndY+"ground truth answer: {}".format(jl['page_info']['answer'])+'\n'
-    #                 input_ids = torch.tensor(tokenizer(text)['input_ids']).unsqueeze(0).long()
-    #                 # print("input_ids: {}".format(input_ids))
-                    
-    #                 for i in range(trial_num):
-    #                     y = sample_generate(model,
-    #                                         input_ids=input_ids.to(model.device),
-    #                                         steps=steps, temperature=temperature, do_sample=do_sample,
-    #                                         top_k=top_k,
-    #                                         top_p=top_p, 
-    #                                         eos=tokenizer.eos_token_id,
-    #                                         until_n_eos=until_n_eos)
+    with open(outfile, "w", encoding="utf-8") as fout:
 
-    #                     completion = ''.join(tokenizer.decode(y))
-    #                     completion.replace('##', '')
+        for examples in test_loader:
 
-    #                     # print(f'[{i}]: {completion}')
-    #                     xAndY=xAndY+f'[{i}]: {completion}'+'\n'
+            seq_len = examples['seq_len']
+            model_inputs = examples['padded_inputs']
+            # print(model_inputs)
 
-    #                     json_str = json.dumps(
-    #                         {
-    #                             'prompt/query: ': f'{text}', 
-    #                             'ground truth answer: ': 'ground truth answer: {}'.format(jl['page_info']['answer']),
-    #                             'answer: ': f'[{i}]: {completion}'
-    #                         }, 
-    #                         ensure_ascii=False
-    #                     )
+            model_inputs = {k: torch.tensor(v).long().to(model.device) for k, v in model_inputs.items()}
+            
+            # print(model_inputs['input_ids'])
+            # print(examples)
+            try:
+                for i in range(trial_num):
+                    ys = batch_sample_generate(model,
+                        input_ids=model_inputs['input_ids'].to(model.device),
+                        attention_mask=model_inputs['attention_mask'].to(model.device),
+                        steps=steps, temperature=temperature, do_sample=do_sample,
+                        top_k=top_k,
+                        top_p=top_p, 
+                        eos=tokenizer.eos_token_id,
+                        until_n_eos=until_n_eos,
+                        seq_len=seq_len)
 
-    #                     fout.write(json_str + "\n")
-    #                 print(xAndY)
-    #             except Exception as e:
-    #                 print(e)
-    #                 print(traceback.format_exc())
+                    for idx in range(len(ys)):
+                        y = ys[idx]
+                        completion = ''.join(tokenizer.decode(y))
+                        # print(completion)
+                        completion.replace('##', '')
+                            
+                        json_str = json.dumps(
+                            {
+                                'id': f"{examples['id'][idx]}",
+                                'country': f"{examples['country'][idx]}",
+                                'sent1': f"{examples['sent1'][idx]}",
+                                'question': f"{examples['question'][idx]}",
+                                'ground truth answer': f"{examples['answer'][idx]}",
+                                'output': f"[{i}]: {completion}"
+                            }, 
+                            ensure_ascii=False
+                        )
+
+                        fout.write(json_str + "\n")
+                
+                        count += 1
+                        if(count%100==1):
+                            print(f'[{count}/{dataset_len}]...')
+                        if(count%100==1):
+                            # pass
+                            print(f'{json_str}')
+
+            except Exception as e:
+                    print(e)
+                    print(traceback.format_exc())
+
+
+            # break
+    
+
+    if ori_outfile!=None:
+        os.system(f"hdfs dfs -put -f {outfile} {ori_outfile}")
+
+    return
+
+
+def play_file_qa_batch_from_offical_generate(fname, outfile, tokenizer, model, trial_num=1, val_bsz=4,
+              steps=256, temperature=0.6, do_sample=True,
+              top_k=5, top_p=None, until_n_eos=1, limit_samples=-1):
+    
+    print(f"Generating by prompts from {fname}...")
+    count = 0
+    ori_outfile = None
+    if outfile.startswith('hdfs'):
+        ori_outfile = outfile
+        outfile = os.path.join(tempfile.gettempdir(), os.path.basename(outfile))
+
+    fname_tmp_path = None
+    if fname.startswith('hdfs'):
+        fname_tmp_path = os.path.join(tempfile.gettempdir(), os.path.basename(fname))
+        hcopy(fname, fname_tmp_path)
+    else:
+        fname_tmp_path = fname
+
+    collator = local_collator(pad_token_id=tokenizer.pad_token_id)
+    test_dataset = local_dataset(fname_tmp_path, tokenizer, data_type='parquet', shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=val_bsz, shuffle=False, collate_fn=collator)
+
+    dataset_len = len(test_dataset)
+
+    with open(outfile, "w", encoding="utf-8") as fout:
+
+        for examples in test_loader:
+
+            seq_len = examples['seq_len']
+            model_inputs = examples['padded_inputs']
+            # print(model_inputs)
+
+            model_inputs = {k: torch.tensor(v).long().to(model.device) for k, v in model_inputs.items()}
+            
+            # print(model_inputs['input_ids'])
+            # print(examples)
+            try:
+                for i in range(trial_num):
+                    ys = model.gpt.generate(
+                        model_inputs['input_ids'].to(model.device),
+                        attention_mask=model_inputs['attention_mask'].to(model.device),
+                        max_new_tokens=steps,
+                        do_sample=True,
+                        num_beams=1,
+                        temperature=temperature,
+                        top_p=0.95,
+                        top_k=50,
+                        repetition_penalty=1.3,
+                        pad_token_id=tokenizer.pad_token_id,
+                        bos_token_id=tokenizer.bos_token_id,
+                        eos_token_id=tokenizer.eos_token_id,
+                        ).tolist()
+
+                    for idx in range(len(ys)):
+                        y = ys[idx]
+                        """
+                        这里把前面的输入question截断，因为会有很多<pad>
+                        from: len(model_inputs['input_ids'][idx])
+                        to: 第一个tokenizer.eos_token_id 
+                        """
+                        y = y[len(model_inputs['input_ids'][idx]):]
+                        y = y[:y.index(tokenizer.eos_token_id)] if tokenizer.eos_token_id in y else y
+
+                        completion = ''.join(tokenizer.decode(y))
+                        # print(completion)
+                        completion.replace('##', '')
+
+                            
+                        json_str = json.dumps(
+                            {
+                                'id': f"{examples['id'][idx]}",
+                                'sent1': f"{examples['sent1'][idx]}",
+                                'question': f"{examples['question'][idx]}",
+                                'ground truth answer': f"{examples['answer'][idx]}",
+                                'output': f"[{i}]: {completion}"
+                            }, 
+                            ensure_ascii=False
+                        )
+
+                        fout.write(json_str + "\n")
+                
+                        count += 1
+                        if(count%100==1):
+                            print(f'[{count}/{dataset_len}]...')
+                        if(count%100==1):
+                            # pass
+                            print(f'{json_str}')
+
+            except Exception as e:
+                    print(e)
+                    print(traceback.format_exc())
+    
+
+    if ori_outfile!=None:
+        os.system(f"hdfs dfs -put -f {outfile} {ori_outfile}")
+
+    return
 
 
 def get_prompt_template(dataset_name, subset_name, template_name):

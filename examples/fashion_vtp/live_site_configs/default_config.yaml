@@ -36,7 +36,7 @@ trainer:
   dataloader_retry_persistent_limit: 5
   find_unused_parameters: true
   project_name: null
-  experiment_name: null
+  experiment_name: fashionvtp-base-c-transform-beta
   enable_trace: false
   reload_dataloaders_every_n_epochs: -1
   strategy: ddp

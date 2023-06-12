@@ -15,6 +15,7 @@ __pycache__/
 *.pt
 *.jpeg
 *.png
+*.wav
 vb
 
 # Distribution / packaging
@@ -168,3 +169,5 @@ events.out*
 # output
 *.stderr
 *.stdout
+.idea
+ccr_experiments

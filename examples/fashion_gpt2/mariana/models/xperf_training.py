@@ -1,11 +1,10 @@
 """Import logics for xperf training libs. Ref: https://code.byted.org/data/xperf_training/blob/master/examples/faster_transformer.py"""
-import os
+import logging
+
 import torch
 import torch.nn.functional as F
-from torch import nn, autograd
-import logging
 from einops import rearrange, repeat
-
+from torch import autograd, nn
 
 try:
     # import xperf_training
@@ -13,7 +12,9 @@ try:
     # fast_transformer_lib = os.path.join(fast_transformer_dir, 'libxperf_training_torch_ops_dyn.so')
     # torch.ops.load_library(fast_transformer_lib)
     import lego_ops
+
     lego_ops.load_ft_torch()
+
 
     class LayerNormFunction(autograd.Function):
         @staticmethod
@@ -28,6 +29,7 @@ try:
             grad_in, grad_gamma, grad_beta, grad_residual = torch.ops.FasterTransformer.LayerNorm_backward(
                 grad_out, *ctx.saved_tensors)
             return grad_in, grad_gamma, grad_beta, grad_residual, None
+
 
     class FasterLayerNorm(nn.Module):
         def __init__(self, hidden_dim, eps=1e-6):
@@ -51,15 +53,20 @@ try:
         def extra_repr(self):
             return 'hidden_dim={}'.format(self.hidden_dim)
 
+
     FTLayerNorm = FasterLayerNorm
+
 
     class LinearFunction(autograd.Function):
         @staticmethod
-        def forward(ctx, input_tensor, residual, weight, bias, act_gelu = False, dropout_rate = 0.0):
+        def forward(ctx, input_tensor, residual, weight, bias, act_gelu=False, dropout_rate=0.0):
             bias_out = torch.Tensor(0)
             dropout_mask = torch.Tensor(0)
             if act_gelu == True or dropout_rate > 0.0:
-                output, bias_out, dropout_mask = torch.ops.FasterTransformer.Linear_forward_gelu_dropout(input_tensor, weight, bias, act_gelu, dropout_rate)
+                output, bias_out, dropout_mask = torch.ops.FasterTransformer.Linear_forward_gelu_dropout(input_tensor,
+                                                                                                         weight, bias,
+                                                                                                         act_gelu,
+                                                                                                         dropout_rate)
             else:
                 output = torch.ops.FasterTransformer.Linear_forward(input_tensor, weight, bias, residual)
             ctx.save_for_backward(input_tensor, weight, bias_out, dropout_mask)
@@ -79,6 +86,7 @@ try:
                     grad_out, input_tensor, weight)
             return grad_in, grad_out.detach().clone() if ctx.has_residual else None, grad_weight, grad_bias, None, None
 
+
     class FasterLinear(nn.Module):
         def __init__(self, in_features, out_features, initializer_range=0.02, act_gelu=False, dropout_rate=0.0):
             super(FasterLinear, self).__init__()
@@ -86,6 +94,7 @@ try:
             self.in_features = in_features
             self.out_features = out_features
             self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
+            # https://pytorch.org/docs/stable/generated/torch.normal.html
             self.weight.data.normal_(mean=0.0, std=initializer_range)
             self.bias = nn.Parameter(torch.Tensor(out_features))
             self.bias.data.zero_()
@@ -94,10 +103,16 @@ try:
 
         def forward(self, input_tensor, residual=None):
             if self.training:
-                return LinearFunction.apply(input_tensor, residual, self.weight, self.bias, self.act_gelu, self.dropout_rate)
+                return LinearFunction.apply(input_tensor,
+                                            residual,
+                                            self.weight,
+                                            self.bias,
+                                            self.act_gelu,
+                                            self.dropout_rate)
             else:
                 if self.act_gelu:
-                    output, bias_out, dropout_mask = torch.ops.FasterTransformer.Linear_forward_gelu_dropout(input_tensor, self.weight, self.bias, self.act_gelu, 0.0)
+                    output, bias_out, dropout_mask = torch.ops.FasterTransformer.Linear_forward_gelu_dropout(
+                        input_tensor, self.weight, self.bias, self.act_gelu, 0.0)
                 else:
                     output = torch.ops.FasterTransformer.Linear_forward(input_tensor, self.weight, self.bias, residual)
                 return output
@@ -105,7 +120,9 @@ try:
         def extra_repr(self):
             return 'in_features={}, out_features={}'.format(self.in_features, self.out_features)
 
+
     FTLinear = FasterLinear
+
 
     class FasterLinearWeightTransposed(nn.Module):
         def __init__(self, in_features, out_features, initializer_range=0.02, act_gelu=False, dropout_rate=0.0):
@@ -123,16 +140,20 @@ try:
         def forward(self, input_tensor, residual=None):
             weight_normal = self.weight.transpose(1, 0).contiguous()
             if self.training:
-                return LinearFunction.apply(input_tensor, residual, weight_normal, self.bias, self.act_gelu, self.dropout_rate)
+                return LinearFunction.apply(input_tensor, residual, weight_normal, self.bias, self.act_gelu,
+                                            self.dropout_rate)
             else:
                 if self.act_gelu:
-                    output, bias_out, dropout_mask = torch.ops.FasterTransformer.Linear_forward_gelu_dropout(input_tensor, weight_normal, self.bias, self.act_gelu, 0.0)
+                    output, bias_out, dropout_mask = torch.ops.FasterTransformer.Linear_forward_gelu_dropout(
+                        input_tensor, weight_normal, self.bias, self.act_gelu, 0.0)
                 else:
-                    output = torch.ops.FasterTransformer.Linear_forward(input_tensor, weight_normal, self.bias, residual)
+                    output = torch.ops.FasterTransformer.Linear_forward(input_tensor, weight_normal, self.bias,
+                                                                        residual)
                 return output
 
         def extra_repr(self):
             return 'in_features={}, out_features={}'.format(self.in_features, self.out_features)
+
 
     FTLinearWeightTransposed = FasterLinearWeightTransposed
 
@@ -140,7 +161,8 @@ try:
     class LinearTransposeFunction(autograd.Function):
         @staticmethod
         def forward(ctx, input_tensor, weight, bias, head_num, transpose_type):
-            output = torch.ops.FasterTransformer.LinearTranspose_forward(input_tensor, weight, bias, head_num, transpose_type)
+            output = torch.ops.FasterTransformer.LinearTranspose_forward(input_tensor, weight, bias, head_num,
+                                                                         transpose_type)
             ctx.head_num = head_num
             ctx.transpose_type = transpose_type
             ctx.save_for_backward(input_tensor, weight)
@@ -149,8 +171,12 @@ try:
         @staticmethod
         def backward(ctx, grad_out):
             input_tensor, weight = ctx.saved_tensors
-            grad_in, grad_weight, grad_bias = torch.ops.FasterTransformer.LinearTranspose_backward(grad_out, input_tensor, weight, ctx.head_num, ctx.transpose_type)
+            grad_in, grad_weight, grad_bias = torch.ops.FasterTransformer.LinearTranspose_backward(grad_out,
+                                                                                                   input_tensor, weight,
+                                                                                                   ctx.head_num,
+                                                                                                   ctx.transpose_type)
             return grad_in, grad_weight, grad_bias, None, None
+
 
     class FasterLinearTranspose(nn.Module):
         def __init__(self, in_features, out_features, head_num, transpose_type="0213", initializer_range=0.02):
@@ -166,17 +192,24 @@ try:
             self.bias.data.zero_()
 
         def forward(self, input_tensor):
-            return LinearTransposeFunction.apply(input_tensor, self.weight, self.bias, self.head_num, self.transpose_type)
+            return LinearTransposeFunction.apply(input_tensor, self.weight, self.bias, self.head_num,
+                                                 self.transpose_type)
 
         def extra_repr(self):
-            return 'in_features={}, out_features={}, head_num={}'.format(self.in_features, self.out_features, self.head_num)
+            return 'in_features={}, out_features={}, head_num={}'.format(self.in_features, self.out_features,
+                                                                         self.head_num)
+
 
     FTLinearTranspose = FasterLinearTranspose
+
 
     class LinearSplitTransposeFunction(autograd.Function):
         @staticmethod
         def forward(ctx, input_tensor, weight, bias, head_num, transpose_type):
-            q_output, k_output, v_output = torch.ops.FasterTransformer.LinearSplitTranspose_forward(input_tensor, weight, bias, head_num, transpose_type)
+            q_output, k_output, v_output = torch.ops.FasterTransformer.LinearSplitTranspose_forward(input_tensor,
+                                                                                                    weight, bias,
+                                                                                                    head_num,
+                                                                                                    transpose_type)
             ctx.head_num = head_num
             ctx.transpose_type = transpose_type
             ctx.save_for_backward(input_tensor, weight)
@@ -185,11 +218,18 @@ try:
         @staticmethod
         def backward(ctx, q_grad_out, k_grad_out, v_grad_out):
             input_tensor, weight = ctx.saved_tensors
-            grad_in, grad_weight, grad_bias = torch.ops.FasterTransformer.LinearSplitTranspose_backward(q_grad_out, k_grad_out, v_grad_out, input_tensor, weight, ctx.head_num, ctx.transpose_type)
+            grad_in, grad_weight, grad_bias = torch.ops.FasterTransformer.LinearSplitTranspose_backward(q_grad_out,
+                                                                                                        k_grad_out,
+                                                                                                        v_grad_out,
+                                                                                                        input_tensor,
+                                                                                                        weight,
+                                                                                                        ctx.head_num,
+                                                                                                        ctx.transpose_type)
             return grad_in, grad_weight, grad_bias, None, None
 
+
     class FasterLinearSplitTranspose(nn.Module):
-        def __init__(self, in_features, out_features, head_num, transpose_type = "0213"):
+        def __init__(self, in_features, out_features, head_num, transpose_type="0213"):
             super(FasterLinearSplitTranspose, self).__init__()
 
             self.in_features = in_features
@@ -197,15 +237,18 @@ try:
             self.head_num = head_num
             self.transpose_type = transpose_type
             self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
-            self.bias   = nn.Parameter(torch.Tensor(out_features))
+            self.bias = nn.Parameter(torch.Tensor(out_features))
             torch.nn.init.normal_(self.weight, mean=0, std=1)
-            torch.nn.init.normal_(self.bias,   mean=0, std=1)
+            torch.nn.init.normal_(self.bias, mean=0, std=1)
 
         def forward(self, input_tensor):
-            return LinearSplitTransposeFunction.apply(input_tensor, self.weight, self.bias, self.head_num, self.transpose_type)
+            return LinearSplitTransposeFunction.apply(input_tensor, self.weight, self.bias, self.head_num,
+                                                      self.transpose_type)
 
         def extra_repr(self):
-            return 'in_features={}, out_features={}, head_num={}'.format(self.in_features, self.out_features, self.head_num)
+            return 'in_features={}, out_features={}, head_num={}'.format(self.in_features, self.out_features,
+                                                                         self.head_num)
+
 
     class TorchGatherFunction(autograd.Function):
         @staticmethod
@@ -216,8 +259,10 @@ try:
 
         @staticmethod
         def backward(ctx, grad_out):
-            c2p_tensor_grad, p2c_tensor_grad, score_tensor_grad = torch.ops.FasterTransformer.TorchGather_backward(grad_out, ctx.score_scaler)
+            c2p_tensor_grad, p2c_tensor_grad, score_tensor_grad = torch.ops.FasterTransformer.TorchGather_backward(
+                grad_out, ctx.score_scaler)
             return c2p_tensor_grad, p2c_tensor_grad, score_tensor_grad, None
+
 
     class FasterTorchGather(nn.Module):
         def __init__(self, score_scaler):
@@ -229,6 +274,7 @@ try:
 
         def extra_repr(self):
             return 'score_scaler={}'.format(self.score_scaler)
+
 
     class FTDAGather(nn.Module):
         def __init__(self, score_scaler):
@@ -242,9 +288,10 @@ try:
         def extra_repr(self):
             return 'score_scaler={}'.format(self.score_scaler)
 
+
     class SoftmaxFunction(autograd.Function):
         @staticmethod
-        def forward(ctx, input_tensor, mask_tensor, head_num = 1, dropout_rate = 0.0, batch_first = True):
+        def forward(ctx, input_tensor, mask_tensor, head_num=1, dropout_rate=0.0, batch_first=True):
             mask_tensor = mask_tensor.to(input_tensor.dtype)
             softmax_out, softmax_dropout_out, dropout_mask = torch.ops.FasterTransformer.Softmax_forward(
                 input_tensor, mask_tensor, head_num, dropout_rate, batch_first)
@@ -259,15 +306,20 @@ try:
                 grad_out, softmax_out, dropout_mask, ctx.dropout_rate)
             return grad_in, None, None, None, None
 
-    def faster_softmax(input_tensor, mask_tensor = None, head_num = 1, dropout_rate = 0.0, batch_first = True):
+
+    def faster_softmax(input_tensor, mask_tensor=None, head_num=1, dropout_rate=0.0, batch_first=True):
         if torch.jit.is_tracing():
-            return torch.ops.FasterTransformer.Softmax_infer(input_tensor, mask_tensor, head_num, dropout_rate, batch_first)
+            return torch.ops.FasterTransformer.Softmax_infer(input_tensor, mask_tensor, head_num, dropout_rate,
+                                                             batch_first)
         else:
             return SoftmaxFunction.apply(input_tensor, mask_tensor, head_num, dropout_rate, batch_first)
 
+
     class FTSoftmax(nn.Module):
         def forward(self, input_tensor, mask_tensor, head_num, dropout_rate, batch_first):
-            return SoftmaxFunction.apply(input_tensor, mask_tensor, head_num, dropout_rate if self.training else 0, batch_first)
+            return SoftmaxFunction.apply(input_tensor, mask_tensor, head_num, dropout_rate if self.training else 0,
+                                         batch_first)
+
 
     class TransposeFunction(autograd.Function):
         @staticmethod
@@ -282,13 +334,14 @@ try:
             return grad_in, None
 
 
-    def faster_transpose(input_tensor, transpose_type = "0213"):
+    def faster_transpose(input_tensor, transpose_type="0213"):
         return TransposeFunction.apply(input_tensor, transpose_type)
+
 
     def FTTransposeV1(transpose_type="0213"):
         default_transpose_type = transpose_type
 
-        def faster_transpose(input_tensor, transpose_type = default_transpose_type):
+        def faster_transpose(input_tensor, transpose_type=default_transpose_type):
             return TransposeFunction.apply(input_tensor, transpose_type)
 
         return faster_transpose
@@ -296,7 +349,7 @@ try:
 
     class MatMulFunction(autograd.Function):
         @staticmethod
-        def forward(ctx, input_A, input_B, transpose_a = False, transpose_b = False, scale = 1.0):
+        def forward(ctx, input_A, input_B, transpose_a=False, transpose_b=False, scale=1.0):
             matmul_out = torch.ops.FasterTransformer.MatMul_forward(
                 input_A, input_B, transpose_a, transpose_b, scale)
             ctx.transpose_a = transpose_a
@@ -312,12 +365,14 @@ try:
                 grad_out, input_A, input_B, ctx.transpose_a, ctx.transpose_b, ctx.scale)
             return grad_A, grad_B, None, None, None
 
-    def faster_matmul(input_A, input_B, transpose_a = False, transpose_b = False, scale = 1.0):
+
+    def faster_matmul(input_A, input_B, transpose_a=False, transpose_b=False, scale=1.0):
         input_B = input_B.to(input_A.dtype)
         if torch.jit.is_tracing():
             return torch.ops.FasterTransformer.MatMul_forward(input_A, input_B, transpose_a, transpose_b, scale)
         else:
             return MatMulFunction.apply(input_A, input_B, transpose_a, transpose_b, scale)
+
 
     FTMatMul = lambda: faster_matmul
 
@@ -333,17 +388,18 @@ try:
             grad_Q, grad_K = RotaryEmbedding.backward(grad_out_Q, grad_out_K)
             return grad_Q, grad_K
 
+
     def faster_rotary_embedding(input_Q, input_K):
         return RotaryEmbeddingFunction.apply(input_Q, input_K)
 
 
     def faster_attention_infer(input_list, mask=None, head_num=1):
         input_len = len(input_list)
-        if input_len == 3:  #input_q, input_k, input_v
+        if input_len == 3:  # input_q, input_k, input_v
             return torch.ops.FasterTransformer.FuseAttention_infer(*input_list, mask, head_num)
-        elif input_len == 2:#input_q, input_kv
+        elif input_len == 2:  # input_q, input_kv
             return torch.ops.FasterTransformer.FuseAttention_infer_q_kv(*input_list, mask, head_num)
-        elif input_len == 1:#input_qkv
+        elif input_len == 1:  # input_qkv
             return torch.ops.FasterTransformer.FuseAttention_infer_qkv(*input_list, mask, head_num)
         else:
             print("Wrong input list")
@@ -351,10 +407,11 @@ try:
 
     class GatedLinearUnitFunction(autograd.Function):
         @staticmethod
-        def forward(ctx, input_tensor, weight, bias, dropout_rate = 0.0):
+        def forward(ctx, input_tensor, weight, bias, dropout_rate=0.0):
             bias_out = torch.Tensor(0)
             dropout_mask = torch.Tensor(0)
-            output, bias_out, dropout_mask = torch.ops.FasterTransformer.GatedLinearUnit_forward(input_tensor, weight, bias, dropout_rate)
+            output, bias_out, dropout_mask = torch.ops.FasterTransformer.GatedLinearUnit_forward(input_tensor, weight,
+                                                                                                 bias, dropout_rate)
             ctx.save_for_backward(input_tensor, weight, bias_out, dropout_mask)
             ctx.dropout_rate = dropout_rate
             return output
@@ -368,32 +425,35 @@ try:
 
 
     class FasterGatedLinearUnit(nn.Module):
-        def __init__(self, in_features, out_features, dropout_rate = 0.0):
+        def __init__(self, in_features, out_features, dropout_rate=0.0):
             super(FasterGatedLinearUnit, self).__init__()
 
             self.in_features = in_features
             self.out_features = out_features
             self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
-            self.bias   = nn.Parameter(torch.Tensor(out_features))
+            self.bias = nn.Parameter(torch.Tensor(out_features))
             torch.nn.init.normal_(self.weight, mean=0, std=1)
-            torch.nn.init.normal_(self.bias,   mean=0, std=1)
+            torch.nn.init.normal_(self.bias, mean=0, std=1)
             self.dropout_rate = dropout_rate
 
         def forward(self, input_tensor):
             if self.training:
                 return GatedLinearUnitFunction.apply(input_tensor, self.weight, self.bias, self.dropout_rate)
             else:
-                output, bias_out, dropout_mask = torch.ops.FasterTransformer.GatedLinearUnit_forward(input_tensor, self.weight, self.bias, self.dropout_rate)
+                output, bias_out, dropout_mask = torch.ops.FasterTransformer.GatedLinearUnit_forward(input_tensor,
+                                                                                                     self.weight,
+                                                                                                     self.bias,
+                                                                                                     self.dropout_rate)
                 return output
 
         def extra_repr(self):
             return 'in_features={}, out_features={}'.format(self.in_features, self.out_features)
 
+
     class FuseAttentionFunction(autograd.Function):
         @staticmethod
         def forward(
-            ctx, input_Q, input_K, input_V, softmax_mask, head_num, dropout_rate = 0.0):
-
+                ctx, input_Q, input_K, input_V, softmax_mask, head_num, dropout_rate=0.0):
             attention_out, softmax_out, dropout_mask, softmax_dropout_out = torch.ops.FasterTransformer.FuseAttention_forward(
                 input_Q, input_K, input_V, softmax_mask, head_num, dropout_rate)
 
@@ -407,12 +467,14 @@ try:
         def backward(ctx, grad_out):
             input_Q, input_K, input_V, softmax_out, dropout_mask, softmax_dropout_out = ctx.saved_tensors
             grad_Q, grad_K, grad_V = torch.ops.FasterTransformer.FuseAttention_backward(
-                grad_out, softmax_out, input_Q, input_K, input_V, ctx.head_num, ctx.dropout_rate, dropout_mask, softmax_dropout_out)
+                grad_out, softmax_out, input_Q, input_K, input_V, ctx.head_num, ctx.dropout_rate, dropout_mask,
+                softmax_dropout_out)
 
             return grad_Q, grad_K, grad_V, None, None, None
 
+
     class FasterFuseAttention(nn.Module):
-        def __init__(self, head_num, dropout_rate = 0.0):
+        def __init__(self, head_num, dropout_rate=0.0):
             super(FasterFuseAttention, self).__init__()
             self.head_num = head_num
             self.dropout_rate = dropout_rate
@@ -420,6 +482,7 @@ try:
         def forward(self, input_Q, input_K, input_V, softmax_mask):
             return FuseAttentionFunction.apply(
                 input_Q, input_K, input_V, softmax_mask, self.head_num, self.dropout_rate)
+
 
     FTFusedAttention = FasterFuseAttention
 
@@ -441,8 +504,10 @@ try:
         S_dmask = rest[0] if return_softmax else None
         return out, softmax_lse, S_dmask
 
+
     def _flash_attn_backward(dout, q, k, v, out, softmax_lse, dq, dk, dv, cu_seqlens_q, cu_seqlens_k,
-                             max_seqlen_q, max_seqlen_k, dropout_p, attn_mask, attn_bias, softmax_scale, causal, num_splits=0,
+                             max_seqlen_q, max_seqlen_k, dropout_p, attn_mask, attn_bias, softmax_scale, causal,
+                             num_splits=0,
                              generator=None):
         """
         num_splits: how much to parallelize over the seqlen_q dimension. num_splits=0 means
@@ -452,11 +517,13 @@ try:
         """
         softmax_d, *rest = torch.ops.Extern.FlashAttn_backward(
             dout, q, k, v, out, softmax_lse, dq, dk, dv, cu_seqlens_q, cu_seqlens_k,
-            max_seqlen_q, max_seqlen_k, dropout_p, softmax_scale, False, causal, num_splits, generator, attn_mask, attn_bias)
+            max_seqlen_q, max_seqlen_k, dropout_p, softmax_scale, False, causal, num_splits, generator, attn_mask,
+            attn_bias)
         # if dk.isnan().any() or dk.isnan().any() or dv.isnan().any() or softmax_d.isnan().any():
         #     breakpoint()
         dbias = None if attn_bias is None else rest[0]
         return dq, dk, dv, softmax_d, dbias
+
 
     class FlashAttnFunc(torch.autograd.Function):
 
@@ -471,7 +538,8 @@ try:
                 q, k, v, torch.empty_like(q), cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k,
                 dropout_p, attn_mask, attn_bias, softmax_scale, causal=causal, return_softmax=return_softmax
             )
-            ctx.save_for_backward(q, k, v, out, softmax_lse, cu_seqlens_q, cu_seqlens_k, rng_state, attn_mask, attn_bias)
+            ctx.save_for_backward(q, k, v, out, softmax_lse, cu_seqlens_q, cu_seqlens_k, rng_state, attn_mask,
+                                  attn_bias)
             ctx.dropout_p = dropout_p
             ctx.max_seqlen_q = max_seqlen_q
             ctx.max_seqlen_k = max_seqlen_k
@@ -481,7 +549,7 @@ try:
 
         @staticmethod
         def backward(ctx, dout, *args):
-            q, k, v, out, softmax_lse, cu_seqlens_q, cu_seqlens_k, rng_state, attn_mask, attn_bias= ctx.saved_tensors
+            q, k, v, out, softmax_lse, cu_seqlens_q, cu_seqlens_k, rng_state, attn_mask, attn_bias = ctx.saved_tensors
             if rng_state is not None:
                 cur_rng_state = torch.cuda.get_rng_state()
                 torch.cuda.set_rng_state(rng_state)
@@ -494,8 +562,10 @@ try:
                 torch.cuda.set_rng_state(cur_rng_state)
             return dq, dk, dv, None, None, None, None, None, None, dbias, None, None, None
 
+
     def flash_attn_unpadded_func(q, k, v, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k,
-                                 dropout_p, attn_mask = None, attn_bias = None, softmax_scale=None, causal=False, return_attn_probs=False):
+                                 dropout_p, attn_mask=None, attn_bias=None, softmax_scale=None, causal=False,
+                                 return_attn_probs=False):
         if torch.jit.is_tracing():
             if softmax_scale is None:
                 softmax_scale = q.shape[-1] ** (-0.5)
@@ -505,19 +575,21 @@ try:
             return out
         else:
             return FlashAttnFunc.apply(q, k, v, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k,
-                                    dropout_p, attn_mask, attn_bias, softmax_scale, causal, return_attn_probs)
+                                       dropout_p, attn_mask, attn_bias, softmax_scale, causal, return_attn_probs)
+
 
     def get_seq_len(attention_mask):
         return torch.ops.FasterTransformer.RemovePadding_get_seq_len(attention_mask)
 
-    def faster_flash_attention(input_list, head_num, attn_mask = None, attn_bias = None, causal = False,
-        cu_seqlens_q = None, cu_seqlens_k = None, max_seqlens_q = None, max_seqlens_k = None,
-        softmax_scale = None, attention_dropout = 0.0, word_idx=None, use_rmpad_attn=False):
+
+    def faster_flash_attention(input_list, head_num, attn_mask=None, attn_bias=None, causal=False,
+                               cu_seqlens_q=None, cu_seqlens_k=None, max_seqlens_q=None, max_seqlens_k=None,
+                               softmax_scale=None, attention_dropout=0.0, word_idx=None, use_rmpad_attn=False):
         input_count = len(input_list)
         assert input_count == 3
         if input_count == 3:
             q, k, v = input_list
-            
+
             if not use_rmpad_attn:
                 batch, seqlen, _ = q.shape
 
@@ -540,24 +612,26 @@ try:
 
             if causal == False:
                 output = flash_attn_unpadded_func(q, k, v,
-                            cu_seqlens_q, cu_seqlens_k, max_seqlens_q, max_seqlens_k,
-                            attention_dropout, attn_mask, attn_bias, softmax_scale, causal, False)
+                                                  cu_seqlens_q, cu_seqlens_k, max_seqlens_q, max_seqlens_k,
+                                                  attention_dropout, attn_mask, attn_bias, softmax_scale, causal, False)
             else:
                 if use_rmpad_attn:
                     output = flash_attn_unpadded_func(q, k, v,
-                        cu_seqlens_q, cu_seqlens_k , max_seqlens_q, max_seqlens_k,
-                        attention_dropout, None, None, None, causal, False)
+                                                      cu_seqlens_q, cu_seqlens_k, max_seqlens_q, max_seqlens_k,
+                                                      attention_dropout, None, None, None, causal, False)
                 else:
                     output = flash_attn_unpadded_func(q, k, v,
-                        None, None, max_seqlens_q, max_seqlens_k,
-                        attention_dropout, None, None, None, causal, False)
+                                                      None, None, max_seqlens_q, max_seqlens_k,
+                                                      attention_dropout, None, None, None, causal, False)
         if use_rmpad_attn:
-            output = output.contiguous().view(output.shape[0], output.shape[1]*output.shape[2])
+            output = output.contiguous().view(output.shape[0], output.shape[1] * output.shape[2])
         else:
             output = output.view(batch, seqlen, -1)
         return output
 
+
     FTFlashAttention = lambda: faster_flash_attention
+
 
     class IndexFirstAxis(torch.autograd.Function):
 
@@ -579,7 +653,7 @@ try:
             other_shape = grad_output.shape[1:]
             grad_output = rearrange(grad_output, 'b ... -> b (...)')
             grad_input = torch.zeros([ctx.first_axis_dim, grad_output.shape[1]],
-                                    device=grad_output.device, dtype=grad_output.dtype)
+                                     device=grad_output.device, dtype=grad_output.dtype)
             # TD [2022-03-04] For some reason torch.scatter is a bit faster than indexing.
             # grad_input[indices] = grad_output
             grad_input.scatter_(0, repeat(indices, 'z -> z d', d=grad_output.shape[1]), grad_output)
@@ -597,7 +671,7 @@ try:
             assert indices.ndim == 1
             assert values.ndim >= 2
             output = torch.zeros(first_axis_dim, *values.shape[1:], device=values.device,
-                                dtype=values.dtype)
+                                 dtype=values.dtype)
             # TD [2022-03-04] For some reason torch.scatter is a bit faster than indexing.
             output[indices] = values
             # output.scatter_(0, repeat(indices, 'z -> z d', d=values.shape[1]), values)

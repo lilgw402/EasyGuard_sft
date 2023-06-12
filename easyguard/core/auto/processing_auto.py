@@ -202,9 +202,9 @@ class AutoProcessor:
                 AutoHubClass.kwargs = extra_dict
 
                 processor_config = file_read(processor_config_path)
-
+                processor_config.update(kwargs)
                 processor = processor_class(
-                    **processor_config, **processor_dict, **extra_dict, **kwargs
+                    **processor_config, **processor_dict, **extra_dict
                 )
         """ >> processor post processing <<"""
 

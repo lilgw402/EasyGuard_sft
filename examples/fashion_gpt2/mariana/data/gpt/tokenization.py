@@ -299,9 +299,6 @@ class Libcut(BaseCaster):
     return batched_output
 
 class SentencePieceBPE(BaseCaster):
-  """Break words into subwords."""
-  """example: hdfs://haruna/home/byte_data_aml_research/user/qian.xian/tokenizer/sentencepiece_caster"""
-  """         vocab size: 362918 """
 
   def __init__(self,
                vocab,
