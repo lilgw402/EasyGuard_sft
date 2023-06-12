@@ -69,6 +69,7 @@ models:
       config: FashionxlmMoEConfig
     modeling_fashionxlm_moe:
       model: FashionxlmMoEForMaskedLMMoE
+      soft_model: FashionxlmSoftMoEForMaskedLMMoE
       sequence_model: FashionxlmMoEForSequencelCassificationMoE
     tokenization_fashionxlm_moe:
       tokenizer: FashionxlmMoETokenizer
