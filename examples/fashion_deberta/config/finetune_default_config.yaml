@@ -50,8 +50,8 @@ data:
   val_batch_size: 32
   train_paths: hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/benchmark/asr_risk_predict/train/*.jsonl
   val_paths: hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/benchmark/asr_risk_predict/valid/*.jsonl
-  data_size: 10000
-  val_step: 100
+  data_size: -1
+  val_step: 0
   text_label_field: label
   text_field: text
   num_workers: 1
