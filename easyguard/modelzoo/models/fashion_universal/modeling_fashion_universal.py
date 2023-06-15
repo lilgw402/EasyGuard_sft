@@ -32,7 +32,7 @@ class FashionUniversalModel(ModelBase):
             nn.BatchNorm1d(embedding_size, eps=2e-5))
 
         trunc_normal_(self.pos_embed, std=0.02)
-        self.apply(self._init_weights)
+        # self.apply(self._init_weights)
         self.extra_gflops = 0.0
         for _block in self.blocks:
             self.extra_gflops += _block.extra_gflops
@@ -85,17 +85,17 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim)
 
     def forward(self, x):
-        with torch.cuda.amp.autocast(True):
-            B, L, D = x.shape
-            qkv = self.qkv(x).reshape(B, L, 3, self.num_heads,
-                                      D // self.num_heads).permute(2, 0, 3, 1, 4)
-        with torch.cuda.amp.autocast(False):
-            q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()
-            attn = (q @ k.transpose(-2, -1)) * self.scale
-            attn = attn.softmax(dim=-1)
-            x = (attn @ v).transpose(1, 2).reshape(B, L, D)
-        with torch.cuda.amp.autocast(True):
-            x = self.proj(x)
+        # with torch.cuda.amp.autocast(True):
+        B, L, D = x.shape
+        qkv = self.qkv(x).reshape(B, L, 3, self.num_heads,
+                                  D // self.num_heads).permute(2, 0, 3, 1, 4)
+        #with torch.cuda.amp.autocast(False):
+        q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = attn.softmax(dim=-1)
+        x = (attn @ v).transpose(1, 2).reshape(B, L, D)
+        # with torch.cuda.amp.autocast(True):
+        x = self.proj(x)
         return x
 
 
@@ -114,16 +114,19 @@ class Block(nn.Module):
         self.extra_gflops = (num_heads * patch_n * (dim // num_heads) * patch_n * 2) / (1000**3)
 
     def forward_impl(self, x):
-        with torch.cuda.amp.autocast(True):
-            x = x + self.drop_path(self.attn(self.norm1(x)))
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
+        # with torch.cuda.amp.autocast(True):
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
+    # def forward(self, x):
+    #     if self.using_checkpoint:
+    #         return checkpoint(self.forward_impl, x)
+    #     else:
+    #         return self.forward_impl(x)
+    
     def forward(self, x):
-        if self.using_checkpoint:
-            return checkpoint(self.forward_impl, x)
-        else:
-            return self.forward_impl(x)
+        return self.forward_impl(x)
 
 
 class PatchEmbedding(nn.Module):
