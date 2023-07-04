@@ -1,3 +1,11 @@
-from .simple_metrics import ClsMetric,AUC,MSE,MAE,RMSE,MeanPrecisionRecall,MPR
+from .simple_metrics import AUC, MAE, MPR, MSE, RMSE, ClsMetric, MeanPrecisionRecall
 
-__all__ =  ['ClsMetric','AUC','MSE','MAE','RMSE','MeanPrecisionRecall','MPR']
+__all__ = [
+    "ClsMetric",
+    "AUC",
+    "MSE",
+    "MAE",
+    "RMSE",
+    "MeanPrecisionRecall",
+    "MPR",
+]

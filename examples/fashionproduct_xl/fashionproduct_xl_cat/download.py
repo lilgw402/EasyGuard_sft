@@ -1,5 +1,5 @@
-import io
 import base64
+import io
 import urllib
 from urllib import request
 
@@ -8,17 +8,17 @@ from PIL import Image
 
 def get_real_url(url):
     url = url.strip()
-    real_url = f'https://p16-oec-va.ibyteimg.com/{url}~512x512.jpg'
+    real_url = f"https://p16-oec-va.ibyteimg.com/{url}~512x512.jpg"
 
     return real_url
 
 
 def get_original_url(uri):
     uri = uri.strip()
-    if uri.startswith('/obj/'):
-        original_url = f'https://p16-ecomcdn-va.ibyteimg.com{uri}'
+    if uri.startswith("/obj/"):
+        original_url = f"https://p16-ecomcdn-va.ibyteimg.com{uri}"
     else:
-        original_url = f'https://p16-oec-va.ibyteimg.com/{uri}~tplv-o3syd03w52-origin-jpeg.jpeg'
+        original_url = f"https://p16-oec-va.ibyteimg.com/{uri}~tplv-o3syd03w52-origin-jpeg.jpeg"
 
     return original_url
 
@@ -28,37 +28,37 @@ def download_url_with_exception(url: str, timeout=2):
         req = urllib.request.urlopen(url=url, timeout=timeout)
         return req.read()
     except:
-        return b''
+        return b""
 
 
-def download_image_to_base64(url: str, timeout=2, rt='str'):
+def download_image_to_base64(url: str, timeout=2, rt="str"):
     # bytes
-    if rt == 'bytes':
+    if rt == "bytes":
         try:
             req = urllib.request.urlopen(url=url, timeout=timeout)
             return base64.b64encode(req.read())
         except:
-            return b''
+            return b""
 
-    elif rt == 'str':
+    elif rt == "str":
         try:
             req = urllib.request.urlopen(url=url, timeout=timeout)
-            return base64.b64encode(req.read()).decode('utf-8')
+            return base64.b64encode(req.read()).decode("utf-8")
         except:
-            return ''
+            return ""
 
     else:
-        raise Exception(f'only support str and bytes')
+        raise Exception(f"only support str and bytes")
 
 
 def get_single_image_from_urls(urls: list, load=False):
     # return image before transform
     try:
-        image_str = b''
+        image_str = b""
         for url in urls:
             url = get_real_url(url)
             image_str = download_url_with_exception(url, timeout=3)
-            if image_str != b'' and image_str != '':
+            if image_str != b"" and image_str != "":
                 break
             else:
                 print(f"Empty image: {url}")
@@ -110,9 +110,10 @@ def get_single_image_from_urls(urls: list, load=False):
 #     return url
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     s = download_url_with_exception(
-        'https://p16-oec-va.ibyteimg.com/tos-useast2a-i-hyqnpo4tzp-aiso/74d7e36be674463eb3202872e343198d~800x800.jpg')
+        "https://p16-oec-va.ibyteimg.com/tos-useast2a-i-hyqnpo4tzp-aiso/74d7e36be674463eb3202872e343198d~800x800.jpg"
+    )
     image = Image.open(io.BytesIO(s)).convert("RGB")
     # print(image)
     from torchvision_dataset import get_transform

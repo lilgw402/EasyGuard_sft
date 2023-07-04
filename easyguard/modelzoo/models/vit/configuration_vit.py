@@ -14,11 +14,6 @@
 # limitations under the License.
 """ ViT model configuration"""
 
-from collections import OrderedDict
-from typing import Mapping
-
-from packaging import version
-
 from transformers.configuration_utils import PretrainedConfig
 
 from ....utils import logging

@@ -4,12 +4,7 @@ from typing import Any, Callable, List, Optional, Union
 from PIL import Image
 from torchvision.transforms import transforms
 
-from ...processor_utils import (
-    CENTER_IMAGE,
-    RESIZE_IMAGE,
-    ImageInput,
-    ProcessorImageBase,
-)
+from ...processor_utils import CENTER_IMAGE, RESIZE_IMAGE, ImageInput, ProcessorImageBase
 
 
 @dataclass
@@ -72,10 +67,8 @@ class FalBertImageProcessor(ProcessorImageBase):
         def _convert(image_url):
             try:
                 image_ = Image.open(image_url).convert("RGB")
-            except:
-                image_ = Image.new(
-                    "RGB", (self.size, self.size), (255, 255, 255)
-                )
+            except:  # noqa: E722
+                image_ = Image.new("RGB", (self.size, self.size), (255, 255, 255))
 
             return self.transform(image_)
 

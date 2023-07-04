@@ -1,13 +1,9 @@
+# type: ignore
 import os
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
-from .. import (
-    EASYGUARD_CACHE,
-    EASYGUARD_MODEL_CACHE,
-    REMOTE_PATH_SEP,
-    __version__,
-)
+from .. import EASYGUARD_CACHE, EASYGUARD_MODEL_CACHE, REMOTE_PATH_SEP, __version__
 
 # utils 里面的包只能相互引用，不能从.来拿, 单一功能的subclass尽量少去调用功能复杂的subclass，避免形成循环引用
 WEIGHTS_NAME = "pytorch_model.bin"
@@ -32,9 +28,7 @@ TOS_HTTP_VA = TOS_HTTP_VA.strip("\u200b")
 TOS_HTTP_CN = r"http://tosv.byted.org/obj/ecom-govern-easyguard-zh"
 AK_CN = "SHZ0CK8T8963R1AVC3WT"  # dangerous ak
 ENDPOINT_CN = "tos-cn-north.byted.org"
-SERVER_MAPPING = OrderedDict(
-    [["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]]
-)
+SERVER_MAPPING = OrderedDict([["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]])
 REGION_MAPPING = OrderedDict([["CN", 0], ["VA", 1]])
 _import_structure = {
     "yaml_utils": [
@@ -264,18 +258,7 @@ if TYPE_CHECKING:
         transpose,
         working_or_temp_dir,
     )
-    from .hdfs_utils import (
-        hcopy,
-        hcountline,
-        hexists,
-        hglob,
-        hisdir,
-        hlist_files,
-        hmget,
-        hmkdir,
-        hopen,
-        hrm,
-    )
+    from .hdfs_utils import hcopy, hcountline, hexists, hglob, hisdir, hlist_files, hmget, hmkdir, hopen, hrm
     from .hub import (
         CLOUDFRONT_DISTRIB_PREFIX,
         DISABLE_TELEMETRY,
@@ -389,9 +372,9 @@ if TYPE_CHECKING:
         torch_required,
         torch_version,
     )
-    from .type_utils import typecheck
-    from .yaml_utils import *
     from .tos_utils import TOS
+    from .type_utils import typecheck
+    from .yaml_utils import *  # noqa: F403
 else:
     import sys
 
@@ -403,5 +386,8 @@ else:
             _import_structure[key_] = value_
 
     sys.modules[__name__] = _LazyPackage(
-        __name__, globals()["__file__"], _import_structure, module_spec=__spec__
+        __name__,
+        globals()["__file__"],
+        _import_structure,
+        module_spec=__spec__,
     )

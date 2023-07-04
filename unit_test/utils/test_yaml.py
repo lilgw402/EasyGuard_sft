@@ -6,11 +6,8 @@ TEST_FLAGS = ["all"]
 
 
 class TestYaml(unittest.TestCase):
-    @unittest.skipUnless(
-        "all" in TEST_FLAGS or "json2yaml" in TEST_FLAGS, "just do it"
-    )
+    @unittest.skipUnless("all" in TEST_FLAGS or "json2yaml" in TEST_FLAGS, "just do it")
     def test_json2yaml(self):
-        from easyguard.modelzoo import MODEL_CONFIG_PATH
         from easyguard.utils.yaml_utils import YamlConfig, json2yaml
 
         class ModelZooYaml(YamlConfig):

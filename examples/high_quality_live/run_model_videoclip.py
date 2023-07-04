@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
-
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import random
 
@@ -14,9 +7,7 @@ import torch
 from cruise import CruiseCLI, CruiseTrainer
 
 from easyguard.appzoo.high_quality_live.data import HighQualityLiveDataModule
-from easyguard.appzoo.high_quality_live.model_videoclip import (
-    HighQualityLiveVideoCLIP,
-)
+from easyguard.appzoo.high_quality_live.model_videoclip import HighQualityLiveVideoCLIP
 
 rand_seed = 42
 
@@ -28,7 +19,7 @@ def setup_seed(seed):
     random.seed(seed)
     try:
         torch.backends.cudnn.deterministic = True
-    except:
+    except:  # noqa: E722
         ...
 
 

@@ -1,5 +1,7 @@
-import torch
 from typing import Optional
+
+import torch
+
 from .base_running_metric import BaseRunningMetric
 
 
@@ -13,9 +15,7 @@ class CategoricalAccMetric(BaseRunningMetric):
 
     def __init__(self, top_k: int = 1, tie_break: bool = False) -> None:
         if top_k > 1 and tie_break:
-            raise Exception(
-                "Tie break in Categorical Accuracy can be done only for maximum (top_k = 1)"
-            )
+            raise Exception("Tie break in Categorical Accuracy can be done only for maximum (top_k = 1)")
         if top_k <= 0:
             raise Exception("top_k passed to Categorical Accuracy must be > 0")
         self._top_k = top_k
@@ -25,10 +25,10 @@ class CategoricalAccMetric(BaseRunningMetric):
         self.local_value = 0.0
 
     def batch_eval(
-            self,
-            predictions: torch.Tensor,
-            gold_labels: torch.Tensor,
-            mask: Optional[torch.Tensor] = None,
+        self,
+        predictions: torch.Tensor,
+        gold_labels: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
     ):
         """
         Args:
@@ -61,8 +61,9 @@ class CategoricalAccMetric(BaseRunningMetric):
             # Top K indexes of the predictions (or fewer, if there aren't K of them).
             # Special case topk == 1, because it's common and .max() is much faster than .topk().
             if self._top_k == 1:
-                top_k = predictions.max(-1)[1].unsqueeze(-1) if predictions_within_classes else predictions.unsqueeze(
-                    -1)
+                top_k = (
+                    predictions.max(-1)[1].unsqueeze(-1) if predictions_within_classes else predictions.unsqueeze(-1)
+                )
             else:
                 top_k = predictions.topk(min(self._top_k, predictions.shape[-1]), -1)[1]
 
@@ -79,7 +80,8 @@ class CategoricalAccMetric(BaseRunningMetric):
             # ith entry in gold_labels points to index (0-num_classes) for ith row in max_predictions
             # For each row check if index pointed by gold_label is was 1 or not (among max scored classes)
             correct = max_predictions_mask[
-                torch.arange(gold_labels.numel(), device=gold_labels.device).long(), gold_labels
+                torch.arange(gold_labels.numel(), device=gold_labels.device).long(),
+                gold_labels,
             ].float()
             tie_counts = max_predictions_mask.sum(-1)
             correct /= tie_counts.float()

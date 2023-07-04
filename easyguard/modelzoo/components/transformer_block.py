@@ -63,11 +63,7 @@ class Attention(nn.Module):
 
     def forward(self, x):
         B, N, C = x.shape
-        qkv = (
-            self.qkv(x)
-            .reshape(B, N, 3, self.num_heads, C // self.num_heads)
-            .permute(2, 0, 3, 1, 4)
-        )
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
@@ -104,9 +100,7 @@ class TransformerBlock(nn.Module):
             attn_drop=attn_drop,
             proj_drop=drop,
         )
-        self.drop_path = (
-            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
-        )
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(
@@ -127,14 +121,9 @@ def get_sinusoid_encoding(n_position, d_hid):
     """Sinusoid position encoding table"""
 
     def get_position_angle_vec(position):
-        return [
-            position / np.power(10000, 2 * (hid_j // 2) / d_hid)
-            for hid_j in range(d_hid)
-        ]
+        return [position / np.power(10000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]
 
-    sinusoid_table = np.array(
-        [get_position_angle_vec(pos_i) for pos_i in range(n_position)]
-    )
+    sinusoid_table = np.array([get_position_angle_vec(pos_i) for pos_i in range(n_position)])
     sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
     sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
 

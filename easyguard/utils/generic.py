@@ -26,12 +26,7 @@ from typing import Any, ContextManager, List, Tuple
 
 import numpy as np
 
-from .import_utils import (
-    is_flax_available,
-    is_tf_available,
-    is_torch_available,
-    is_torch_fx_proxy,
-)
+from .import_utils import is_flax_available, is_tf_available, is_torch_available, is_torch_fx_proxy
 
 if is_tf_available():
     import tensorflow as tf
@@ -185,9 +180,7 @@ def to_py_obj(obj):
         return obj.detach().cpu().tolist()
     elif is_jax_tensor(obj):
         return np.asarray(obj).tolist()
-    elif isinstance(
-        obj, (np.ndarray, np.number)
-    ):  # tolist also works on 0d np arrays
+    elif isinstance(obj, (np.ndarray, np.number)):  # tolist also works on 0d np arrays
         return obj.tolist()
     else:
         return obj
@@ -232,14 +225,10 @@ class ModelOutput(OrderedDict):
         if not len(class_fields):
             raise ValueError(f"{self.__class__.__name__} has no fields.")
         if not all(field.default is None for field in class_fields[1:]):
-            raise ValueError(
-                f"{self.__class__.__name__} should not have more than one required field."
-            )
+            raise ValueError(f"{self.__class__.__name__} should not have more than one required field.")
 
         first_field = getattr(self, class_fields[0].name)
-        other_fields_are_none = all(
-            getattr(self, field.name) is None for field in class_fields[1:]
-        )
+        other_fields_are_none = all(getattr(self, field.name) is None for field in class_fields[1:])
 
         if other_fields_are_none and not is_tensor(first_field):
             if isinstance(first_field, dict):
@@ -282,24 +271,16 @@ class ModelOutput(OrderedDict):
                     self[field.name] = v
 
     def __delitem__(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``__delitem__`` on a {self.__class__.__name__} instance."
-        )
+        raise Exception(f"You cannot use ``__delitem__`` on a {self.__class__.__name__} instance.")
 
     def setdefault(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``setdefault`` on a {self.__class__.__name__} instance."
-        )
+        raise Exception(f"You cannot use ``setdefault`` on a {self.__class__.__name__} instance.")
 
     def pop(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``pop`` on a {self.__class__.__name__} instance."
-        )
+        raise Exception(f"You cannot use ``pop`` on a {self.__class__.__name__} instance.")
 
     def update(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``update`` on a {self.__class__.__name__} instance."
-        )
+        raise Exception(f"You cannot use ``update`` on a {self.__class__.__name__} instance.")
 
     def __getitem__(self, k):
         if isinstance(k, str):
@@ -417,11 +398,7 @@ def find_labels(model_class):
     else:
         signature = inspect.signature(model_class.forward)
     if "QuestionAnswering" in model_name:
-        return [
-            p
-            for p in signature.parameters
-            if "label" in p or p in ("start_positions", "end_positions")
-        ]
+        return [p for p in signature.parameters if "label" in p or p in ("start_positions", "end_positions")]
     else:
         return [p for p in signature.parameters if "label" in p]
 

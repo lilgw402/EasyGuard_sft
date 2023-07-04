@@ -1,9 +1,7 @@
 def _print_args_cli(args, meta="cli"):
     """Print arguments."""
     print(
-        "------------------------ "
-        + meta
-        + " arguments ------------------------",
+        "------------------------ " + meta + " arguments ------------------------",
         flush=True,
     )
     str_list = []

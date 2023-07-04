@@ -1,29 +1,28 @@
 """ Dataset."""
-import sys
 import os
-import torch
-import numpy as np
 import random
-from PIL import Image
+import sys
 
-from torchvision import transforms
-from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+import numpy as np
+import torch
+from PIL import Image
 from timm.data import create_transform
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from torchvision import transforms
 
 try:
     from torchvision.transforms import InterpolationMode
 
     def _pil_interp(method):
-        if method == 'bicubic':
+        if method == "bicubic":
             return InterpolationMode.BICUBIC
-        elif method == 'lanczos':
+        elif method == "lanczos":
             return InterpolationMode.LANCZOS
-        elif method == 'hamming':
+        elif method == "hamming":
             return InterpolationMode.HAMMING
         else:
             # default bilinear, do we want to allow nearest?
             return InterpolationMode.BILINEAR
-
 
     import timm.data.transforms as timm_transforms
 
@@ -52,50 +51,59 @@ class MyDataModule(CruiseDataModule):
 
     def setup(self):
         # every process will run this after prepare is done
-        self.train_dataset = DataSet(self.hparams.data_path,
-                                     self.hparams.train_split,
-                                     transform=build_transform(mode="train"),
-                                    )
-        self.val_dataset = DataSet(self.hparams.data_path,
-                                   self.hparams.val_split,
-                                   transform=build_transform(mode="val"),
-                                )
+        self.train_dataset = DataSet(
+            self.hparams.data_path,
+            self.hparams.train_split,
+            transform=build_transform(mode="train"),
+        )
+        self.val_dataset = DataSet(
+            self.hparams.data_path,
+            self.hparams.val_split,
+            transform=build_transform(mode="val"),
+        )
 
     def train_dataloader(self):
         sampler_train = torch.utils.data.DistributedSampler(
-            self.train_dataset, num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=True
+            self.train_dataset,
+            num_replicas=int(os.environ.get("WORLD_SIZE") or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            shuffle=True,
         )
         return torch.utils.data.DataLoader(
-                                self.train_dataset,
-                                sampler=sampler_train,
-                                batch_size=self.hparams.train_batch_size,
-                                num_workers=self.hparams.num_workers,
-                                pin_memory=True,
-                                drop_last=True,
-                                )
+            self.train_dataset,
+            sampler=sampler_train,
+            batch_size=self.hparams.train_batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            drop_last=True,
+        )
 
     def val_dataloader(self):
         sampler_val = torch.utils.data.DistributedSampler(
-            self.val_dataset, num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=False
+            self.val_dataset,
+            num_replicas=int(os.environ.get("WORLD_SIZE") or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            shuffle=False,
         )
         return torch.utils.data.DataLoader(
-                                self.val_dataset, 
-                                sampler = sampler_val,
-                                batch_size=self.hparams.val_batch_size,
-                                num_workers=self.hparams.num_workers,
-                                pin_memory=True,
-                                drop_last=False,
-                                )
+            self.val_dataset,
+            sampler=sampler_val,
+            batch_size=self.hparams.val_batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            drop_last=False,
+        )
 
 
 class DataSet(torch.utils.data.Dataset):
     """Common dataset."""
-    def __init__(self, data_path, split, transform = None):
+
+    def __init__(self, data_path, split, transform=None):
         assert os.path.exists(data_path), "Data path '{}' not found".format(data_path)
         self._data_path, self._split = data_path, split
         self.transform = transform
         self._construct_imdb()
-        
+
     def _construct_imdb(self):
         """Constructs the imdb."""
         # Compile the split data path
@@ -117,9 +125,9 @@ class DataSet(torch.utils.data.Dataset):
             # im = Image.open(self._imdb[index]["im_path"])
             random_img = np.random.rand(384, 384, 3) * 255
             im = Image.fromarray(np.uint8(random_img))
-        im = im.convert('RGB')
+        im = im.convert("RGB")
         im = self.transform(im)
-        
+
         label = self._imdb[index]["class"]
         return im, label
 
@@ -135,11 +143,11 @@ def build_transform(mode: str = "train"):
             input_size=224,
             is_training=True,
             color_jitter=0.4,
-            auto_augment='rand-m9-mstd0.5-inc1',
+            auto_augment="rand-m9-mstd0.5-inc1",
             re_prob=0.25,
-            re_mode='pixel',
+            re_mode="pixel",
             re_count=1,
-            interpolation='bicubic',
+            interpolation="bicubic",
         )
         if not resize_im:
             # replace RandomResizedCropAndInterpolation with
@@ -147,11 +155,11 @@ def build_transform(mode: str = "train"):
             transform.transforms[0] = transforms.RandomCrop(224, padding=4)
         return transform
 
-    elif mode == 'val' or mode == 'test':
+    elif mode == "val" or mode == "test":
         t = []
         size = int((256 / 224) * 224)
         t.append(
-            transforms.Resize(size, interpolation=_pil_interp('bicubic')),
+            transforms.Resize(size, interpolation=_pil_interp("bicubic")),
             # to maintain same ratio w.r.t. 224 images
         )
         t.append(transforms.CenterCrop(224))

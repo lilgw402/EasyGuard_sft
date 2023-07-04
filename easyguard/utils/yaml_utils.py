@@ -162,9 +162,7 @@ class YamlConfig(ABC):
 
         dfs_leafs = []
         cls.dfs_decouple(config_data, dfs_leafs)
-        yamlconfig_ = cls(
-            path, config_data, dfs_leafs, name=name, docstring=docstring
-        )
+        yamlconfig_ = cls(path, config_data, dfs_leafs, name=name, docstring=docstring)
         return yamlconfig_
 
     @classmethod
@@ -214,7 +212,7 @@ class YamlConfig(ABC):
             data_ = data_.get(key_item, None)
             assert (
                 data_ is not None
-            ), f'the target model `{".".join(keys_[:index])}` does not exist, please check the modelzoo or the config yaml~'
+            ), f'the target model `{".".join(keys_[:index])}` does not exist, please check the modelzoo or the config yaml~'  # noqa: E501
 
         return data_
 

@@ -39,11 +39,7 @@ class Attention(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
 
-        qkv = (
-            self.qkv(x)
-            .reshape(B, N, 3, self.num_heads, self.in_dim)
-            .permute(2, 0, 3, 1, 4)
-        )
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.in_dim).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         attn = (q * self.scale) @ k.transpose(-2, -1)
@@ -88,9 +84,7 @@ class TokenTransformer(nn.Module):
             attn_drop=attn_drop,
             proj_drop=drop,
         )
-        self.drop_path = (
-            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
-        )
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(in_dim)
         self.mlp = Mlp(
             in_features=in_dim,

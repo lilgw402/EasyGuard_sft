@@ -1,12 +1,13 @@
+import warnings
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-import warnings
 
 
 class NTXentLoss(torch.nn.Module):
-    def __init__(self, tau=1.):
-        """ 注意这里的tau 和论文里的不一样，
+    def __init__(self, tau=1.0):
+        """注意这里的tau 和论文里的不一样，
         论文是 /tau ，tau 一般取一个0-1之间的数，
         这里改成了 *tau ，tau 是一个大于1的数。
         所以这里的tau 实际是你想象中的 1/tau

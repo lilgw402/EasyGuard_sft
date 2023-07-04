@@ -4,16 +4,8 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from typing import Optional
 
-from .. import EASYGUARD_CACHE, EASYGUARD_MODEL_CACHE
-from ..utils import (
-    HDFS_HUB_CN,
-    HDFS_HUB_VA,
-    REGION_MAPPING,
-    REMOTE_PATH_SEP,
-    hmget,
-    logging,
-    sha256,
-)
+from .. import EASYGUARD_MODEL_CACHE
+from ..utils import HDFS_HUB_CN, HDFS_HUB_VA, REGION_MAPPING, REMOTE_PATH_SEP, hmget, logging, sha256
 
 logger = logging.get_logger(__name__)
 
@@ -47,7 +39,8 @@ class AutoHubClass:
     hub_class = None
 
     def __init__(self) -> None:
-        """a factory, just used for instantiate a hub class and take over all properties and methods of the template object
+        """a factory, just used for instantiate a hub class and take over all
+           properties and methods of the template object
 
         Parameters
         ----------
@@ -86,9 +79,7 @@ class AutoHubClass:
 class HdfsHub(HubBase):
     hub_urls = [HDFS_HUB_CN, HDFS_HUB_VA]
 
-    def __init__(
-        self, archive_name: str, model_type: str, region: str, *args, **kwargs
-    ) -> None:
+    def __init__(self, archive_name: str, model_type: str, region: str, *args, **kwargs) -> None:
         """get file from the hdfs hub
 
         Parameters
@@ -104,12 +95,8 @@ class HdfsHub(HubBase):
         self.archive_name_ = archive_name.replace("-", "_")
         self.model_type = model_type
         self.hub_url = self.hub_urls[REGION_MAPPING[region]]
-        self._model_dir_remote = REMOTE_PATH_SEP.join(
-            [self.hub_url, "models", self.archive_name_]
-        )
-        self._model_dir_local = os.path.join(
-            EASYGUARD_MODEL_CACHE, model_type, sha256(archive_name)
-        )
+        self._model_dir_remote = REMOTE_PATH_SEP.join([self.hub_url, "models", self.archive_name_])
+        self._model_dir_local = os.path.join(EASYGUARD_MODEL_CACHE, model_type, sha256(archive_name))
 
     def get_file(self, file_name: str, force: Optional[bool] = False):
         """get file from remote hdfs model directory
@@ -132,19 +119,13 @@ class HdfsHub(HubBase):
             _description_
         """
         file_path_local = os.path.join(self._model_dir_local, file_name)
-        file_path_remote = REMOTE_PATH_SEP.join(
-            [self._model_dir_remote, file_name]
-        )
+        file_path_remote = REMOTE_PATH_SEP.join([self._model_dir_remote, file_name])
         if self.download_file(file_path_remote, file_path_local, force):
             return file_path_local
-        raise FileExistsError(
-            f"the {file_name} does not exist locally and remotely, please check~"
-        )
+        raise FileExistsError(f"the {file_name} does not exist locally and remotely, please check~")
 
     @classmethod
-    def download_file(
-        cls, hdfs_url: str, target_path: str, force: Optional[bool] = False
-    ) -> bool:
+    def download_file(cls, hdfs_url: str, target_path: str, force: Optional[bool] = False) -> bool:
         """download file
 
         Parameters
@@ -168,12 +149,10 @@ class HdfsHub(HubBase):
         hmget([hdfs_url], target_dir_path)
         if os.path.getsize(target_path) == 0:
             os.remove(target_path)
-            logger.warning(
-                f"fail to download `{hdfs_url}`, please check the network or the remote file path"
-            )
+            logger.warning(f"fail to download `{hdfs_url}`, please check the network or the remote file path")
             return False
         else:
-            logger.info(f"download successfully~")
+            logger.info("download successfully~")
             return True
 
 

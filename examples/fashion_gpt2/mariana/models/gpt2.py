@@ -32,7 +32,6 @@ from torch.nn import CrossEntropyLoss
 
 from .xperf_training import FTFlashAttention, FTLayerNorm, FTLinear, FTLinearWeightTransposed, pad_input, unpad_input
 
-
 # from ...utils.model_parallel_utils import assert_device_map, get_device_map
 
 
@@ -91,8 +90,11 @@ def prune_conv1d_layer(layer: Conv1D, index: torch.LongTensor, dim: int = 1) -> 
 
 
 def find_pruneable_heads_and_indices(
-        heads: List[int], n_heads: int, head_size: int, already_pruned_heads: Set[int]) -> Tuple[
-    Set[int], torch.LongTensor]:
+    heads: List[int],
+    n_heads: int,
+    head_size: int,
+    already_pruned_heads: Set[int],
+) -> Tuple[Set[int], torch.LongTensor]:
     """
     Finds the heads and their indices taking `already_pruned_heads` into account.
     Args:
@@ -185,7 +187,10 @@ class GPT2Attention(nn.Module):
 
         if self.scale_attn_weights:
             attn_weights = attn_weights / torch.full(
-                [], value.size(-1) ** 0.5, dtype=attn_weights.dtype, device=attn_weights.device
+                [],
+                value.size(-1) ** 0.5,
+                dtype=attn_weights.dtype,
+                device=attn_weights.device,
             )
 
         # Layer-wise attention scaling
@@ -195,7 +200,7 @@ class GPT2Attention(nn.Module):
         if not self.is_cross_attention:
             # if only "normal" attention layer implements causal mask
             query_length, key_length = query.size(-2), key.size(-2)
-            causal_mask = self.bias[:, :, key_length - query_length: key_length, :key_length].to(torch.bool)
+            causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].to(torch.bool)
             mask_value = torch.finfo(attn_weights.dtype).min
             # Need to be a tensor, otherwise we get error: `RuntimeError: expected scalar type float but found double`.
             # Need to be on the same device, otherwise `RuntimeError: ..., x and y to be on the same device`
@@ -226,7 +231,13 @@ class GPT2Attention(nn.Module):
         _, _, k_seq_len, _ = key.size()
 
         # Preallocate attn_weights for `baddbmm`
-        attn_weights = torch.empty(bsz * num_heads, q_seq_len, k_seq_len, dtype=torch.float32, device=query.device)
+        attn_weights = torch.empty(
+            bsz * num_heads,
+            q_seq_len,
+            k_seq_len,
+            dtype=torch.float32,
+            device=query.device,
+        )
 
         # Compute Scale Factor
         scale_factor = 1.0
@@ -245,7 +256,7 @@ class GPT2Attention(nn.Module):
         if not self.is_cross_attention:
             # if only "normal" attention layer implements causal mask
             query_length, key_length = query.size(-2), key.size(-2)
-            causal_mask = self.bias[:, :, key_length - query_length: key_length, :key_length].bool()
+            causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].bool()
             mask_value = torch.finfo(attn_weights.dtype).min
             # Need to be a tensor, otherwise we get error: `RuntimeError: expected scalar type float but found double`.
             # Need to be on the same device, otherwise `RuntimeError: ..., x and y to be on the same device`
@@ -289,18 +300,18 @@ class GPT2Attention(nn.Module):
         return tensor.view(new_shape)
 
     def forward(
-            self,
-            hidden_states: Optional[Tuple[torch.FloatTensor]],
-            layer_past: Optional[Tuple[torch.Tensor]] = None,
-            attention_mask: Optional[torch.FloatTensor] = None,
-            head_mask: Optional[torch.FloatTensor] = None,
-            encoder_hidden_states: Optional[torch.Tensor] = None,
-            encoder_attention_mask: Optional[torch.FloatTensor] = None,
-            use_cache: Optional[bool] = False,
-            output_attentions: Optional[bool] = False,
-            seq_lens: Optional[torch.IntTensor] = None,
-            word_idx: Optional[torch.IntTensor] = None,
-            use_rmpad: Optional[bool] = False,
+        self,
+        hidden_states: Optional[Tuple[torch.FloatTensor]],
+        layer_past: Optional[Tuple[torch.Tensor]] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = False,
+        output_attentions: Optional[bool] = False,
+        seq_lens: Optional[torch.IntTensor] = None,
+        word_idx: Optional[torch.IntTensor] = None,
+        use_rmpad: Optional[bool] = False,
     ) -> Tuple[Union[torch.Tensor, Tuple[torch.Tensor]], ...]:
         if encoder_hidden_states is not None:
             if not hasattr(self, "q_attn"):
@@ -349,12 +360,24 @@ class GPT2Attention(nn.Module):
                     value = value.view(value.shape[0], value.shape[1], -1)
 
                 # attn_output = self.ft_flash_attn([query, key, value], self.num_heads, attn_mask=attention_mask, causal=True, attention_dropout=self.attn_pdrop)
-                attn_output = self.ft_flash_attn([query, key, value], self.num_heads, causal=True,
-                                                 attention_dropout=self.attn_pdrop, word_idx=word_idx,
-                                                 cu_seqlens_k=seq_lens, cu_seqlens_q=seq_lens, use_rmpad_attn=use_rmpad)
+                attn_output = self.ft_flash_attn(
+                    [query, key, value],
+                    self.num_heads,
+                    causal=True,
+                    attention_dropout=self.attn_pdrop,
+                    word_idx=word_idx,
+                    cu_seqlens_k=seq_lens,
+                    cu_seqlens_q=seq_lens,
+                    use_rmpad_attn=use_rmpad,
+                )
                 if not use_rmpad:
                     # (batch, seq_length, head * head_features) -> (batch, seq_length, head, head_features)
-                    attn_output = attn_output.view(attn_output.shape[0], attn_output.shape[1], self.num_heads, -1)
+                    attn_output = attn_output.view(
+                        attn_output.shape[0],
+                        attn_output.shape[1],
+                        self.num_heads,
+                        -1,
+                    )
                     # (batch, seq_length, head, head_features) -> (batch, head, seq_length, head_features)
                     attn_output = attn_output.transpose(-2, -3)
             else:
@@ -375,7 +398,7 @@ class GPT2MLP(nn.Module):
     def __init__(self, intermediate_size, config, layer_idx=None):
         super().__init__()
         embed_dim = config.hidden_size
-        if config.get('use_ft_linear', False) and config.activation_function == 'gelu_new':
+        if config.get("use_ft_linear", False) and config.activation_function == "gelu_new":
             assert FTLinearWeightTransposed is not None
             # FTLinearWeightTransposed is using FTLinear internally, but weights are transposed
             self.c_fc = FTLinearWeightTransposed(embed_dim, intermediate_size, act_gelu=True)
@@ -407,9 +430,9 @@ class GPT2Block(nn.Module):
         super().__init__()
         hidden_size = config.hidden_size
         inner_dim = config.n_inner if config.n_inner is not None else 4 * hidden_size
-        self.gradient_checkpointing_ln = config.get('gradient_checkpointing_ln', False)
-        self.gradient_checkpointing_mlp = config.get('gradient_checkpointing_mlp', False)
-        gradient_checkpointing_start_layers = config.get('gradient_checkpointing_start_layers', 0)
+        self.gradient_checkpointing_ln = config.get("gradient_checkpointing_ln", False)
+        self.gradient_checkpointing_mlp = config.get("gradient_checkpointing_mlp", False)
+        gradient_checkpointing_start_layers = config.get("gradient_checkpointing_start_layers", 0)
         if layer_idx < gradient_checkpointing_start_layers:
             self.gradient_checkpointing_ln = False
             self.gradient_checkpointing_mlp = False
@@ -430,19 +453,19 @@ class GPT2Block(nn.Module):
         self.mlp = GPT2MLP(inner_dim, config, layer_idx)
 
     def forward(
-            self,
-            hidden_states: Optional[Tuple[torch.FloatTensor]],
-            layer_past: Optional[Tuple[torch.Tensor]] = None,
-            attention_mask: Optional[torch.FloatTensor] = None,
-            head_mask: Optional[torch.FloatTensor] = None,
-            encoder_hidden_states: Optional[torch.Tensor] = None,
-            encoder_attention_mask: Optional[torch.FloatTensor] = None,
-            use_cache: Optional[bool] = False,
-            output_attentions: Optional[bool] = False,
-            word_idx: Optional[torch.IntTensor] = None,
-            seq_lens: Optional[torch.IntTensor] = None,
-            use_rmpad: Optional[bool] = False,
-    ) -> Union[Tuple[torch.Tensor], Optional[Tuple[torch.Tensor, Tuple[torch.FloatTensor, ...]]]]:
+        self,
+        hidden_states: Optional[Tuple[torch.FloatTensor]],
+        layer_past: Optional[Tuple[torch.Tensor]] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = False,
+        output_attentions: Optional[bool] = False,
+        word_idx: Optional[torch.IntTensor] = None,
+        seq_lens: Optional[torch.IntTensor] = None,
+        use_rmpad: Optional[bool] = False,
+    ) -> Union[Tuple[torch.Tensor], Optional[Tuple[torch.Tensor, Tuple[torch.FloatTensor, ...]]],]:
         residual = hidden_states
         # https://github.com/cybertronai/gradient-checkpointing
         # https://pytorch.org/docs/stable/checkpoint.html
@@ -450,15 +473,17 @@ class GPT2Block(nn.Module):
             hidden_states = torch.utils.checkpoint.checkpoint(self.ln_1, hidden_states)
         else:
             hidden_states = self.ln_1(hidden_states)
-        attn_outputs = self.attn(hidden_states,
-                                 layer_past=layer_past,
-                                 attention_mask=attention_mask,
-                                 head_mask=head_mask,
-                                 use_cache=use_cache,
-                                 output_attentions=output_attentions,
-                                 seq_lens=seq_lens,
-                                 word_idx=word_idx,
-                                 use_rmpad=use_rmpad)
+        attn_outputs = self.attn(
+            hidden_states,
+            layer_past=layer_past,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            seq_lens=seq_lens,
+            word_idx=word_idx,
+            use_rmpad=use_rmpad,
+        )
         attn_output = attn_outputs[0]  # output_attn: a, present, (attentions)
         outputs = attn_outputs[1:]
         # residual connection
@@ -495,11 +520,15 @@ class GPT2Block(nn.Module):
             hidden_states = self.ln_2(hidden_states)
 
         if self.gradient_checkpointing_mlp:
-            feed_forward_hidden_states, last_activation_norm = \
-                torch.utils.checkpoint.checkpoint(self.mlp, hidden_states, )
+            (
+                feed_forward_hidden_states,
+                last_activation_norm,
+            ) = torch.utils.checkpoint.checkpoint(
+                self.mlp,
+                hidden_states,
+            )
         else:
-            feed_forward_hidden_states, last_activation_norm = \
-                self.mlp(hidden_states)
+            feed_forward_hidden_states, last_activation_norm = self.mlp(hidden_states)
         # residual connection
         hidden_states = residual + feed_forward_hidden_states
 
@@ -535,12 +564,13 @@ class GPT2Model(nn.Module):
 
         self.drop = nn.Dropout(self.config.embd_pdrop)
 
-        self.transformer_kernel = self.config.get('transformer_kernel', 'default')
-        if self.transformer_kernel == 'default':
+        self.transformer_kernel = self.config.get("transformer_kernel", "default")
+        if self.transformer_kernel == "default":
             self.h = nn.ModuleList([GPT2Block(self.config, layer_idx=i) for i in range(self.config.n_layer)])
-        elif self.transformer_kernel == 'deepspeed':
-            from deepspeed import DeepSpeedTransformerLayer, DeepSpeedTransformerConfig
-            local_rank = int(os.environ.get('LOCAL_RANK', 0))
+        elif self.transformer_kernel == "deepspeed":
+            from deepspeed import DeepSpeedTransformerConfig, DeepSpeedTransformerLayer
+
+            local_rank = int(os.environ.get("LOCAL_RANK", 0))
             seed = 42
             ke_config = DeepSpeedTransformerConfig(
                 batch_size=config.TRAINER.TRAIN_BATCH_SIZE,  # TODO: hack
@@ -558,11 +588,13 @@ class GPT2Model(nn.Module):
                 attn_dropout_checkpoint=False,
                 normalize_invertible=False,
                 gelu_checkpoint=False,
-                stochastic_mode=False)
+                stochastic_mode=False,
+            )
             self.h = nn.ModuleList([DeepSpeedTransformerLayer(ke_config) for i in range(self.config.n_layer)])
-        elif self.transformer_kernel == 'lightseq':
+        elif self.transformer_kernel == "lightseq":
             from lightseq.training.ops.pytorch.gpt_layer import LSHFGptEncoderLayer
-            local_rank = int(os.environ.get('LOCAL_RANK', 0))
+
+            local_rank = int(os.environ.get("LOCAL_RANK", 0))
             ke_config = LSHFGptEncoderLayer.get_config(
                 max_batch_tokens=self.config.max_position_embeddings * config.TRAINER.TRAIN_BATCH_SIZE,
                 max_seq_len=self.config.max_position_embeddings,
@@ -588,7 +620,7 @@ class GPT2Model(nn.Module):
         # Model parallel #TODO: 似乎支持model parallel，先抄过来
         self.model_parallel = False
         self.device_map = None
-        self.gradient_checkpointing = self.config.get('gradient_checkpointing', False)
+        self.gradient_checkpointing = self.config.get("gradient_checkpointing", False)
         # self.dtype = torch.float16 # TODO:
 
     def get_input_embeddings(self):
@@ -605,19 +637,18 @@ class GPT2Model(nn.Module):
             self.h[layer].attn.prune_heads(heads)
 
     def forward(
-            self,
-            input_ids: Optional[torch.LongTensor] = None,
-            token_type_ids: Optional[torch.LongTensor] = None,
-            attention_mask: Optional[torch.FloatTensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            head_mask: Optional[torch.FloatTensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            word_idx: Optional[torch.IntTensor] = None,
-            use_rmpad: Optional[bool] = False,
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        token_type_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        word_idx: Optional[torch.IntTensor] = None,
+        use_rmpad: Optional[bool] = False,
     ):
-        """
-        """
+        """ """
 
         # 1 处理input
         input_shape = input_ids.size()
@@ -633,7 +664,12 @@ class GPT2Model(nn.Module):
         past_length = 0
         past_key_values = tuple([None] * len(self.h))
         if position_ids is None:
-            position_ids = torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device=device)
+            position_ids = torch.arange(
+                past_length,
+                input_shape[-1] + past_length,
+                dtype=torch.long,
+                device=device,
+            )
             position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
 
         # move here
@@ -713,7 +749,6 @@ class GPT2Model(nn.Module):
             all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.gradient_checkpointing and self.training:
-
                 if use_cache:
                     logging.warning(
                         "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
@@ -744,8 +779,7 @@ class GPT2Model(nn.Module):
                     None,  # encoder_attention_mask,
                 )
             else:
-
-                if self.transformer_kernel == 'lightseq':
+                if self.transformer_kernel == "lightseq":
                     outputs = block(
                         hidden_states,
                         attention_mask=attention_mask,
@@ -765,7 +799,7 @@ class GPT2Model(nn.Module):
                         use_rmpad=use_rmpad,
                     )
 
-            if self.transformer_kernel != 'deepspeed':
+            if self.transformer_kernel != "deepspeed":
                 hidden_states = outputs[0]
                 last_activation_norm = outputs[-1]
             else:
@@ -794,19 +828,18 @@ class GPT2Model(nn.Module):
         all_hidden_states = all_hidden_states + (hidden_states,)
 
         return {
-            'last_hidden_state'   : hidden_states,
-            'word_idx'            : word_idx,
-            'seq_lens'            : seq_lens,
+            "last_hidden_state": hidden_states,
+            "word_idx": word_idx,
+            "seq_lens": seq_lens,
             # 'past_key_values': presents,
             # 'hidden_states': all_hidden_states,
             # 'attentions': attentions,
             # 'cross_attentions': cross_attentions,
-            'last_activation_norm': last_activation_norm
+            "last_activation_norm": last_activation_norm,
         }
 
 
 class GPT2LMHeadModel(nn.Module):
-
     def __init__(self, config):
         """
         有 head，可以预测loss
@@ -818,29 +851,29 @@ class GPT2LMHeadModel(nn.Module):
         self.lm_head = nn.Linear(self.config.n_embed, self.config.vocab_size, bias=False)
 
         # TODO: 是否需要tie weight
-        if self.config.get('tie_weight', False):
+        if self.config.get("tie_weight", False):
             self.lm_head.weight = self.transformer.wte.weight
 
-        self.PAD_IDX = self.config.get('pad_idx', 2)  # 用来ignore的
+        self.PAD_IDX = self.config.get("pad_idx", 2)  # 用来ignore的
         self.loss_fct = CrossEntropyLoss(ignore_index=self.PAD_IDX)
 
         # Model parallel
         self.model_parallel = False
         self.device_map = None
-        self.gradient_checkpointing = self.config.get('gradient_checkpointing', False)
+        self.gradient_checkpointing = self.config.get("gradient_checkpointing", False)
 
     def forward(
-            self,
-            input_ids: Optional[torch.LongTensor] = None,
-            attention_mask: Optional[torch.FloatTensor] = None,
-            token_type_ids: Optional[torch.LongTensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            head_mask: Optional[torch.FloatTensor] = None,
-            labels: Optional[torch.LongTensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            use_rmpad: Optional[bool] = False,
-            pad_output: Optional[bool] = False,
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        token_type_ids: Optional[torch.LongTensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        use_rmpad: Optional[bool] = False,
+        pad_output: Optional[bool] = False,
     ):
         r"""
         labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
@@ -860,8 +893,8 @@ class GPT2LMHeadModel(nn.Module):
             output_attentions=output_attentions,
             use_rmpad=use_rmpad,
         )
-        hidden_states = transformer_outputs['last_hidden_state']
-        last_activation_norm = transformer_outputs['last_activation_norm']
+        hidden_states = transformer_outputs["last_hidden_state"]
+        last_activation_norm = transformer_outputs["last_activation_norm"]
 
         # Set device for model parallelism
         if self.model_parallel:
@@ -872,8 +905,8 @@ class GPT2LMHeadModel(nn.Module):
         else:
             lm_logits = self.lm_head(hidden_states)
         loss = None
-        seq_lens = transformer_outputs['seq_lens']
-        word_idx = transformer_outputs['word_idx']
+        seq_lens = transformer_outputs["seq_lens"]
+        word_idx = transformer_outputs["word_idx"]
         if labels is not None:
             if use_rmpad:
                 labels = labels.view(-1)[word_idx.long()]
@@ -896,31 +929,33 @@ class GPT2LMHeadModel(nn.Module):
                 shift_logits = lm_logits[..., :-1, :].contiguous()
                 shift_labels = labels[..., 1:].contiguous()
                 # Flatten the tokens
-                loss = self.loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+                loss = self.loss_fct(
+                    shift_logits.view(-1, shift_logits.size(-1)),
+                    shift_labels.view(-1),
+                )
         if use_rmpad and pad_output:
             lm_logits = pad_input(lm_logits, word_idx, bsz, max_seq_len)
 
         return {
-            'loss'                : loss,
-            'logits'              : lm_logits,
-            'seq_lens'            : seq_lens,
+            "loss": loss,
+            "logits": lm_logits,
+            "seq_lens": seq_lens,
             # 'past_key_values': transformer_outputs['past_key_values'],
             # 'hidden_states': transformer_outputs['hidden_states'],
             # 'attentions': transformer_outputs['attentions'],
             # 'cross_attentions': transformer_outputs['cross_attentions'],
-            'last_activation_norm': transformer_outputs['last_activation_norm']
+            "last_activation_norm": transformer_outputs["last_activation_norm"],
         }
 
 
 def get_subsequent_mask(seq):
-    '''
+    """
     For masking out the subsequent info.
     seq: [bsz, seq_len]
     mask: [bsz, seq_len, seq_len]
-    '''
+    """
     _, len_s = seq.size()
-    subsequent_mask = (1 - torch.triu(
-        torch.ones((1, len_s, len_s), device=seq.device), diagonal=1)).bool()
+    subsequent_mask = (1 - torch.triu(torch.ones((1, len_s, len_s), device=seq.device), diagonal=1)).bool()
     mask = seq.unsqueeze(-2) & subsequent_mask
     return mask
 
@@ -929,6 +964,7 @@ def load_tf_weights_in_gpt2(model, gpt2_checkpoint_path):
     """Load tf checkpoints in a pytorch model"""
     try:
         import re
+
         import tensorflow as tf
     except ImportError:
         logging.error(
@@ -945,7 +981,7 @@ def load_tf_weights_in_gpt2(model, gpt2_checkpoint_path):
     for name, shape in init_vars:
         if not shape:
             continue
-        if not name.startswith('model/'):
+        if not name.startswith("model/"):
             continue
         logging.info(f"Loading TF weight {name} with shape {shape}")
         array = tf.train.load_variable(tf_path, name)
@@ -977,7 +1013,7 @@ def load_tf_weights_in_gpt2(model, gpt2_checkpoint_path):
                 pointer = pointer[num]
         try:
             assert (
-                    pointer.shape == array.shape
+                pointer.shape == array.shape
             ), f"Pointer shape {pointer.shape} and array shape {array.shape} mismatched"
         except AssertionError as e:
             e.args += (pointer.shape, array.shape)

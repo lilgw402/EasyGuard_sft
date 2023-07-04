@@ -2,34 +2,58 @@ import torch
 import torch.nn as nn
 from timm.models.layers import DropPath, trunc_normal_
 from torch.utils.checkpoint import checkpoint
-from torchvision.transforms import (CenterCrop, Compose, InterpolationMode,
-                                    Normalize, Resize, ToTensor)
+from torchvision.transforms import CenterCrop, Compose, InterpolationMode, Normalize, Resize, ToTensor
 
 from ...modeling_utils import ModelBase
 
 
 class FashionUniversalModel(ModelBase):
-    def __init__(self, input_size=224, patch_size=32, in_channels=3, dim=768, embedding_size=768,
-                 depth=12, num_heads=12, mlp_ratio=4, drop_path_rate=0.0, using_checkpoint=True, **kwargs):
+    def __init__(
+        self,
+        input_size=224,
+        patch_size=32,
+        in_channels=3,
+        dim=768,
+        embedding_size=768,
+        depth=12,
+        num_heads=12,
+        mlp_ratio=4,
+        drop_path_rate=0.0,
+        using_checkpoint=True,
+        **kwargs,
+    ):
         super().__init__()
         self.dim = dim
         self.patch_embed = PatchEmbedding(
-            input_size, patch_size, in_channels, dim,)
-        self.pos_embed = nn.Parameter(torch.zeros(
-            1, self.patch_embed.num_patches, dim))
+            input_size,
+            patch_size,
+            in_channels,
+            dim,
+        )
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches, dim))
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
 
         self.blocks = nn.ModuleList(
             [
-                Block(dim, num_heads, mlp_ratio, dpr[i], self.patch_embed.num_patches, using_checkpoint) for i in range(depth)
-            ])
+                Block(
+                    dim,
+                    num_heads,
+                    mlp_ratio,
+                    dpr[i],
+                    self.patch_embed.num_patches,
+                    using_checkpoint,
+                )
+                for i in range(depth)
+            ]
+        )
         self.norm = nn.LayerNorm(dim)
 
         self.feature = nn.Sequential(
             nn.Linear(dim * self.patch_embed.num_patches, dim, False),
             nn.BatchNorm1d(dim, eps=2e-5),
             nn.Linear(dim, embedding_size, False),
-            nn.BatchNorm1d(embedding_size, eps=2e-5))
+            nn.BatchNorm1d(embedding_size, eps=2e-5),
+        )
 
         trunc_normal_(self.pos_embed, std=0.02)
         # self.apply(self._init_weights)
@@ -80,16 +104,15 @@ class Attention(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        self.scale = head_dim ** -0.5
+        self.scale = head_dim**-0.5
         self.qkv = nn.Linear(dim, dim * 3, bias=False)
         self.proj = nn.Linear(dim, dim)
 
     def forward(self, x):
         # with torch.cuda.amp.autocast(True):
         B, L, D = x.shape
-        qkv = self.qkv(x).reshape(B, L, 3, self.num_heads,
-                                  D // self.num_heads).permute(2, 0, 3, 1, 4)
-        #with torch.cuda.amp.autocast(False):
+        qkv = self.qkv(x).reshape(B, L, 3, self.num_heads, D // self.num_heads).permute(2, 0, 3, 1, 4)
+        # with torch.cuda.amp.autocast(False):
         q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
@@ -100,7 +123,15 @@ class Attention(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, dim: int, num_heads: int, mlp_ratio: int = 4, drop_path: float = 0.0, patch_n: int = 32, using_checkpoint=False):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        mlp_ratio: int = 4,
+        drop_path: float = 0.0,
+        patch_n: int = 32,
+        using_checkpoint=False,
+    ):
         super().__init__()
         self.using_checkpoint = using_checkpoint
         self.norm1 = nn.LayerNorm(dim)
@@ -124,13 +155,19 @@ class Block(nn.Module):
     #         return checkpoint(self.forward_impl, x)
     #     else:
     #         return self.forward_impl(x)
-    
+
     def forward(self, x):
         return self.forward_impl(x)
 
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, input_size=224, patch_size=32, in_channels: int = 3, dim: int = 768):
+    def __init__(
+        self,
+        input_size=224,
+        patch_size=32,
+        in_channels: int = 3,
+        dim: int = 768,
+    ):
         super().__init__()
         if isinstance(input_size, int):
             input_size = (input_size, input_size)
@@ -139,8 +176,7 @@ class PatchEmbedding(nn.Module):
         H = input_size[0] // patch_size[0]
         W = input_size[1] // patch_size[1]
         self.num_patches = H * W
-        self.proj = nn.Conv2d(
-            in_channels, dim, kernel_size=patch_size, stride=patch_size)
+        self.proj = nn.Conv2d(in_channels, dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x):
         x = self.proj(x).flatten(2).transpose(1, 2)
@@ -150,20 +186,52 @@ class PatchEmbedding(nn.Module):
 def build_model(name="ViT-L/14@336px"):
     if name == "ViT-B/32":
         model = VisionTransformer(
-            input_size=224, patch_size=32, in_channels=3, dim=768, embedding_size=512,
-            depth=12, num_heads=12, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=224,
+            patch_size=32,
+            in_channels=3,
+            dim=768,
+            embedding_size=512,
+            depth=12,
+            num_heads=12,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     elif name == "ViT-B/16":
         model = VisionTransformer(
-            input_size=224, patch_size=16, in_channels=3, dim=768, embedding_size=768,
-            depth=12, num_heads=12, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=224,
+            patch_size=16,
+            in_channels=3,
+            dim=768,
+            embedding_size=768,
+            depth=12,
+            num_heads=12,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     elif name == "ViT-L/14":
         model = VisionTransformer(
-            input_size=224, patch_size=14, in_channels=3, dim=1024, embedding_size=768,
-            depth=24, num_heads=16, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=224,
+            patch_size=14,
+            in_channels=3,
+            dim=1024,
+            embedding_size=768,
+            depth=24,
+            num_heads=16,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     elif name == "ViT-L/14@336px":
         model = VisionTransformer(
-            input_size=336, patch_size=14, in_channels=3, dim=1024, embedding_size=768,
-            depth=24, num_heads=16, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=336,
+            patch_size=14,
+            in_channels=3,
+            dim=1024,
+            embedding_size=768,
+            depth=24,
+            num_heads=16,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     return model
 
 
@@ -172,14 +240,18 @@ def _convert_image_to_rgb(image):
 
 
 def _transform(n_px):
-    return Compose([
-        Resize(n_px, interpolation=InterpolationMode.BICUBIC),
-        CenterCrop(n_px),
-        _convert_image_to_rgb,
-        ToTensor(),
-        Normalize((0.48145466, 0.4578275, 0.40821073),
-                  (0.26862954, 0.26130258, 0.27577711)),
-    ])
+    return Compose(
+        [
+            Resize(n_px, interpolation=InterpolationMode.BICUBIC),
+            CenterCrop(n_px),
+            _convert_image_to_rgb,
+            ToTensor(),
+            Normalize(
+                (0.48145466, 0.4578275, 0.40821073),
+                (0.26862954, 0.26130258, 0.27577711),
+            ),
+        ]
+    )
 
 
 def load_model_and_transform(name="ViT-L/14@336px"):

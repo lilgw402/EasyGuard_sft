@@ -1,7 +1,5 @@
-import logging
 import datasets
 from torch.utils.data import Dataset
-import torch
 
 
 class local_collator:
@@ -22,15 +20,15 @@ class local_collator:
                     features_dict[k].append(v)
                 else:
                     features_dict[k] = [v]
-        
-        model_inputs = features_dict['model_inputs']
+
+        model_inputs = features_dict["model_inputs"]
 
         padded_inputs = {}
-        seq_len = [len(i) for i in [x['input_ids'] for x in model_inputs]]
+        seq_len = [len(i) for i in [x["input_ids"] for x in model_inputs]]
         max_len = max(seq_len)
 
         for key in list(model_inputs[0].keys()):
-            if key == 'input_ids':
+            if key == "input_ids":
                 padding_value = self._pad_token_id
             else:
                 padding_value = 0
@@ -38,14 +36,14 @@ class local_collator:
             sequence = [x[key] for x in model_inputs]
 
             for i in range(len(sequence)):
-                sequence[i] = [padding_value]*(max_len - len(sequence[i])) + sequence[i]
+                sequence[i] = [padding_value] * (max_len - len(sequence[i])) + sequence[i]
                 # sequence[i] = [padding_value]*20+sequence[i]
 
             padded_inputs[key] = sequence
 
-        features_dict['padded_inputs'] = padded_inputs
-        features_dict['seq_len'] = seq_len
-        
+        features_dict["padded_inputs"] = padded_inputs
+        features_dict["seq_len"] = seq_len
+
         # print(features_dict)
 
         return features_dict
@@ -53,15 +51,15 @@ class local_collator:
 
 class local_dataset(Dataset):
     def __init__(
-            self,
-            hname,
-            tokenizer,
-            data_type="csv",
-            shuffle=False,
+        self,
+        hname,
+        tokenizer,
+        data_type="csv",
+        shuffle=False,
     ):
         self.tokenizer = tokenizer
-        self.type = 'parquet'
-        self.dataset = datasets.load_dataset(self.type, data_files={'test': hname})['test']
+        self.type = "parquet"
+        self.dataset = datasets.load_dataset(self.type, data_files={"test": hname})["test"]
         if shuffle:
             self.dataset.shuffle()
 
@@ -70,8 +68,7 @@ class local_dataset(Dataset):
         keys = examples.keys()
         for k in keys:
             ex_dict[k] = examples[k]
-        ex_dict['model_inputs'] = self.tokenizer(examples['question'].strip())
-        
+        ex_dict["model_inputs"] = self.tokenizer(examples["question"].strip())
 
         # print('tokens: ', self.tokenizer.tokenize(examples['question'].strip()))
 

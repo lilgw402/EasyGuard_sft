@@ -20,17 +20,7 @@ of output with special method for the Fast tokenizers)
 import io
 from abc import ABC, abstractmethod
 from collections import OrderedDict, UserDict
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 import torch
 
@@ -84,16 +74,12 @@ class TokenizerBase(ABC, AutoHubClass):
             _description_
         """
         if not isinstance(input_text, (str, list)):
-            raise ValueError(
-                f"the type of argument `input_text` must be {str} or {list}"
-            )
+            raise ValueError(f"the type of argument `input_text` must be {str} or {list}")
 
         @typecheck(str)
         def _str_encode(text: str):
             text_tokens = self.tokenize(text)
-            text_tokens_complete = (
-                [text_completion[0]] + text_tokens + [text_completion[-1]]
-            )
+            text_tokens_complete = [text_completion[0]] + text_tokens + [text_completion[-1]]
             token_ids = self.convert_tokens_to_ids(text_tokens_complete)
             padding_id = self.convert_tokens_to_ids([padding])
             extra_length = (max_length - len(token_ids)) if max_length else 0
@@ -101,9 +87,7 @@ class TokenizerBase(ABC, AutoHubClass):
             input_mask = [1] * len(token_ids[:max_length]) + [0] * extra_length
             input_segment_ids = [input_segment_number] * len(input_ids)
 
-            input_ids, input_mask, input_segment_ids = torch.tensor(
-                [[input_ids], [input_mask], [input_segment_ids]]
-            )
+            input_ids, input_mask, input_segment_ids = torch.tensor([[input_ids], [input_mask], [input_segment_ids]])
             return OrderedDict(
                 input_ids=input_ids,
                 attention_mask=input_mask,
@@ -116,9 +100,7 @@ class TokenizerBase(ABC, AutoHubClass):
             return list(map(_str_encode, input_text))
 
     @classmethod
-    def from_pretrained(
-        cls, pretrained_model_name_or_path: str, *args, **kwargs
-    ):
+    def from_pretrained(cls, pretrained_model_name_or_path: str, *args, **kwargs):
         ...
 
     @classmethod
@@ -157,11 +139,7 @@ class TokenizerBase(ABC, AutoHubClass):
         index = 0
         if vocab_file.startswith("hdfs://"):
             if not hexists(vocab_file):
-                raise ValueError(
-                    "Can't find a vocabulary file at path '{}'. ".format(
-                        vocab_file
-                    )
-                )
+                raise ValueError("Can't find a vocabulary file at path '{}'. ".format(vocab_file))
             with hopen(vocab_file, "r") as reader:
                 accessor = io.BytesIO(reader.read())
                 while True:

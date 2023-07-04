@@ -28,7 +28,6 @@ from types import ModuleType
 from typing import Any
 
 from packaging import version
-
 from transformers.utils.versions import importlib_metadata
 
 from .logging import get_logger
@@ -45,10 +44,7 @@ USE_JAX = os.environ.get("USE_FLAX", "AUTO").upper()
 FORCE_TF_AVAILABLE = os.environ.get("FORCE_TF_AVAILABLE", "AUTO").upper()
 
 _torch_version = "N/A"
-if (
-    USE_TORCH in ENV_VARS_TRUE_AND_AUTO_VALUES
-    and USE_TF not in ENV_VARS_TRUE_VALUES
-):
+if USE_TORCH in ENV_VARS_TRUE_AND_AUTO_VALUES and USE_TF not in ENV_VARS_TRUE_VALUES:
     _torch_available = importlib.util.find_spec("torch") is not None
     if _torch_available:
         try:
@@ -65,10 +61,7 @@ _tf_version = "N/A"
 if FORCE_TF_AVAILABLE in ENV_VARS_TRUE_VALUES:
     _tf_available = True
 else:
-    if (
-        USE_TF in ENV_VARS_TRUE_AND_AUTO_VALUES
-        and USE_TORCH not in ENV_VARS_TRUE_VALUES
-    ):
+    if USE_TF in ENV_VARS_TRUE_AND_AUTO_VALUES and USE_TORCH not in ENV_VARS_TRUE_VALUES:
         _tf_available = importlib.util.find_spec("tensorflow") is not None
         if _tf_available:
             candidates = (
@@ -107,17 +100,12 @@ else:
 
 
 if USE_JAX in ENV_VARS_TRUE_AND_AUTO_VALUES:
-    _flax_available = (
-        importlib.util.find_spec("jax") is not None
-        and importlib.util.find_spec("flax") is not None
-    )
+    _flax_available = importlib.util.find_spec("jax") is not None and importlib.util.find_spec("flax") is not None
     if _flax_available:
         try:
             _jax_version = importlib_metadata.version("jax")
             _flax_version = importlib_metadata.version("flax")
-            logger.info(
-                f"JAX version {_jax_version}, Flax version {_flax_version} available."
-            )
+            logger.info(f"JAX version {_jax_version}, Flax version {_flax_version} available.")
         except importlib_metadata.PackageNotFoundError:
             _flax_available = False
 else:
@@ -139,9 +127,7 @@ except importlib_metadata.PackageNotFoundError:
 _detectron2_available = importlib.util.find_spec("detectron2") is not None
 try:
     _detectron2_version = importlib_metadata.version("detectron2")
-    logger.debug(
-        f"Successfully imported detectron2 version {_detectron2_version}"
-    )
+    logger.debug(f"Successfully imported detectron2 version {_detectron2_version}")
 except importlib_metadata.PackageNotFoundError:
     _detectron2_available = False
 
@@ -169,9 +155,7 @@ except importlib_metadata.PackageNotFoundError:
 coloredlogs = importlib.util.find_spec("coloredlogs") is not None
 try:
     _coloredlogs_available = importlib_metadata.version("coloredlogs")
-    logger.debug(
-        f"Successfully imported sympy version {_coloredlogs_available}"
-    )
+    logger.debug(f"Successfully imported sympy version {_coloredlogs_available}")
 except importlib_metadata.PackageNotFoundError:
     _coloredlogs_available = False
 
@@ -200,16 +184,10 @@ except importlib_metadata.PackageNotFoundError:
     _onnx_available = False
 
 
-_pytorch_quantization_available = (
-    importlib.util.find_spec("pytorch_quantization") is not None
-)
+_pytorch_quantization_available = importlib.util.find_spec("pytorch_quantization") is not None
 try:
-    _pytorch_quantization_version = importlib_metadata.version(
-        "pytorch_quantization"
-    )
-    logger.debug(
-        f"Successfully imported pytorch-quantization version {_pytorch_quantization_version}"
-    )
+    _pytorch_quantization_version = importlib_metadata.version("pytorch_quantization")
+    logger.debug(f"Successfully imported pytorch-quantization version {_pytorch_quantization_version}")
 except importlib_metadata.PackageNotFoundError:
     _pytorch_quantization_available = False
 
@@ -217,23 +195,15 @@ except importlib_metadata.PackageNotFoundError:
 _soundfile_available = importlib.util.find_spec("soundfile") is not None
 try:
     _soundfile_version = importlib_metadata.version("soundfile")
-    logger.debug(
-        f"Successfully imported soundfile version {_soundfile_version}"
-    )
+    logger.debug(f"Successfully imported soundfile version {_soundfile_version}")
 except importlib_metadata.PackageNotFoundError:
     _soundfile_available = False
 
 
-_tensorflow_probability_available = (
-    importlib.util.find_spec("tensorflow_probability") is not None
-)
+_tensorflow_probability_available = importlib.util.find_spec("tensorflow_probability") is not None
 try:
-    _tensorflow_probability_version = importlib_metadata.version(
-        "tensorflow_probability"
-    )
-    logger.debug(
-        f"Successfully imported tensorflow-probability version {_tensorflow_probability_version}"
-    )
+    _tensorflow_probability_version = importlib_metadata.version("tensorflow_probability")
+    logger.debug(f"Successfully imported tensorflow-probability version {_tensorflow_probability_version}")
 except importlib_metadata.PackageNotFoundError:
     _tensorflow_probability_available = False
 
@@ -257,9 +227,7 @@ except importlib_metadata.PackageNotFoundError:
 _torchaudio_available = importlib.util.find_spec("torchaudio") is not None
 try:
     _torchaudio_version = importlib_metadata.version("torchaudio")
-    logger.debug(
-        f"Successfully imported torchaudio version {_torchaudio_version}"
-    )
+    logger.debug(f"Successfully imported torchaudio version {_torchaudio_version}")
 except importlib_metadata.PackageNotFoundError:
     _torchaudio_available = False
 
@@ -267,9 +235,7 @@ except importlib_metadata.PackageNotFoundError:
 _phonemizer_available = importlib.util.find_spec("phonemizer") is not None
 try:
     _phonemizer_version = importlib_metadata.version("phonemizer")
-    logger.debug(
-        f"Successfully imported phonemizer version {_phonemizer_version}"
-    )
+    logger.debug(f"Successfully imported phonemizer version {_phonemizer_version}")
 except importlib_metadata.PackageNotFoundError:
     _phonemizer_available = False
 
@@ -277,9 +243,7 @@ except importlib_metadata.PackageNotFoundError:
 _pyctcdecode_available = importlib.util.find_spec("pyctcdecode") is not None
 try:
     _pyctcdecode_version = importlib_metadata.version("pyctcdecode")
-    logger.debug(
-        f"Successfully imported pyctcdecode version {_pyctcdecode_version}"
-    )
+    logger.debug(f"Successfully imported pyctcdecode version {_pyctcdecode_version}")
 except importlib_metadata.PackageNotFoundError:
     _pyctcdecode_available = False
 
@@ -355,16 +319,11 @@ def is_torch_bf16_gpu_available():
     # 4. torch.autocast exists
     # XXX: one problem here is that it may give invalid results on mixed gpus setup, so it's
     # really only correct for the 0th gpu (or currently set default device if different from 0)
-    if version.parse(
-        version.parse(torch.__version__).base_version
-    ) < version.parse("1.10"):
+    if version.parse(version.parse(torch.__version__).base_version) < version.parse("1.10"):
         return False
 
     if torch.cuda.is_available() and torch.version.cuda is not None:
-        if (
-            torch.cuda.get_device_properties(torch.cuda.current_device()).major
-            < 8
-        ):
+        if torch.cuda.get_device_properties(torch.cuda.current_device()).major < 8:
             return False
         if int(torch.version.cuda.split(".")[0]) < 11:
             return False
@@ -382,9 +341,7 @@ def is_torch_bf16_cpu_available():
 
     import torch
 
-    if version.parse(
-        version.parse(torch.__version__).base_version
-    ) < version.parse("1.10"):
+    if version.parse(version.parse(torch.__version__).base_version) < version.parse("1.10"):
         return False
 
     try:
@@ -419,9 +376,7 @@ def is_torch_tf32_available():
         return False
     if int(torch.version.cuda.split(".")[0]) < 11:
         return False
-    if version.parse(
-        version.parse(torch.__version__).base_version
-    ) < version.parse("1.7"):
+    if version.parse(version.parse(torch.__version__).base_version) < version.parse("1.7"):
         return False
 
     return True
@@ -436,9 +391,7 @@ if _torch_available:
         TORCH_FX_REQUIRED_VERSION.minor,
     )
 
-    _torch_onnx_dict_inputs_support_available = (
-        torch_version >= TORCH_ONNX_DICT_INPUTS_MINIMUM_VERSION
-    )
+    _torch_onnx_dict_inputs_support_available = torch_version >= TORCH_ONNX_DICT_INPUTS_MINIMUM_VERSION
 
 
 def is_torch_fx_available():
@@ -560,22 +513,13 @@ def is_ninja_available():
 
 def is_ipex_available():
     def get_major_and_minor_from_version(full_version):
-        return (
-            str(version.parse(full_version).major)
-            + "."
-            + str(version.parse(full_version).minor)
-        )
+        return str(version.parse(full_version).major) + "." + str(version.parse(full_version).minor)
 
-    if (
-        not is_torch_available()
-        or importlib.util.find_spec("intel_extension_for_pytorch") is None
-    ):
+    if not is_torch_available() or importlib.util.find_spec("intel_extension_for_pytorch") is None:
         return False
     _ipex_version = "N/A"
     try:
-        _ipex_version = importlib_metadata.version(
-            "intel_extension_for_pytorch"
-        )
+        _ipex_version = importlib_metadata.version("intel_extension_for_pytorch")
     except importlib_metadata.PackageNotFoundError:
         return False
     torch_major_and_minor = get_major_and_minor_from_version(_torch_version)
@@ -661,10 +605,7 @@ def is_in_notebook():
             raise ImportError("console")
         if "VSCODE_PID" in os.environ:
             raise ImportError("vscode")
-        if (
-            "DATABRICKS_RUNTIME_VERSION" in os.environ
-            and os.environ["DATABRICKS_RUNTIME_VERSION"] < "11.0"
-        ):
+        if "DATABRICKS_RUNTIME_VERSION" in os.environ and os.environ["DATABRICKS_RUNTIME_VERSION"] < "11.0":
             # Databricks Runtime 11.0 and above uses IPython kernel by default so it should be compatible with Jupyter notebook
             # https://docs.microsoft.com/en-us/azure/databricks/notebooks/ipython-kernel
             raise ImportError("databricks")
@@ -692,9 +633,7 @@ def is_sagemaker_dp_enabled():
     try:
         # Parse it and check the field "sagemaker_distributed_dataparallel_enabled".
         sagemaker_params = json.loads(sagemaker_params)
-        if not sagemaker_params.get(
-            "sagemaker_distributed_dataparallel_enabled", False
-        ):
+        if not sagemaker_params.get("sagemaker_distributed_dataparallel_enabled", False):
             return False
     except json.JSONDecodeError:
         return False
@@ -781,9 +720,7 @@ def is_sudachi_available():
 
 
 def is_jumanpp_available():
-    return (importlib.util.find_spec("pyknp") is not None) and (
-        shutil.which("jumanpp") is not None
-    )
+    return (importlib.util.find_spec("pyknp") is not None) and (shutil.which("jumanpp") is not None)
 
 
 # docstyle-ignore
@@ -1089,21 +1026,11 @@ def requires_backends(obj, backends):
     name = obj.__name__ if hasattr(obj, "__name__") else obj.__class__.__name__
 
     # Raise an error for users who might not realize that classes without "TF" are torch-only
-    if (
-        "torch" in backends
-        and "tf" not in backends
-        and not is_torch_available()
-        and is_tf_available()
-    ):
+    if "torch" in backends and "tf" not in backends and not is_torch_available() and is_tf_available():
         raise ImportError(PYTORCH_IMPORT_ERROR_WITH_TF.format(name))
 
     # Raise the inverse error for PyTorch users trying to load TF classes
-    if (
-        "tf" in backends
-        and "torch" not in backends
-        and is_torch_available()
-        and not is_tf_available()
-    ):
+    if "tf" in backends and "torch" not in backends and is_torch_available() and not is_tf_available():
         raise ImportError(TF_IMPORT_ERROR_WITH_PYTORCH.format(name))
 
     checks = (BACKENDS_MAPPING[backend] for backend in backends)
@@ -1178,9 +1105,7 @@ class _LazyModule(ModuleType):
             for value in values:
                 self._class_to_module[value] = key
         # Needed for autocompletion in an IDE
-        self.__all__ = list(import_structure.keys()) + list(
-            chain(*import_structure.values())
-        )
+        self.__all__ = list(import_structure.keys()) + list(chain(*import_structure.values()))
         self.__file__ = module_file
         self.__spec__ = module_spec
         self.__path__ = [os.path.dirname(module_file)]
@@ -1207,9 +1132,7 @@ class _LazyModule(ModuleType):
             module = self._get_module(self._class_to_module[name])
             value = getattr(module, name)
         else:
-            raise AttributeError(
-                f"module {self.__name__} has no attribute {name}"
-            )
+            raise AttributeError(f"module {self.__name__} has no attribute {name}")
 
         setattr(self, name, value)
         return value
@@ -1269,12 +1192,7 @@ class _LazyPackage(ModuleType):
             #     self._class_to_module[values] = key
         # Needed for autocompletion in an IDE
         self.__all__ = list(import_structure.keys()) + list(
-            chain(
-                [
-                    value_ if isinstance(value_, list) else [value_]
-                    for value_ in import_structure.values()
-                ]
-            )
+            chain([value_ if isinstance(value_, list) else [value_] for value_ in import_structure.values()])
         )
         self.__file__ = module_file
         self.__spec__ = module_spec
@@ -1305,9 +1223,7 @@ class _LazyPackage(ModuleType):
             else:
                 value = module
         else:
-            raise AttributeError(
-                f"module {self.__name__} has no attribute {name}"
-            )
+            raise AttributeError(f"module {self.__name__} has no attribute {name}")
 
         setattr(self, name, value)
         return value
@@ -1360,12 +1276,8 @@ def lazy_model_import(package: str, module: str):
 
     if package not in EASYGUARD_PACKAGES:
         module_exist = importlib.util.find_spec("." + package, EASYGUARD_PATH)
-        assert (
-            module_exist is not None
-        ), f"module `{'.'.join([EASYGUARD_PATH, module])}` doesn't exist"
-        EASYGUARD_PACKAGES[package] = importlib.import_module(
-            "." + package, EASYGUARD_PATH
-        )
+        assert module_exist is not None, f"module `{'.'.join([EASYGUARD_PATH, module])}` doesn't exist"
+        EASYGUARD_PACKAGES[package] = importlib.import_module("." + package, EASYGUARD_PATH)
 
     package_class = EASYGUARD_PACKAGES[package]
     if hasattr(package_class, module):

@@ -19,12 +19,7 @@ import os
 import unicodedata
 from typing import List, Optional, Tuple
 
-from transformers.tokenization_utils import (
-    PreTrainedTokenizer,
-    _is_control,
-    _is_punctuation,
-    _is_whitespace,
-)
+from transformers.tokenization_utils import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
 
 from ....utils import logging
 from ..bert import BertTokenizer
@@ -120,13 +115,9 @@ class TextCNNTokenizer(BertTokenizer):
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
     @classmethod
-    def from_pretrained(
-        cls, pretrained_model_name_or_path, *init_inputs, **kwargs
-    ):
+    def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs, **kwargs):
         try:
-            tokenizer = BertTokenizer.from_pretrained(
-                pretrained_model_name_or_path, *init_inputs, **kwargs
-            )
+            tokenizer = BertTokenizer.from_pretrained(pretrained_model_name_or_path, *init_inputs, **kwargs)
         except:
             tokenizer = BertTokenizer.from_pretrained(
                 TOKENIZER_MAPPING[pretrained_model_name_or_path],
@@ -181,11 +172,7 @@ class BasicTokenizer(object):
                 :func:`PreTrainedTokenizer.tokenize`) List of token not to split.
         """
         # union() returns a new set by concatenating the two sets.
-        never_split = (
-            self.never_split.union(set(never_split))
-            if never_split
-            else self.never_split
-        )
+        never_split = self.never_split.union(set(never_split)) if never_split else self.never_split
         text = self._clean_text(text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese

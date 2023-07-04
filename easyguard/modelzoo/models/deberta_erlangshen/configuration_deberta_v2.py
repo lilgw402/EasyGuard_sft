@@ -16,10 +16,10 @@
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
-from ...configuration_utils import PretrainedConfig
 from transformers.onnx import OnnxConfig
-from ...utils import logging
 
+from ...configuration_utils import PretrainedConfig
+from ...utils import logging
 
 if TYPE_CHECKING:
     from ... import FeatureExtractionMixin, PreTrainedTokenizerBase, TensorType
@@ -116,7 +116,7 @@ class DebertaV2Config(PretrainedConfig):
         pos_att_type=None,
         pooler_dropout=0,
         pooler_hidden_act="gelu",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -157,7 +157,11 @@ class DebertaV2OnnxConfig(OnnxConfig):
             dynamic_axis = {0: "batch", 1: "sequence"}
         if self._config.type_vocab_size > 0:
             return OrderedDict(
-                [("input_ids", dynamic_axis), ("attention_mask", dynamic_axis), ("token_type_ids", dynamic_axis)]
+                [
+                    ("input_ids", dynamic_axis),
+                    ("attention_mask", dynamic_axis),
+                    ("token_type_ids", dynamic_axis),
+                ]
             )
         else:
             return OrderedDict([("input_ids", dynamic_axis), ("attention_mask", dynamic_axis)])

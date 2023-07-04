@@ -13,16 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import (
-    absolute_import,
-    division,
-    print_function,
-    unicode_literals,
-)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import torch
 from torch import nn
-
 from transformers.modeling_outputs import BaseModelOutputWithPooling
 from transformers.modeling_utils import PreTrainedModel
 
@@ -72,9 +66,7 @@ class TextCNNEncoder(PreTrainedModel):
                     ),
                     nn.BatchNorm1d(conv_dim),
                     nn.ReLU(inplace=True),
-                    nn.MaxPool1d(
-                        kernel_size=(max_seq_len - kernel_size * 2 + 2)
-                    ),
+                    nn.MaxPool1d(kernel_size=(max_seq_len - kernel_size * 2 + 2)),
                 )
                 for kernel_size in kernel_sizes
             ]
@@ -90,10 +82,7 @@ class TextCNNEncoder(PreTrainedModel):
 
     def forward(self, input_ids, **kwargs):
         fact_embeds = self.embedding(input_ids)
-        conv_out = [
-            fact_conv(fact_embeds.permute(0, 2, 1))
-            for fact_conv in self.cnn_encoder
-        ]
+        conv_out = [fact_conv(fact_embeds.permute(0, 2, 1)) for fact_conv in self.cnn_encoder]
         conv_out = torch.cat(conv_out, dim=1)
         reshaped = conv_out.view(conv_out.size(0), -1)
         output = self.fc_layers((reshaped))

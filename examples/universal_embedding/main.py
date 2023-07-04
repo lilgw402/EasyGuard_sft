@@ -9,50 +9,179 @@ from typing import Callable, Dict, Tuple
 import numpy as np
 import PIL
 import torch
+from partial_fc import CombinedMarginLoss, PartialFC_V2
 from torch import distributed, optim
 from torch.nn.functional import normalize
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data import DistributedSampler as _DistributedSampler
 from torch.utils.data import Subset
 from torchvision import transforms
-
-from vision_transformer import VisionTransformer
-from vision_transformer import _transform
-from partial_fc import CombinedMarginLoss, PartialFC_V2
+from vision_transformer import VisionTransformer, _transform
 
 parser = argparse.ArgumentParser(
-    description="command-line tool that provides functionality for fine-tuning the embedding model on retrieval tasks. With this tool, you can easily adjust the model to achieve optimal performance on a variety of image retrieval tasks. Simply specify the task-specific parameters and let the tool handle the rest.")
-parser.add_argument("--batch_size", default=128, type=int, help="The batch size to use for training and inference.")
-parser.add_argument("--dataset", default="cub", help="The dataset to load for training and evaluation.")
-parser.add_argument("--debug", default=0, type=int, help="A flag indicating whether to run the code in debug mode (with additional logging or other debugging aids).")
-parser.add_argument("--epochs", type=int, default=32, help="The number of epochs to train the model for.")
-parser.add_argument("--eval", action="store_true", help="A flag indicating whether to run model evaluation after training.")
-parser.add_argument("--lr", type=float, default=0.0001, help="The learning rate to use for training the model.")
-parser.add_argument("--lr_pfc_weight", type=float, default=5.0, help="The weight to apply to the learning rate for the Partial FC layer during training. Sure, when fine-tuning a pre-trained neural network, it is usually recommended to adjust the learning rates of different layers in order to achieve better performance. For example, the learning rate of the backbone layers (i.e., the pre-trained layers) should be set lower because they already have learned features, while the learning rate of the Partial FC layer should be set higher, as it needs to adapt to the new task.")
-parser.add_argument("--input_size", default=224, type=int, help="The size of the input images for the model.")
-parser.add_argument("--gradient_acc", default=1, type=int, help="The number of times gradients are accumulated before updating the model's parameters.")
-parser.add_argument("--model_name", default="ViT-B/16", help="The name of the pre-trained model to use for feature extraction.")
-parser.add_argument("--margin_loss_m1", type=float, default=1.0, help="The margin parameter (m1) for the margin loss function.")
-parser.add_argument("--margin_loss_m2", type=float, default=0.3, help="The margin parameter (m1) for the margin loss function.")
-parser.add_argument("--margin_loss_m3", type=float, default=0.0, help="The margin parameter (m3) for the margin loss function.")
-parser.add_argument("--margin_loss_s", type=float, default=32, help="The scale parameter (s) for the margin loss function.")
-parser.add_argument("--margin_loss_filter", type=float, default=0.0, help="The filter parameter for the margin loss function.")
-parser.add_argument("--num_workers", default=8, type=int, help="The number of workers to use for data loading.")
-parser.add_argument("--num_feat", default=None, type=int, help="This parameter is used to set the dimensionality of the features sampled for use in model training and evaluation. ")
-parser.add_argument("--optimizer", default="adamw", help="The optimizer to use for the training process, default is AdamW.")
-parser.add_argument("--output_dim", type=int, default=768, help="The desired dimensionality of the output embeddings in ViT.")
+    description="command-line tool that provides functionality for fine-tuning the embedding model on retrieval tasks. With this tool, you can easily adjust the model to achieve optimal performance on a variety of image retrieval tasks. Simply specify the task-specific parameters and let the tool handle the rest."
+)
+parser.add_argument(
+    "--batch_size",
+    default=128,
+    type=int,
+    help="The batch size to use for training and inference.",
+)
+parser.add_argument(
+    "--dataset",
+    default="cub",
+    help="The dataset to load for training and evaluation.",
+)
+parser.add_argument(
+    "--debug",
+    default=0,
+    type=int,
+    help="A flag indicating whether to run the code in debug mode (with additional logging or other debugging aids).",
+)
+parser.add_argument(
+    "--epochs",
+    type=int,
+    default=32,
+    help="The number of epochs to train the model for.",
+)
+parser.add_argument(
+    "--eval",
+    action="store_true",
+    help="A flag indicating whether to run model evaluation after training.",
+)
+parser.add_argument(
+    "--lr",
+    type=float,
+    default=0.0001,
+    help="The learning rate to use for training the model.",
+)
+parser.add_argument(
+    "--lr_pfc_weight",
+    type=float,
+    default=5.0,
+    help="The weight to apply to the learning rate for the Partial FC layer during training. Sure, when fine-tuning a pre-trained neural network, it is usually recommended to adjust the learning rates of different layers in order to achieve better performance. For example, the learning rate of the backbone layers (i.e., the pre-trained layers) should be set lower because they already have learned features, while the learning rate of the Partial FC layer should be set higher, as it needs to adapt to the new task.",
+)
+parser.add_argument(
+    "--input_size",
+    default=224,
+    type=int,
+    help="The size of the input images for the model.",
+)
+parser.add_argument(
+    "--gradient_acc",
+    default=1,
+    type=int,
+    help="The number of times gradients are accumulated before updating the model's parameters.",
+)
+parser.add_argument(
+    "--model_name",
+    default="ViT-B/16",
+    help="The name of the pre-trained model to use for feature extraction.",
+)
+parser.add_argument(
+    "--margin_loss_m1",
+    type=float,
+    default=1.0,
+    help="The margin parameter (m1) for the margin loss function.",
+)
+parser.add_argument(
+    "--margin_loss_m2",
+    type=float,
+    default=0.3,
+    help="The margin parameter (m1) for the margin loss function.",
+)
+parser.add_argument(
+    "--margin_loss_m3",
+    type=float,
+    default=0.0,
+    help="The margin parameter (m3) for the margin loss function.",
+)
+parser.add_argument(
+    "--margin_loss_s",
+    type=float,
+    default=32,
+    help="The scale parameter (s) for the margin loss function.",
+)
+parser.add_argument(
+    "--margin_loss_filter",
+    type=float,
+    default=0.0,
+    help="The filter parameter for the margin loss function.",
+)
+parser.add_argument(
+    "--num_workers",
+    default=8,
+    type=int,
+    help="The number of workers to use for data loading.",
+)
+parser.add_argument(
+    "--num_feat",
+    default=None,
+    type=int,
+    help="This parameter is used to set the dimensionality of the features sampled for use in model training and evaluation. ",
+)
+parser.add_argument(
+    "--optimizer",
+    default="adamw",
+    help="The optimizer to use for the training process, default is AdamW.",
+)
+parser.add_argument(
+    "--output_dim",
+    type=int,
+    default=768,
+    help="The desired dimensionality of the output embeddings in ViT.",
+)
 parser.add_argument("--output", default="/tmp/tmp_for_training", help="")
 parser.add_argument("--output_path", default="./checkpoints", help="")
 parser.add_argument("--save_freq", type=int, default=5, help="model save frequence.")
-parser.add_argument("--resume", default="NULL", help="The path to a saved checkpoint to resume training from.")
-parser.add_argument("--sample_rate", default=1.0, type=float, help="The negative sample rate to be used for partial FC. It helps to reduce memory usage, increase training speed And can significantly improve performance on datasets with high levels of noise")
-parser.add_argument("--seed", type=int, default=1024, help="The random seed to use for reproducibility.")
-parser.add_argument("--transform", default=None, type=str, help="Transofrm in pytorch dataloader.")
+parser.add_argument(
+    "--resume",
+    default="NULL",
+    help="The path to a saved checkpoint to resume training from.",
+)
+parser.add_argument(
+    "--sample_rate",
+    default=1.0,
+    type=float,
+    help="The negative sample rate to be used for partial FC. It helps to reduce memory usage, increase training speed And can significantly improve performance on datasets with high levels of noise",
+)
+parser.add_argument(
+    "--seed",
+    type=int,
+    default=1024,
+    help="The random seed to use for reproducibility.",
+)
+parser.add_argument(
+    "--transform",
+    default=None,
+    type=str,
+    help="Transofrm in pytorch dataloader.",
+)
 parser.add_argument("--weight_decay", type=float, default=0, help="Weight Decay.")
-parser.add_argument("--color_jitter", type=float, default=0.4, help="The amount of color jittering to apply during data augmentation.")
-parser.add_argument("--aa", type=str, default='rand-m9-mstd0.5-inc1', help="The amount of color jittering to apply during data augmentation. The default value is 'rand-m9-mstd0.5-inc1'. ")
-parser.add_argument("--reprob", type=float, default=0.25, help="The probability of replacing pixels during training using CutOut.")
-parser.add_argument("--remode", type=str, default="pixel", help="The mode of replacement to use during training when using CutOut.")
+parser.add_argument(
+    "--color_jitter",
+    type=float,
+    default=0.4,
+    help="The amount of color jittering to apply during data augmentation.",
+)
+parser.add_argument(
+    "--aa",
+    type=str,
+    default="rand-m9-mstd0.5-inc1",
+    help="The amount of color jittering to apply during data augmentation. The default value is 'rand-m9-mstd0.5-inc1'. ",
+)
+parser.add_argument(
+    "--reprob",
+    type=float,
+    default=0.25,
+    help="The probability of replacing pixels during training using CutOut.",
+)
+parser.add_argument(
+    "--remode",
+    type=str,
+    default="pixel",
+    help="The mode of replacement to use during training when using CutOut.",
+)
 parser.add_argument("--recount", type=int, default=1, help="")
 
 
@@ -71,6 +200,7 @@ def get_dataset(dataset_name: str, transform: Callable, transform_train=None) ->
 
     if dataset_name == "aliproduct":
         from dataset import AliProduct
+
         trainset = AliProduct(root, "train", "train_list.txt", transform_train)
         testset = AliProduct(root, "eval", transform)
         trainset.num_classes = len(set(trainset.classes))
@@ -79,12 +209,14 @@ def get_dataset(dataset_name: str, transform: Callable, transform_train=None) ->
 
     elif dataset_name == "byteop":
         from dataset import BOP
+
         testset = BOP(root, "eval", transform)
         # trainset.num_classes = trainset.nb_classes()
         return {"test": testset, "metric": "rank1"}
 
     elif dataset_name == "products10k":
         from dataset import Products10k
+
         trainset = Products10k(root, "train", transform_train)
         testset = Products10k(root, "eval", transform)
         trainset.num_classes = len(set(trainset.classes))
@@ -92,6 +224,7 @@ def get_dataset(dataset_name: str, transform: Callable, transform_train=None) ->
 
     elif dataset_name == "sop":
         from dataset import SOP
+
         trainset = SOP(root, "train", transform_train)
         testset = SOP(root, "eval", transform)
         trainset.num_classes = trainset.nb_classes()
@@ -99,6 +232,7 @@ def get_dataset(dataset_name: str, transform: Callable, transform_train=None) ->
 
     elif dataset_name == "cub":
         from dataset import CUBirds
+
         trainset = CUBirds(root, "train", transform_train)
         testset = CUBirds(root, "eval", transform)
         trainset.num_classes = trainset.nb_classes()
@@ -106,6 +240,7 @@ def get_dataset(dataset_name: str, transform: Callable, transform_train=None) ->
 
     elif dataset_name == "car":
         from dataset import Cars
+
         trainset = Cars(root, "train", transform_train)
         testset = Cars(root, "eval", transform)
         trainset.num_classes = trainset.nb_classes()
@@ -113,24 +248,29 @@ def get_dataset(dataset_name: str, transform: Callable, transform_train=None) ->
 
     elif dataset_name == "inshop":
         from dataset import Inshop_Dataset
+
         trainset = Inshop_Dataset(root, "train", transform_train)
         query = Inshop_Dataset(root, "query", transform)
         gallery = Inshop_Dataset(root, "gallery", transform)
         trainset.num_classes = trainset.nb_classes()
-        return {"train": trainset, "query": query, "gallery": gallery, "metric": "rank1"}
+        return {
+            "train": trainset,
+            "query": query,
+            "gallery": gallery,
+            "metric": "rank1",
+        }
 
     elif dataset_name == "inat":
         from dataset import inaturalist
+
         trainset = inaturalist.get_trainset(root, transform_train)
         testset = inaturalist.get_testset(root, transform)
         trainset.num_classes = 5690
         return {"train": trainset, "test": testset, "metric": "rank1"}
 
     elif dataset_name == "product_all":
-        from dataset import AliProduct
-        from dataset import MySOP
-        from dataset import BOP
-        from dataset import Products10k
+        from dataset import BOP, AliProduct, MySOP, Products10k
+
         trainset_aliproduct = AliProduct(root, "train", "train_list_concat.txt", transform_train)
         trainset_products10k = Products10k(root, "train", "train_list_concat2.txt", transform_train)
         trainset_sop = MySOP(root, "train", "Ebay_train_concat3.txt", transform_train)
@@ -151,7 +291,7 @@ class WarpModule(torch.nn.Module):
         super().__init__()
         self.model = model
 
-    def forward(self,  x):
+    def forward(self, x):
         return self.model(x)
 
 
@@ -161,17 +301,24 @@ def main():
 
     if args.eval:
         model = VisionTransformer(
-            input_size=224, patch_size=16, in_channels=3, dim=768, embedding_size=768,
-            depth=12, num_heads=12, drop_path_rate=0.1, using_checkpoint=False)
+            input_size=224,
+            patch_size=16,
+            in_channels=3,
+            dim=768,
+            embedding_size=768,
+            depth=12,
+            num_heads=12,
+            drop_path_rate=0.1,
+            using_checkpoint=False,
+        )
         print(model)
         transform_clip = _transform(224)
-        load_checkpoint('./pretrain/FP16-ViT-B-16.pt', model)
+        load_checkpoint("./pretrain/FP16-ViT-B-16.pt", model)
 
         model = model.cuda()
         model = WarpModule(model)
         dataset_dict: Dict = get_dataset(args.dataset, transform_clip)
-        score = evaluation(model, dataset_dict,
-                           args.batch_size, args.num_workers)
+        score = evaluation(model, dataset_dict, args.batch_size, args.num_workers)
         if rank == 0:
             if isinstance(score, Tuple):
                 for i in score:
@@ -181,7 +328,7 @@ def main():
     else:
         if rank == 0:
             for arg in vars(args):
-                print(format(arg, '<20'), format(str(getattr(args, arg)), '<'))
+                print(format(arg, "<20"), format(str(getattr(args, arg)), "<"))
         if args.model_name == "ViT-L/14@336px":
             transform_train = get_transform(336)
             transform_test = get_transform(336, is_train=False)
@@ -190,64 +337,95 @@ def main():
             transform_test = get_transform(224, is_train=False)
 
         model = VisionTransformer(
-            input_size=224, patch_size=16, in_channels=3, dim=768, embedding_size=768,
-            depth=12, num_heads=12, drop_path_rate=0.1, using_checkpoint=False)
+            input_size=224,
+            patch_size=16,
+            in_channels=3,
+            dim=768,
+            embedding_size=768,
+            depth=12,
+            num_heads=12,
+            drop_path_rate=0.1,
+            using_checkpoint=False,
+        )
         print(model)
 
-        load_checkpoint('./pretrain/FP16-ViT-B-16.pt', model)
+        load_checkpoint("./pretrain/FP16-ViT-B-16.pt", model)
 
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = WarpModule(model)
         # if args.transform == "origin_clip":
         #     transform_train = transform_test = transform_clip
-        dataset_dict: Dict = get_dataset(
-            args.dataset, transform_test, transform_train)
-        dataset_train = dataset_dict['train']
+        dataset_dict: Dict = get_dataset(args.dataset, transform_test, transform_train)
+        dataset_train = dataset_dict["train"]
         model.train()
         model.cuda()
         backbone = torch.nn.parallel.DistributedDataParallel(
             module=model,
             bucket_cap_mb=32,
-            find_unused_parameters=True,)
-            # static_graph=True)
+            find_unused_parameters=True,
+        )
+        # static_graph=True)
 
         margin_loss = CombinedMarginLoss(
             args.margin_loss_s,
             args.margin_loss_m1,
             args.margin_loss_m2,
             args.margin_loss_m3,
-            args.margin_loss_filter
+            args.margin_loss_filter,
         )
         if args.optimizer == "adamw":
             module_partial_fc = PartialFC_V2(
-                margin_loss, args.output_dim, dataset_train.num_classes,
-                args.sample_rate, False, sample_num_feat=args.num_feat)
+                margin_loss,
+                args.output_dim,
+                dataset_train.num_classes,
+                args.sample_rate,
+                False,
+                sample_num_feat=args.num_feat,
+            )
             module_partial_fc.train().cuda()
             opt = torch.optim.AdamW(
                 params=[
                     {"params": backbone.parameters()},
-                    {"params": module_partial_fc.parameters(), "lr": args.lr * args.lr_pfc_weight}],
-                lr=args.lr, weight_decay=args.weight_decay)
+                    {
+                        "params": module_partial_fc.parameters(),
+                        "lr": args.lr * args.lr_pfc_weight,
+                    },
+                ],
+                lr=args.lr,
+                weight_decay=args.weight_decay,
+            )
         elif args.optimizer == "sgd":
             module_partial_fc = PartialFC_V2(
-                margin_loss, args.output_dim, dataset_train.num_classes,
-                args.sample_rate, False, sample_num_feat=args.num_feat)
+                margin_loss,
+                args.output_dim,
+                dataset_train.num_classes,
+                args.sample_rate,
+                False,
+                sample_num_feat=args.num_feat,
+            )
             module_partial_fc.train().cuda()
             opt = torch.optim.SGD(
                 params=[
                     {"params": backbone.parameters()},
-                    {"params": module_partial_fc.parameters(), "lr": args.lr * args.lr_pfc_weight}],
-                lr=args.lr, weight_decay=args.weight_decay)
+                    {
+                        "params": module_partial_fc.parameters(),
+                        "lr": args.lr * args.lr_pfc_weight,
+                    },
+                ],
+                lr=args.lr,
+                weight_decay=args.weight_decay,
+            )
         else:
             raise ValueError(f"{args.optimizer} is wrong")
 
         num_train_set = len(dataset_train)
-        train_sampler = DistributedSampler(
-            dataset_train, num_replicas=world_size,
-            rank=rank, shuffle=True)
+        train_sampler = DistributedSampler(dataset_train, num_replicas=world_size, rank=rank, shuffle=True)
         init_fn = partial(
-            worker_init_fn, num_workers=args.num_workers,
-            rank=rank, seed=args.seed)
+            worker_init_fn,
+            num_workers=args.num_workers,
+            rank=rank,
+            seed=args.seed,
+        )
         loader_train = DataLoader(
             dataset_train,
             batch_size=args.batch_size,
@@ -255,7 +433,8 @@ def main():
             worker_init_fn=init_fn,
             sampler=train_sampler,
             pin_memory=True,
-            drop_last=True,)
+            drop_last=True,
+        )
 
         steps_per_epoch = num_train_set // world_size // args.batch_size + 1
         steps_total = args.epochs * steps_per_epoch
@@ -271,14 +450,16 @@ def main():
             )
         elif args.lr_scheduler == "linear":
             lr_scheduler = optim.lr_scheduler.LinearLR(
-                optimizer=opt, start_factor=1.0, end_factor=0.0,
-                total_iters=args.epochs * steps_per_epoch)
+                optimizer=opt,
+                start_factor=1.0,
+                end_factor=0.0,
+                total_iters=args.epochs * steps_per_epoch,
+            )
         else:
             raise
 
         callback_func = SpeedCallBack(10, steps_total, args.batch_size)
-        auto_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            growth_interval=200)
+        auto_scaler = torch.cuda.amp.grad_scaler.GradScaler(growth_interval=200)
         global_step = 0
         max_score = 0
 
@@ -312,48 +493,57 @@ def main():
                         lr_scheduler,
                         float(loss),
                         global_step,
-                        auto_scaler.get_scale())
-            score = evaluation(model, dataset_dict,
-                               args.batch_size, num_workers=args.num_workers)
+                        auto_scaler.get_scale(),
+                    )
+            score = evaluation(
+                model,
+                dataset_dict,
+                args.batch_size,
+                num_workers=args.num_workers,
+            )
             if isinstance(score, float):
                 if score > max_score:
                     max_score = score
             if rank == 0:
                 print(f"eval result is {max_score}, epoch is {epoch}")
-                if (epoch % args.save_freq == 0 or epoch == (args.epochs - 1)):
+                if epoch % args.save_freq == 0 or epoch == (args.epochs - 1):
                     save_checkpoint(epoch, model, opt, lr_scheduler, score)
             model.train()
+
 
 def load_checkpoint(checkpoint_file, model):
     state_dict = torch.load(checkpoint_file)
     model_dict = model.state_dict()
-    pretrained_dict = {k: v.float() for k, v in state_dict.items() 
-                            if k in model_dict and model_dict[k].size() == v.size()}
+    pretrained_dict = {
+        k: v.float() for k, v in state_dict.items() if k in model_dict and model_dict[k].size() == v.size()
+    }
 
-    model_dict.update(pretrained_dict)                                                                       
-    model.load_state_dict(model_dict, strict=False) 
+    model_dict.update(pretrained_dict)
+    model.load_state_dict(model_dict, strict=False)
 
     if len(pretrained_dict) == len(state_dict):
-        print('All params loaded')
+        print("All params loaded")
     else:
-        print('construct model total {} keys and pretrin model total {} keys.' \
-               .format(len(model_dict), len(state_dict)))
-        print('{} pretrain keys load successfully.'.format(len(pretrained_dict)))
-        not_loaded_keys = [k for k in state_dict.keys() 
-                                if k not in pretrained_dict.keys()]
-        print(('%s, ' * (len(not_loaded_keys) - 1) + '%s') % tuple(not_loaded_keys))
+        print(
+            "construct model total {} keys and pretrin model total {} keys.".format(len(model_dict), len(state_dict))
+        )
+        print("{} pretrain keys load successfully.".format(len(pretrained_dict)))
+        not_loaded_keys = [k for k in state_dict.keys() if k not in pretrained_dict.keys()]
+        print(("%s, " * (len(not_loaded_keys) - 1) + "%s") % tuple(not_loaded_keys))
 
     return state_dict
 
 
 def save_checkpoint(epoch, model, optimizer, lr_scheduler, score):
-    save_state = {'model': model.state_dict(),
-                  'optimizer': optimizer.state_dict(),
-                  'lr_scheduler': lr_scheduler.state_dict(),
-                  'score': score,
-                  'epoch': epoch}
+    save_state = {
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "lr_scheduler": lr_scheduler.state_dict(),
+        "score": score,
+        "epoch": epoch,
+    }
 
-    save_path = os.path.join(args.output_path, f'ckpt_epoch_{epoch}_{score}.pth')
+    save_path = os.path.join(args.output_path, f"ckpt_epoch_{epoch}_{score}.pth")
     torch.save(save_state, save_path)
     print(f"{save_path} saved !!!")
 
@@ -372,21 +562,19 @@ class SpeedCallBack(object):
         self.tic = 0
 
     def __call__(
-            self,
-            lr_scheduler: optim.lr_scheduler._LRScheduler,
-            loss,
-            global_step,
-            scale):
+        self,
+        lr_scheduler: optim.lr_scheduler._LRScheduler,
+        loss,
+        global_step,
+        scale,
+    ):
         assert isinstance(loss, float)
 
         self.loss_metric.update(loss)
         if global_step > 0 and global_step % self.frequent == 0:
             if self.init:
                 try:
-                    speed: float = (
-                        self.frequent * self.batch_size /
-                        (time.time() - self.tic)
-                    )
+                    speed: float = self.frequent * self.batch_size / (time.time() - self.tic)
                     self.tic = time.time()
                     speed_total = speed * self.world_size
                 except ZeroDivisionError:
@@ -429,19 +617,19 @@ def euclidean_distance(x, y, topk=2):
 
 @torch.no_grad()
 def get_metric(
-        query: torch.Tensor,
-        query_label: list,
-        gallery: torch.Tensor = None,
-        gallery_label: list = None,
-        l2norm=True,
-        metric="rank1"):
-
+    query: torch.Tensor,
+    query_label: list,
+    gallery: torch.Tensor = None,
+    gallery_label: list = None,
+    l2norm=True,
+    metric="rank1",
+):
     if gallery is None:
         query = query.cuda()
         if l2norm:
             query = normalize(query)
         if args.num_feat is not None:
-            query = query[:, :args.num_feat]
+            query = query[:, : args.num_feat]
         query_label = query_label
         list_pred = []
         num_feat = query.size(0)
@@ -474,8 +662,8 @@ def get_metric(
             query = normalize(query)
             gallery = normalize(gallery)
         if args.num_feat is not None:
-            query = query[:, :args.num_feat]
-            gallery = gallery[:, :args.num_feat]
+            query = query[:, : args.num_feat]
+            gallery = gallery[:, : args.num_feat]
         num_feat = query.size(0)
 
         idx = 0
@@ -499,11 +687,9 @@ def get_metric(
         return rank_1 * 100
 
 
-def get_transform(
-        image_size: int = 224,
-        is_train: bool = True
-):
+def get_transform(image_size: int = 224, is_train: bool = True):
     from timm.data import create_transform
+
     mean = (0.48145466, 0.4578275, 0.40821073)
     std = (0.26862954, 0.26130258, 0.27577711)
 
@@ -514,7 +700,7 @@ def get_transform(
             is_training=True,
             color_jitter=args.color_jitter,
             auto_augment=args.aa,
-            interpolation='bicubic',
+            interpolation="bicubic",
             re_prob=args.reprob,
             re_mode=args.remode,
             re_count=args.recount,
@@ -632,22 +818,16 @@ class DistributedSampler(_DistributedSampler):
             indices = torch.arange(len(self.dataset)).tolist()
         # add extra samples to make it evenly divisible
         # in case that indices is shorter than half of total_size
-        indices = (indices * math.ceil(self.total_size / len(indices)))[
-            : self.total_size
-        ]
+        indices = (indices * math.ceil(self.total_size / len(indices)))[: self.total_size]
         assert len(indices) == self.total_size
         # subsample
-        indices = indices[self.rank: self.total_size: self.num_replicas]
+        indices = indices[self.rank : self.total_size : self.num_replicas]
         assert len(indices) == self.num_samples
         return iter(indices)
 
 
 @torch.no_grad()
-def get_metric_google_landmark(
-        x_query,
-        y_query,
-        x_gallery,
-        y_gallery) -> str:
+def get_metric_google_landmark(x_query, y_query, x_gallery, y_gallery) -> str:
     x_query = x_query.cuda()
     x_gallery = x_gallery.cuda()
 
@@ -686,22 +866,20 @@ def get_metric_google_landmark(
 
 
 def extract_feat(
-        model: torch.nn.Module,
-        dataset: Dataset,
-        batch_size: int,
-        num_workers: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    model: torch.nn.Module, dataset: Dataset, batch_size: int, num_workers: int
+) -> Tuple[torch.Tensor, torch.Tensor]:
     model.cuda()
     model.eval()
     n_data = len(dataset)
     idx_all_rank = list(range(n_data))
     num_local = n_data // world_size + int(rank < n_data % world_size)
     start = n_data // world_size * rank + min(rank, n_data % world_size)
-    idx_this_rank = idx_all_rank[start:start + num_local]
+    idx_this_rank = idx_all_rank[start : start + num_local]
     dataset_this_rank = Subset(dataset, idx_this_rank)
     kwargs = {
         "batch_size": batch_size,
         "num_workers": num_workers,
-        "drop_last": False
+        "drop_last": False,
     }
     dataloader = DataLoader(dataset_this_rank, **kwargs)
     x = None
@@ -715,7 +893,7 @@ def extract_feat(
         if x is None:
             size = [len(dataset_this_rank), embedding_size]
             x = torch.zeros(*size, device=image.device)
-        x[idx:idx + embedding.size(0)] = embedding
+        x[idx : idx + embedding.size(0)] = embedding
         y_np.append(np.array(label))
         idx += embedding.size(0)
     x = x.cpu()
@@ -733,20 +911,18 @@ def extract_feat(
 
 
 @torch.no_grad()
-def evaluation(model: torch.nn.Module,
-               dataset_dict: Dict, batch_size: int, num_workers: int):
-
+def evaluation(
+    model: torch.nn.Module,
+    dataset_dict: Dict,
+    batch_size: int,
+    num_workers: int,
+):
     if "index" in dataset_dict:
-        val, val_label = extract_feat(
-            model, dataset_dict["val"], batch_size, num_workers)
-        test, test_label = extract_feat(
-            model, dataset_dict["test"], batch_size, num_workers)
-        index, index_label = extract_feat(
-            model, dataset_dict["index"], batch_size, num_workers)
-        metric_val = get_metric_google_landmark(
-            val, val_label, index, index_label)
-        metric_test = get_metric_google_landmark(
-            test, test_label, index, index_label)
+        val, val_label = extract_feat(model, dataset_dict["val"], batch_size, num_workers)
+        test, test_label = extract_feat(model, dataset_dict["test"], batch_size, num_workers)
+        index, index_label = extract_feat(model, dataset_dict["index"], batch_size, num_workers)
+        metric_val = get_metric_google_landmark(val, val_label, index, index_label)
+        metric_test = get_metric_google_landmark(test, test_label, index, index_label)
         return metric_test, metric_val
 
     elif "test" in dataset_dict:
@@ -760,8 +936,7 @@ def evaluation(model: torch.nn.Module,
         dataset_g = dataset_dict["gallery"]
         q, q_label = extract_feat(model, dataset_q, batch_size, num_workers)
         g, g_label = extract_feat(model, dataset_g, batch_size, num_workers)
-        metric = get_metric(query=q, query_label=q_label,
-                            gallery=g, gallery_label=g_label)
+        metric = get_metric(query=q, query_label=q_label, gallery=g, gallery_label=g_label)
         return metric
 
 
@@ -793,20 +968,20 @@ class AverageMeter(object):
 
 def mean_average_precision(predictions, retrieval_solution, max_predictions=100):
     """Computes mean average precision for retrieval prediction.
-  Args:
-    predictions: Dict mapping test image ID to a list of strings corresponding
-      to index image IDs.
-    retrieval_solution: Dict mapping test image ID to list of ground-truth image
-      IDs.
-    max_predictions: Maximum number of predictions per query to take into
-      account. For the Google Landmark Retrieval challenge, this should be set
-      to 100.
-  Returns:
-    mean_ap: Mean average precision score (float).
-  Raises:
-    ValueError: If a test image in `predictions` is not included in
-      `retrieval_solutions`.
-  """
+    Args:
+      predictions: Dict mapping test image ID to a list of strings corresponding
+        to index image IDs.
+      retrieval_solution: Dict mapping test image ID to list of ground-truth image
+        IDs.
+      max_predictions: Maximum number of predictions per query to take into
+        account. For the Google Landmark Retrieval challenge, this should be set
+        to 100.
+    Returns:
+      mean_ap: Mean average precision score (float).
+    Raises:
+      ValueError: If a test image in `predictions` is not included in
+        `retrieval_solutions`.
+    """
     # Compute number of test images.
     num_test_images = len(retrieval_solution.keys())
 
@@ -814,15 +989,13 @@ def mean_average_precision(predictions, retrieval_solution, max_predictions=100)
     mean_ap = 0.0
     for key, prediction in predictions.items():
         if key not in retrieval_solution:
-            raise ValueError(
-                'Test image %s is not part of retrieval_solution' % key)
+            raise ValueError("Test image %s is not part of retrieval_solution" % key)
 
         # Loop over predicted images, keeping track of those which were already
         # used (duplicates are skipped).
         ap = 0.0
         already_predicted = set()
-        num_expected_retrieved = min(
-            len(retrieval_solution[key]), max_predictions)
+        num_expected_retrieved = min(len(retrieval_solution[key]), max_predictions)
         num_correct = 0
         for i in range(min(len(prediction), max_predictions)):
             if prediction[i] not in already_predicted:

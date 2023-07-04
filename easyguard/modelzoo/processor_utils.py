@@ -6,7 +6,6 @@ import numpy as np
 import PIL
 import torch
 
-from .. import __version__
 from ..utils import logging
 from .hub import AutoHubClass
 
@@ -70,9 +69,7 @@ class ProcessorBase(AutoHubClass):
         """for image and text data processing"""
 
         if not text and not image:
-            raise ValueError(
-                f"You have to specify either text or images. Both cannot be none."
-            )
+            raise ValueError("You have to specify either text or images. Both cannot be none.")
 
         if text:
             encoding = self.text_process(text)

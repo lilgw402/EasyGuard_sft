@@ -10,12 +10,12 @@ from sklearn import metrics
 def load_map_dict(symbol_map_path: str, data_format: str = "json") -> Tuple[dict, dict]:
     assert os.path.exists(symbol_map_path)
     if data_format == "json":
-        with open(file=symbol_map_path, mode='r', encoding='utf-8') as fr:
+        with open(file=symbol_map_path, mode="r", encoding="utf-8") as fr:
             symbol2ids = json.load(fr)
     elif data_format in ("tsv", "csv"):
         sep = "\t" if "tsv" else ","
         symbol2ids = {}
-        with open(file=symbol_map_path, mode='r', encoding='utf-8') as fr:
+        with open(file=symbol_map_path, mode="r", encoding="utf-8") as fr:
             for i, line in enumerate(fr):
                 arr_line = line.strip().split(sep)
                 assert len(arr_line) in (1, 2)
@@ -59,33 +59,40 @@ def evaluate_model(file_path: str, cut: int = 0, ignore_labels: list = None) -> 
     label_cnts = Counter()
     y_trues, y_preds = [], []
 
-    with open(file_path, mode='r', encoding='utf-8') as fr:
+    with open(file_path, mode="r", encoding="utf-8") as fr:
         for line in fr:
             arr_line = line.strip().split("\t")
-            assert len(arr_line) in (2, 3), "File format should be: `text`, `labels`, `predictions(optional)`"
+            assert len(arr_line) in (
+                2,
+                3,
+            ), "File format should be: `text`, `labels`, `predictions(optional)`"
             if len(arr_line) == 2:
-                text, labels, predictions = arr_line[0], arr_line[1], neg_label
+                _, labels, predictions = arr_line[0], arr_line[1], neg_label
             else:
-                text, labels, predictions = arr_line[0], arr_line[1], arr_line[2]
+                _, labels, predictions = (
+                    arr_line[0],
+                    arr_line[1],
+                    arr_line[2],
+                )
             label_cnts.update(labels.split(","))
             y_trues.append(labels)
             y_preds.append(predictions)
     # filter invalid labels
     processed_labels = list([k for k, v in label_cnts.items() if v >= cut and k not in ignore_labels])
-    processed_y_preds, processed_y_trues = get_processed_result(y_preds=y_preds,
-                                                                y_trues=y_trues,
-                                                                labels=processed_labels)
-    eval_report = metrics.classification_report(y_true=processed_y_trues,
-                                                y_pred=processed_y_preds,
-                                                target_names=processed_labels,
-                                                digits=4,
-                                                output_dict=True)
-    print("MICRO-METRIC: {}".format(eval_report['micro avg']))
-    print("MACRO-METRIC: {}".format(eval_report['macro avg']))
+    processed_y_preds, processed_y_trues = get_processed_result(
+        y_preds=y_preds, y_trues=y_trues, labels=processed_labels
+    )
+    eval_report = metrics.classification_report(
+        y_true=processed_y_trues,
+        y_pred=processed_y_preds,
+        target_names=processed_labels,
+        digits=4,
+        output_dict=True,
+    )
+    print("MICRO-METRIC: {}".format(eval_report["micro avg"]))
+    print("MACRO-METRIC: {}".format(eval_report["macro avg"]))
 
 
 if __name__ == "__main__":
     neg_label = "非负向:非负向:非负向"
-    evaluate_model(file_path='eval_detail_example.txt',
-                   cut=10,
-                   ignore_labels=[neg_label])
+    evaluate_model(file_path="eval_detail_example.txt", cut=10, ignore_labels=[neg_label])

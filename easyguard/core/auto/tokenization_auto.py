@@ -19,7 +19,6 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 from matplotlib import transforms
-
 from transformers.tokenization_utils_base import TOKENIZER_CONFIG_FILE
 
 from ...modelzoo.hub import AutoHubClass
@@ -33,14 +32,7 @@ from ...utils import (
     pretrained_model_archive_parse,
     sha256,
 )
-from . import (
-    BACKENDS,
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_CONFIG_NAMES,
-    MODELZOO_CONFIG,
-    TOKENIZER_CONFIG_NAMES,
-    VOCAB_NAME,
-)
+from . import BACKENDS, MODEL_ARCHIVE_CONFIG, MODEL_CONFIG_NAMES, MODELZOO_CONFIG, TOKENIZER_CONFIG_NAMES, VOCAB_NAME
 from .auto_factory import _LazyAutoMapping
 from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
 
@@ -49,17 +41,11 @@ logger = logging.get_logger(__name__)
 if TYPE_CHECKING:
     # This significantly improves completion suggestion performance when
     # the transformers package is used with Microsoft's Pylance language server.
-    TOKENIZER_MAPPING_NAMES: OrderedDict[
-        str, Tuple[Optional[str], Optional[str]]
-    ] = OrderedDict()
+    TOKENIZER_MAPPING_NAMES: OrderedDict[str, Tuple[Optional[str], Optional[str]]] = OrderedDict()
 else:
-    TOKENIZER_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping(
-        "tokenizer", "tokenizer_fast"
-    )
+    TOKENIZER_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("tokenizer", "tokenizer_fast")
 
-TOKENIZER_MAPPING = _LazyAutoMapping(
-    CONFIG_MAPPING_NAMES, TOKENIZER_MAPPING_NAMES
-)
+TOKENIZER_MAPPING = _LazyAutoMapping(CONFIG_MAPPING_NAMES, TOKENIZER_MAPPING_NAMES)
 
 CONFIG_TO_TYPE = {v: k for k, v in CONFIG_MAPPING_NAMES.items()}
 
@@ -99,12 +85,8 @@ class AutoTokenizer:
         config_path = None
         if pretrained_model_name_or_path not in MODEL_ARCHIVE_CONFIG:
             # if the `model_name_or_path` is not in `MODEL_ARCHIVE_CONFIG`, what we can do
-            if os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
-                pretrained_model_name_or_path
-            ):
-                model_config_path = file_exist(
-                    pretrained_model_name_or_path, MODEL_CONFIG_NAMES
-                )
+            if os.path.exists(pretrained_model_name_or_path) and os.path.isdir(pretrained_model_name_or_path):
+                model_config_path = file_exist(pretrained_model_name_or_path, MODEL_CONFIG_NAMES)
                 assert (
                     model_config_path is not None
                 ), f"please make sure the model config file exist in f{pretrained_model_name_or_path}"
@@ -119,9 +101,7 @@ class AutoTokenizer:
                 try:
                     from transformers import AutoTokenizer
 
-                    return AutoTokenizer.from_pretrained(
-                        pretrained_model_name_or_path, **kwargs
-                    )
+                    return AutoTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
                 except:
                     raise KeyError(pretrained_model_name_or_path)
         else:
@@ -156,9 +136,7 @@ class AutoTokenizer:
                 else pretrained_model_name_or_path
             )
 
-            return HFTokenizer.from_pretrained(
-                pretrained_model_name_or_path_, *inputs, **kwargs
-            )
+            return HFTokenizer.from_pretrained(pretrained_model_name_or_path_, *inputs, **kwargs)
         elif backend == "titan":
             # TODO (junwei.Dong): 支持特殊的titan模型
             raise NotImplementedError(backend)
@@ -177,9 +155,7 @@ class AutoTokenizer:
                 tokenizer_module_package,
                 tokenizer_module_name,
             ) = MODELZOO_CONFIG.to_module(tokenizer_name_tuple)
-            tokenizer_class = lazy_model_import(
-                tokenizer_module_package, tokenizer_module_name
-            )
+            tokenizer_class = lazy_model_import(tokenizer_module_package, tokenizer_module_name)
             extra_dict = {
                 "server_name": server_name,
                 "archive_name": pretrained_model_name_or_path,
@@ -215,17 +191,11 @@ class AutoTokenizer:
                     **extra_dict,
                 )
                 if not is_local
-                else file_exist(
-                    pretrained_model_name_or_path, TOKENIZER_CONFIG_NAMES
-                )
+                else file_exist(pretrained_model_name_or_path, TOKENIZER_CONFIG_NAMES)
             )
-            assert (
-                tokenizer_config_file_path is not None
-            ), f"tokenizer config file does not exist"
+            assert tokenizer_config_file_path is not None, f"tokenizer config file does not exist"
 
             tokenizer_config = file_read(tokenizer_config_file_path)
             tokenizer_config.update(kwargs)
-            return tokenizer_class(
-                vocab_file=vocab_file_path, **tokenizer_config, **extra_dict
-            )
+            return tokenizer_class(vocab_file=vocab_file_path, **tokenizer_config, **extra_dict)
         ...

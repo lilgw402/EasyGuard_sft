@@ -106,9 +106,7 @@ class XLMRobertaForMaskedLM(RobertaForMaskedLM, ModelBase):
     """,
     XLM_ROBERTA_START_DOCSTRING,
 )
-class XLMRobertaForSequenceClassification(
-    RobertaForSequenceClassification, ModelBase
-):
+class XLMRobertaForSequenceClassification(RobertaForSequenceClassification, ModelBase):
     """
     This class overrides [`RobertaForSequenceClassification`]. Please check the superclass for the appropriate
     documentation alongside usage examples.
@@ -140,9 +138,7 @@ class XLMRobertaForMultipleChoice(RobertaForMultipleChoice, ModelBase):
     """,
     XLM_ROBERTA_START_DOCSTRING,
 )
-class XLMRobertaForTokenClassification(
-    RobertaForTokenClassification, ModelBase
-):
+class XLMRobertaForTokenClassification(RobertaForTokenClassification, ModelBase):
     """
     This class overrides [`RobertaForTokenClassification`]. Please check the superclass for the appropriate
     documentation alongside usage examples.

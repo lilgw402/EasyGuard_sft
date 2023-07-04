@@ -31,11 +31,7 @@ def typecheck(*ty_args, **ty_kwargs):
             for name, value in bound_values.arguments.items():
                 if name in bound_types:
                     if not isinstance(value, bound_types[name]):
-                        raise TypeError(
-                            "Argument `{}` must be {}".format(
-                                name, bound_types[name]
-                            )
-                        )
+                        raise TypeError("Argument `{}` must be {}".format(name, bound_types[name]))
             return func(*args, **kwargs)
 
         return wrapper

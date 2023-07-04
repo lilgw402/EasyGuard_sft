@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import math
-import torchaudio
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchaudio
 
 
 class SEModule(nn.Module):
@@ -34,7 +35,15 @@ class SE_Res2Block(nn.Module):
         bns = []
         num_pad = math.floor(kernel_size / 2) * dilation
         for i in range(self.nums):
-            convs.append(nn.Conv1d(width, width, kernel_size=kernel_size, dilation=dilation, padding=num_pad))
+            convs.append(
+                nn.Conv1d(
+                    width,
+                    width,
+                    kernel_size=kernel_size,
+                    dilation=dilation,
+                    padding=num_pad,
+                )
+            )
             bns.append(nn.BatchNorm1d(width))
         self.convs = nn.ModuleList(convs)
         self.bns = nn.ModuleList(bns)
@@ -79,12 +88,13 @@ class PreEmphasis(torch.nn.Module):
         super().__init__()
         self.coef = coef
         self.register_buffer(
-            'flipped_filter', torch.tensor([-self.coef, 1.]).unsqueeze(0).unsqueeze(0)
+            "flipped_filter",
+            torch.tensor([-self.coef, 1.0]).unsqueeze(0).unsqueeze(0),
         )
 
     def forward(self, input: torch.tensor) -> torch.tensor:
         input = input.unsqueeze(1)
-        input = F.pad(input, (1, 0), 'reflect')
+        input = F.pad(input, (1, 0), "reflect")
         return F.conv1d(input, self.flipped_filter).squeeze(1)
 
 
@@ -130,8 +140,16 @@ class ECAPA_TDNN(nn.Module):
 
         self.torchfbank = torch.nn.Sequential(
             PreEmphasis(),
-            torchaudio.transforms.MelSpectrogram(sample_rate=16000, n_fft=512, win_length=400, hop_length=160,
-                                                 f_min=20, f_max=7600, window_fn=torch.hamming_window, n_mels=80),
+            torchaudio.transforms.MelSpectrogram(
+                sample_rate=16000,
+                n_fft=512,
+                win_length=400,
+                hop_length=160,
+                f_min=20,
+                f_max=7600,
+                window_fn=torch.hamming_window,
+                n_mels=80,
+            ),
         )
 
         self.specaug = FbankAug()  # Spec augmentation
@@ -161,7 +179,7 @@ class ECAPA_TDNN(nn.Module):
             x = self.torchfbank(x) + 1e-6
             x = x.log()
             x = x - torch.mean(x, dim=-1, keepdim=True)
-            if aug == True:
+            if aug is True:
                 x = self.specaug(x)
 
         x = self.conv1(x)
@@ -177,13 +195,19 @@ class ECAPA_TDNN(nn.Module):
 
         t = x.size()[-1]
 
-        global_x = torch.cat((x, torch.mean(x, dim=2, keepdim=True).repeat(1, 1, t),
-                              torch.sqrt(torch.var(x, dim=2, keepdim=True).clamp(min=1e-4)).repeat(1, 1, t)), dim=1)
+        global_x = torch.cat(
+            (
+                x,
+                torch.mean(x, dim=2, keepdim=True).repeat(1, 1, t),
+                torch.sqrt(torch.var(x, dim=2, keepdim=True).clamp(min=1e-4)).repeat(1, 1, t),
+            ),
+            dim=1,
+        )
 
         w = self.attention(global_x)
 
         mu = torch.sum(x * w, dim=2)
-        sg = torch.sqrt((torch.sum((x ** 2) * w, dim=2) - mu ** 2).clamp(min=1e-4))
+        sg = torch.sqrt((torch.sum((x**2) * w, dim=2) - mu**2).clamp(min=1e-4))
 
         x = torch.cat((mu, sg), 1)
         x = self.bn5(x)

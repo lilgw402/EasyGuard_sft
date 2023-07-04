@@ -1,12 +1,9 @@
 r"""
 Build standard BERT style of models from hugging face.
 """
-
-import os
-
 import torch
 import torch.nn as nn
-from transformers import BertModel, RobertaModel, logging
+from transformers import BertModel
 
 
 class RoBerta(nn.Module):
@@ -31,18 +28,14 @@ class RoBerta(nn.Module):
             with_hidden_states: if True, return the hidden states together with the features
         """
         super(RoBerta, self).__init__()
-        print(
-            f"=> Model arch: using {transformer.__name__} with config from {bert_dir}."
-        )
+        print(f"=> Model arch: using {transformer.__name__} with config from {bert_dir}.")
         print(
             f"   Bert prams: mlm_enable={mlm_enable}; embedder_only={embedder_only}; "
             f"with_hidden_states={with_hidden_states}; out_channels={out_channels}"
         )
 
         self.model = transformer.from_pretrained(bert_dir)
-        self.config = (
-            self.model.config
-        )  # record BertConfig for outer interface alignment
+        self.config = self.model.config  # record BertConfig for outer interface alignment
 
         self.embedder_only = embedder_only
         self.with_hidden_states = with_hidden_states
@@ -55,9 +48,7 @@ class RoBerta(nn.Module):
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
         )
-        if isinstance(
-            bert_output, tuple
-        ):  # compatibility with transformers < 4.0
+        if isinstance(bert_output, tuple):  # compatibility with transformers < 4.0
             assert len(bert_output) == 2, bert_output
             hidden_states, features = bert_output
         else:

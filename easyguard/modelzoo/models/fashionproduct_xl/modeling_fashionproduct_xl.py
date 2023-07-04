@@ -3,16 +3,16 @@
 Fashionproduct_XL, feat extractor
 """
 import torch
-from ...modeling_utils import ModelBase
 
+from ...modeling_utils import ModelBase
 from .falbert import FrameALBert
 
 
 class FashionProductXL(ModelBase):
     def __init__(
-            self,
-            config_backbone,
-            **kwargs,
+        self,
+        config_backbone,
+        **kwargs,
     ):
         super().__init__()
         self.config_backbone = config_backbone
@@ -27,19 +27,16 @@ class FashionProductXL(ModelBase):
         return max_pooling
 
     def forward(
-            self,
-            input_ids,
-            input_segment_ids,
-            input_mask,
-            frames=None,
-            frames_mask=None,
-            output_hidden=False,
+        self,
+        input_ids,
+        input_segment_ids,
+        input_mask,
+        frames=None,
+        frames_mask=None,
+        output_hidden=False,
     ):
-
         if frames_mask is None:
-            frames_mask = torch.ones(
-                frames.shape[0:2], device=frames.device, dtype=torch.long
-            )
+            frames_mask = torch.ones(frames.shape[0:2], device=frames.device, dtype=torch.long)
 
         mmout = self.falbert.forward(
             input_ids=input_ids,
@@ -53,18 +50,24 @@ class FashionProductXL(ModelBase):
         rep_dict = dict()
         # output hidden
         if output_hidden:
-            rep_dict['hidden_states'] = mmout['encoded_layers']
+            rep_dict["hidden_states"] = mmout["encoded_layers"]
 
         # last_hidden_state
-        last_hidden_state = mmout['encoded_layers'][-1]
-        rep_dict['last_hidden_state'] = last_hidden_state
+        last_hidden_state = mmout["encoded_layers"][-1]
+        rep_dict["last_hidden_state"] = last_hidden_state
         # pooler_output
-        cls_emb = mmout['pooled_output']
-        rep_dict['pooler'] = cls_emb
+        cls_emb = mmout["pooled_output"]
+        rep_dict["pooler"] = cls_emb
         # max_pooling
         attention_mask = torch.cat(
-            [input_mask, torch.ones([frames_mask.shape[0], 1], device=frames_mask.device), frames_mask], dim=1)
+            [
+                input_mask,
+                torch.ones([frames_mask.shape[0], 1], device=frames_mask.device),
+                frames_mask,
+            ],
+            dim=1,
+        )
         max_pooling = self.maxpooling_with_mask(hidden_state=last_hidden_state, attention_mask=attention_mask)
-        rep_dict['max_pooling'] = max_pooling
+        rep_dict["max_pooling"] = max_pooling
 
         return rep_dict

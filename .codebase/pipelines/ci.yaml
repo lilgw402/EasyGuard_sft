@@ -13,12 +13,13 @@ trigger:                            # 触发器，设置触发的条件
 jobs:
   codestyle-check-and-tests:        # job的ID       
     name: codestyle_check_and_tests
-    image: hub.byted.org/arnold/nlp.fex.train_image_arnold:c833e6da45b6a2a3285a678e457fd9e5
+    image: hub.byted.org/base/data.cruise:0.6.0-th2.1
     working-directory: fex
     # JOB的执行内容由若干个step组成，每个step独立串行执行
     steps:
       - name: Print basic info
         commands:
+          - python3 -V
           - whoami
           - pwd
           - ls

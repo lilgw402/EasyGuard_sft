@@ -1,6 +1,7 @@
-import torch
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, auc, roc_curve
+import torch
+from sklearn.metrics import auc, precision_score, recall_score, roc_curve
+
 from .base_running_metric import BaseRunningMetric
 
 
@@ -40,21 +41,18 @@ class GeneralClsMetric(BaseRunningMetric):
         binary_recall = recall_score(binary_labels, binary_output, zero_division=0)
         binary_fpr, binary_tpr, _ = roc_curve(binary_labels, binary_output, pos_label=1)
         binary_auc = auc(binary_fpr, binary_tpr)
-        if binary_auc!=binary_auc:
+        if binary_auc != binary_auc:
             binary_auc = 0
-        binary_f1 = (
-            2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6)
-        )
+        binary_f1 = 2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6)
 
         def torch_wrapper(raw_scalar):
             if use_cuda:
-                return torch.tensor(
-                    np.full_like(targets_arr, fill_value=raw_scalar, dtype=np.float32)
-                ).to(original_device)
-            else:
-                return torch.tensor(
-                    np.full_like(targets_arr, fill_value=raw_scalar, dtype=np.float32)
+                return torch.tensor(np.full_like(targets_arr, fill_value=raw_scalar, dtype=np.float32)).to(
+                    original_device
                 )
+            else:
+                return torch.tensor(np.full_like(targets_arr, fill_value=raw_scalar, dtype=np.float32))
+
         key = key + "_" if key else key
         return {
             f"{key}acc": acc,
@@ -79,8 +77,9 @@ class GeneralClsMetric(BaseRunningMetric):
         #     f"{key}binary_auc": torch_wrapper(binary_auc),
         # }
 
-if __name__ == '__main__':
-    outputs = torch.rand([4,1])*0.47
-    targets = torch.tensor([0,0,0,0])
+
+if __name__ == "__main__":
+    outputs = torch.rand([4, 1]) * 0.47
+    targets = torch.tensor([0, 0, 0, 0])
     metric = GeneralClsMetric()
     print(metric.batch_eval(outputs, targets))

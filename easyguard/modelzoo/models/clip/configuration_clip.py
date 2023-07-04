@@ -133,22 +133,14 @@ class CLIPTextConfig(PretrainedConfig):
         self.attention_dropout = attention_dropout
 
     @classmethod
-    def from_pretrained(
-        cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs
-    ) -> "PretrainedConfig":
-        config_dict, kwargs = cls.get_config_dict(
-            pretrained_model_name_or_path, **kwargs
-        )
+    def from_pretrained(cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs) -> "PretrainedConfig":
+        config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
 
         # get the text config dict if we are loading from CLIPConfig
         if config_dict.get("model_type") == "clip":
             config_dict = config_dict["text_config"]
 
-        if (
-            "model_type" in config_dict
-            and hasattr(cls, "model_type")
-            and config_dict["model_type"] != cls.model_type
-        ):
+        if "model_type" in config_dict and hasattr(cls, "model_type") and config_dict["model_type"] != cls.model_type:
             logger.warning(
                 f"You are using a model of type {config_dict['model_type']} to instantiate a model of type "
                 f"{cls.model_type}. This is not supported for all configurations of models and can yield errors."
@@ -248,22 +240,14 @@ class CLIPVisionConfig(PretrainedConfig):
         self.hidden_act = hidden_act
 
     @classmethod
-    def from_pretrained(
-        cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs
-    ) -> "PretrainedConfig":
-        config_dict, kwargs = cls.get_config_dict(
-            pretrained_model_name_or_path, **kwargs
-        )
+    def from_pretrained(cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs) -> "PretrainedConfig":
+        config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
 
         # get the vision config dict if we are loading from CLIPConfig
         if config_dict.get("model_type") == "clip":
             config_dict = config_dict["vision_config"]
 
-        if (
-            "model_type" in config_dict
-            and hasattr(cls, "model_type")
-            and config_dict["model_type"] != cls.model_type
-        ):
+        if "model_type" in config_dict and hasattr(cls, "model_type") and config_dict["model_type"] != cls.model_type:
             logger.warning(
                 f"You are using a model of type {config_dict['model_type']} to instantiate a model of type "
                 f"{cls.model_type}. This is not supported for all configurations of models and can yield errors."
@@ -340,15 +324,11 @@ class CLIPConfig(PretrainedConfig):
 
         if text_config is None:
             text_config = {}
-            logger.info(
-                "text_config is None. Initializing the CLIPTextConfig with default values."
-            )
+            logger.info("text_config is None. Initializing the CLIPTextConfig with default values.")
 
         if vision_config is None:
             vision_config = {}
-            logger.info(
-                "vision_config is None. initializing the CLIPVisionConfig with default values."
-            )
+            logger.info("vision_config is None. initializing the CLIPVisionConfig with default values.")
 
         self.text_config = CLIPTextConfig(**text_config)
         self.vision_config = CLIPVisionConfig(**vision_config)

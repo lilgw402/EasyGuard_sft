@@ -1,29 +1,27 @@
+import base64
 import io
-import os
 import json
+import os
 import random
 import re
-import base64
+
 import emoji
-import numpy as np
 import torch
 import torchvision.transforms as transforms
-from cruise.data_module import (
-    CruiseDataModule,
-    create_cruise_loader,
-    customized_processor,
-)
+from cruise.data_module import CruiseDataModule
+from cruise.utilities.hdfs_io import hopen
+from PIL import Image, ImageFile
 from ptx.matx.pipeline import Pipeline
+
+from .dist_dataset import DistLineReadingDataset
+
 # import albumentations as A
 # from albumentations.pytorch import ToTensorV2
 
-from cruise.utilities.hdfs_io import hopen
-from .dist_dataset import DistLineReadingDataset
-from PIL import ImageFile, Image
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-_whitespace_re = re.compile(r'\s+')
+_whitespace_re = re.compile(r"\s+")
 
 
 def text_preprocess(text):
@@ -31,14 +29,14 @@ def text_preprocess(text):
         return text
 
     try:
-        text = text.replace("\n", " ").replace("\t", " ").replace("\"", "").replace("\\", "").strip()
+        text = text.replace("\n", " ").replace("\t", " ").replace('"', "").replace("\\", "").strip()
         text = re.sub(r"\<.*?\>", " ", text)
-        text = emoji.replace_emoji(text, replace=' ')
-        text = re.sub(r'(.)\1{5,}', r'\1', text)
-        text = re.sub(_whitespace_re, ' ', text)
+        text = emoji.replace_emoji(text, replace=" ")
+        text = re.sub(r"(.)\1{5,}", r"\1", text)
+        text = re.sub(_whitespace_re, " ", text)
         return text
     except Exception as e:
-        print(f'error occurred during cleaning: {e}')
+        print(f"error occurred during cleaning: {e}")
         return text
 
 
@@ -61,8 +59,16 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
     dataset，继承的dataset是 DistLineReadingDataset，是一个逐行读hdfs数据的IterableDataset。
     """
 
-    def __init__(self, config, data_path, rank=0, world_size=1, shuffle=True, repeat=False,
-                 is_training=False):
+    def __init__(
+        self,
+        config,
+        data_path,
+        rank=0,
+        world_size=1,
+        shuffle=True,
+        repeat=False,
+        is_training=False,
+    ):
         super().__init__(data_path, rank, world_size, shuffle, repeat)
 
         self.config = config
@@ -71,10 +77,10 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         self.text_len = config.text_len
         self.frame_len = config.frame_len
 
-        self.pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
-        self.preprocess = get_transform(mode='train' if is_training else 'val')
+        self.pipe = Pipeline.from_option("file:./examples/fashionproduct_xl/m_albert_h512a8l12")
+        self.preprocess = get_transform(mode="train" if is_training else "val")
 
-        with hopen('./examples/fashionproduct_xl/black_image.jpeg', 'rb') as f:
+        with hopen("./examples/fashionproduct_xl/black_image.jpeg", "rb") as f:
             # hdfs://harunava/home/byte_magellan_va/user/xuqi/black_image.jpeg
             self.black_frame = self.preprocess(self._load_image(f.read()))
 
@@ -91,32 +97,32 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 data_item = json.loads(example)
 
                 # label
-                label = int(data_item['label'])
+                label = int(data_item["label"])
 
                 # 图像
                 frames = []
-                if 'images' in data_item:
+                if "images" in data_item:
                     # get image by base64
-                    for images in data_item['images']:
+                    for images in data_item["images"]:
                         try:
                             image_tensor = self.image_preprocess(images)
                             frames.append(image_tensor)
-                        except:
+                        except:  # noqa: E722
                             print(f"load image base64 failed -- {data_item.get('pid', 'None pid')}")
                             continue
                 else:
-                    raise Exception(f'cannot find images')
+                    raise Exception("cannot find images")
 
                 if len(frames) > self.frame_len:
                     inds = list(range(1, len(frames) - 1))
                     random.shuffle(inds)
-                    choose_idx = [0] + sorted(inds[:self.frame_len - 2]) + [len(frames) - 1]
+                    choose_idx = [0] + sorted(inds[: self.frame_len - 2]) + [len(frames) - 1]
                     # 抽取首图尾图以及中间随机m-2帧图片
                     frames = [frames[i] for i in choose_idx]
 
                 # 文本
-                title = data_item['title']
-                desc = data_item['desc']
+                title = data_item["title"]
+                desc = data_item["desc"]
                 text = text_concat(title, desc)
 
                 token_ids = self.pipe.preprocess([text])[0]
@@ -124,15 +130,15 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
                 token_ids = torch.from_numpy(token_ids)
 
                 input_dict = {
-                    'frames': frames,
-                    'label': label,
-                    'input_ids': token_ids,
+                    "frames": frames,
+                    "label": label,
+                    "input_ids": token_ids,
                 }
 
                 yield input_dict
 
             except Exception as e:
-                print(f'error in dataset: {e}')
+                print(f"error in dataset: {e}")
 
     def collect_fn(self, data):
         frames = []
@@ -143,12 +149,12 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
-            input_ids.append(ibatch['input_ids'])
-            input_mask_id = ibatch['input_ids'].clone()
+            input_ids.append(ibatch["input_ids"])
+            input_mask_id = ibatch["input_ids"].clone()
             input_mask_id[input_mask_id != 0] = 1
             input_mask.append(input_mask_id)
 
-            img_np = ibatch['frames']
+            img_np = ibatch["frames"]
             frames_mask_cur = []
             # 判断补帧
             if len(img_np) < self.frame_len:
@@ -176,11 +182,14 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
         input_mask = torch.cat(input_mask, dim=0)
         input_segment_ids = torch.zeros_like(input_ids, dtype=torch.long)
 
-        res = {"frames": frames, "frames_mask": frames_mask,
-               "label": labels,
-               "input_ids": input_ids, "input_mask": input_mask,
-               "input_segment_ids": input_segment_ids,
-               }
+        res = {
+            "frames": frames,
+            "frames_mask": frames_mask,
+            "label": labels,
+            "input_ids": input_ids,
+            "input_mask": input_mask,
+            "input_segment_ids": input_segment_ids,
+        }
         return res
 
     def image_preprocess(self, image_str):
@@ -197,7 +206,7 @@ class TorchvisionLabelDataset(DistLineReadingDataset):
     @staticmethod
     def _load_image(buffer):
         img = Image.open(io.BytesIO(buffer))
-        img = img.convert('RGB')
+        img = img.convert("RGB")
         return img
 
 
@@ -205,39 +214,44 @@ def get_transform(mode: str = "train"):
     """
     根据不同的data，返回不同的transform
     """
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if mode == "train":
-        com_transforms = transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize])
-    elif mode == 'val':
-        com_transforms = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize])
+        com_transforms = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+    elif mode == "val":
+        com_transforms = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
     else:
-        raise ValueError('mode [%s] is not in [train, val]' % mode)
+        raise ValueError("mode [%s] is not in [train, val]" % mode)
     return com_transforms
 
 
 class FacDataModule(CruiseDataModule):
     def __init__(
-            self,
-            train_files: str = None,
-            train_size: int = 1500000,
-            val_files: str = None,
-            val_size: int = 16000,
-            train_batch_size: int = 64,
-            val_batch_size: int = 32,
-            num_workers: int = 8,
-            text_len: int = 128,
-            frame_len: int = 1,
-            exp: str = 'default',
-            download_files: list = []
+        self,
+        train_files: str = None,
+        train_size: int = 1500000,
+        val_files: str = None,
+        val_size: int = 16000,
+        train_batch_size: int = 64,
+        val_batch_size: int = 32,
+        num_workers: int = 8,
+        text_len: int = 128,
+        frame_len: int = 1,
+        exp: str = "default",
+        download_files: list = [],
     ):
         super().__init__()
         self.save_hparams()
@@ -245,51 +259,59 @@ class FacDataModule(CruiseDataModule):
     def local_rank_zero_prepare(self) -> None:
         # download cutter resource
         if self.hparams.download_files:
-            to_download = [df.split('->') for df in self.hparams.download_files]
+            to_download = [df.split("->") for df in self.hparams.download_files]
             for src, tar in to_download:
                 if not os.path.exists(tar):
                     os.makedirs(tar)
-                fdname = src.split('/')[-1]
-                if os.path.exists(f'{tar}/{fdname}'):
-                    print(f'{tar}/{fdname} already existed, pass!')
+                fdname = src.split("/")[-1]
+                if os.path.exists(f"{tar}/{fdname}"):
+                    print(f"{tar}/{fdname} already existed, pass!")
                 else:
-                    print(f'downloading {src} to {tar}')
+                    print(f"downloading {src} to {tar}")
                     os.system(f"hdfs dfs -get {src} {tar}")
 
     def setup(self, stage) -> None:
         self.train_dataset = TorchvisionLabelDataset(
             self.hparams,
             data_path=self.hparams.train_files,
-            rank=int(os.environ.get('RANK') or 0),
-            world_size=int(os.environ.get('WORLD_SIZE') or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            world_size=int(os.environ.get("WORLD_SIZE") or 1),
             shuffle=True,
             repeat=True,
-            is_training=True)
-        print(f'len of trainset: {len(self.train_dataset)}')
+            is_training=True,
+        )
+        print(f"len of trainset: {len(self.train_dataset)}")
 
         self.val_dataset = TorchvisionLabelDataset(
             self.hparams,
             data_path=self.hparams.val_files,
-            rank=int(os.environ.get('RANK') or 0),
-            world_size=int(os.environ.get('WORLD_SIZE') or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            world_size=int(os.environ.get("WORLD_SIZE") or 1),
             # world_size=1,
             shuffle=False,
             repeat=False,
-            is_training=False)
+            is_training=False,
+        )
 
     def train_dataloader(self):
-        train_loader = torch.utils.data.DataLoader(self.train_dataset, batch_size=self.hparams.train_batch_size,
-                                                   num_workers=self.hparams.num_workers,
-                                                   pin_memory=True,
-                                                   drop_last=True,
-                                                   collate_fn=self.train_dataset.collect_fn)
+        train_loader = torch.utils.data.DataLoader(
+            self.train_dataset,
+            batch_size=self.hparams.train_batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            drop_last=True,
+            collate_fn=self.train_dataset.collect_fn,
+        )
         print(len(train_loader))
         return train_loader
 
     def val_dataloader(self):
-        val_loader = torch.utils.data.DataLoader(self.val_dataset, batch_size=self.hparams.val_batch_size,
-                                                 num_workers=1,
-                                                 pin_memory=True,
-                                                 drop_last=False,
-                                                 collate_fn=self.train_dataset.collect_fn)
+        val_loader = torch.utils.data.DataLoader(
+            self.val_dataset,
+            batch_size=self.hparams.val_batch_size,
+            num_workers=1,
+            pin_memory=True,
+            drop_last=False,
+            collate_fn=self.train_dataset.collect_fn,
+        )
         return val_loader

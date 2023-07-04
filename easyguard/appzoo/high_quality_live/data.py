@@ -3,14 +3,10 @@ import json
 
 import numpy as np
 import torch
-from easyguard import AutoProcessor
+from cruise.data_module import CruiseDataModule, create_cruise_loader, customized_processor
 from PIL import Image
 
-from cruise.data_module import (
-    CruiseDataModule,
-    create_cruise_loader,
-    customized_processor,
-)
+from easyguard import AutoProcessor
 
 # from cruise.data_module.preprocess.decode import save_args
 
@@ -49,9 +45,7 @@ class HighQualityLiveProcessor:
         self.text_keys = text_keys
         self.frame_key = frame_key
         self.label_keys = label_keys
-        self.black_frame = self.processor(
-            image=Image.new("RGB", (256, 256), (255, 255, 255))
-        )["pixel_values"]
+        self.black_frame = self.processor(image=Image.new("RGB", (256, 256), (255, 255, 255)))["pixel_values"]
         self.PAD = self.processor.PAD
         self.frame_len = frame_len
 
@@ -73,9 +67,7 @@ class HighQualityLiveProcessor:
 
         ret = {
             "token_ids": results["token_ids"],
-            "frames": results["pixel_values"]
-            if "pixel_values" in results
-            else [],
+            "frames": results["pixel_values"] if "pixel_values" in results else [],
             "item_id": item_id,
         }
         # parse label
@@ -99,14 +91,8 @@ class HighQualityLiveProcessor:
             labels.append(ibatch["label"])
             item_id.append(ibatch["item_id"])
 
-            input_ids.append(
-                ibatch["token_ids"][:max_len]
-                + [self.PAD] * (max_len - len(ibatch["token_ids"]))
-            )
-            input_mask.append(
-                [1] * len(ibatch["token_ids"][:max_len])
-                + [0] * (max_len - len(ibatch["token_ids"]))
-            )
+            input_ids.append(ibatch["token_ids"][:max_len] + [self.PAD] * (max_len - len(ibatch["token_ids"])))
+            input_mask.append([1] * len(ibatch["token_ids"][:max_len]) + [0] * (max_len - len(ibatch["token_ids"])))
             input_segment_ids.append([0] * max_len)
 
             frames_cur = []
@@ -191,9 +177,7 @@ class HighQualityLiveDataModule(CruiseDataModule):
             decode_fn_list=[HighQualityLiveDataDecode()],
         )
 
-    def predict_dataloader(
-        self, data_source=None, batch_size=32, num_workers=8
-    ):
+    def predict_dataloader(self, data_source=None, batch_size=32, num_workers=8):
         return create_cruise_loader(
             data_sources=data_source,
             data_types="kv",

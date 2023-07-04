@@ -5,20 +5,10 @@
 # Written by yangmin.priv
 # --------------------------------------------------------
 
-import sys
-import os
-
+import torch
 from PIL import Image
 
-import torch
-import torchvision.transforms as transforms
-
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-    
-from easyguard import AutoModel, AutoImageProcessor
+from easyguard import AutoImageProcessor, AutoModel
 
 model = AutoModel.from_pretrained("fashion-swin-base-224-fashionvtp")
 print(model)
@@ -28,7 +18,7 @@ dummy_input = torch.ones(1, 3, 224, 224)
 dummy_output = model(dummy_input)
 print(dummy_output.size())
 
-# infer image 
+# infer image
 image = Image.open("examples/image_classification/ptms.png").convert("RGB")
 image_processor = AutoImageProcessor.from_pretrained("fashion-swin-base-224-fashionvtp")
 

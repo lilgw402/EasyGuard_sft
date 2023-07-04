@@ -19,9 +19,7 @@ import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 
 import sentencepiece as sp
-
 from transformers.tokenization_utils import PreTrainedTokenizer
-
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "vocab_file": {
@@ -120,7 +118,7 @@ class DebertaV2Tokenizer(PreTrainedTokenizer):
         cls_token="[CLS]",
         mask_token="[MASK]",
         sp_model_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
 
@@ -146,7 +144,11 @@ class DebertaV2Tokenizer(PreTrainedTokenizer):
         self.do_lower_case = do_lower_case
         self.split_by_punct = split_by_punct
         self.vocab_file = vocab_file
-        self._tokenizer = SPMTokenizer(vocab_file, split_by_punct=split_by_punct, sp_model_kwargs=self.sp_model_kwargs)
+        self._tokenizer = SPMTokenizer(
+            vocab_file,
+            split_by_punct=split_by_punct,
+            sp_model_kwargs=self.sp_model_kwargs,
+        )
 
     @property
     def vocab_size(self):
@@ -222,7 +224,9 @@ class DebertaV2Tokenizer(PreTrainedTokenizer):
 
         if already_has_special_tokens:
             return super().get_special_tokens_mask(
-                token_ids_0=token_ids_0, token_ids_1=token_ids_1, already_has_special_tokens=True
+                token_ids_0=token_ids_0,
+                token_ids_1=token_ids_1,
+                already_has_special_tokens=True,
             )
 
         if token_ids_1 is not None:
@@ -291,7 +295,12 @@ class SPMTokenizer:
               BPE-dropout.
     """
 
-    def __init__(self, vocab_file, split_by_punct=False, sp_model_kwargs: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        vocab_file,
+        split_by_punct=False,
+        sp_model_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         self.split_by_punct = split_by_punct
         self.vocab_file = vocab_file
         self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs

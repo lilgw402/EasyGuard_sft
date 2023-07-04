@@ -1,19 +1,12 @@
-import io
 import json
 
-import numpy as np
 import torch
 import torchvision.transforms as transforms
-from easyguard import AutoProcessor
-from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
+from cruise.data_module import CruiseDataModule, create_cruise_loader
+from cruise.data_module.preprocess.decode import save_args
 from PIL import Image
 
-from cruise.data_module import (
-    CruiseDataModule,
-    create_cruise_loader,
-    customized_processor,
-)
-from cruise.data_module.preprocess.decode import save_args
+from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
 
 
 @save_args
@@ -43,9 +36,7 @@ class TextProcessor:
         max_len={"text_ocr": 256, "text_asr": 256},
         text_types=["text_ocr", "text_asr"],
     ):
-        self.tokenizer = BertTokenizer(
-            vocab_file, do_lower_case, tokenize_emoji, greedy_sharp
-        )
+        self.tokenizer = BertTokenizer(vocab_file, do_lower_case, tokenize_emoji, greedy_sharp)
         self.max_len = {
             "text_ocr": max_len["text_ocr"],
             "text_asr": max_len["text_asr"],
@@ -60,9 +51,7 @@ class TextProcessor:
         tokens = ["[CLS]"]
         for text_type in self.text_types:
             text = texts[text_type]
-            tokens += self.tokenizer.tokenize(text)[
-                : self.max_len[text_type] - 2
-            ] + ["[SEP]"]
+            tokens += self.tokenizer.tokenize(text)[: self.max_len[text_type] - 2] + ["[SEP]"]
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         return token_ids
 
@@ -75,9 +64,7 @@ class VideoFrameProcess:
         self.test_mode = test_mode
 
     def get_transform(self, test_mode: bool = False):
-        normalize = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         if not test_mode:
             com_transforms = transforms.Compose(
                 [
@@ -104,7 +91,7 @@ class VideoFrameProcess:
         for frame_path in frames_raw:
             try:
                 image = Image.open(frame_path).convert("RGB")
-            except:
+            except:  # noqa: E722
                 image = Image.new("RGB", (256, 256), (255, 255, 255))
             image = self.transform(image)
             frames.append(image)
@@ -116,7 +103,7 @@ class HighQualityLiveProcessor:
     def __init__(
         self,
         test_mode,
-        vocab_file="hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab",
+        vocab_file="hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/albert_6l_zh_mix_oldcut_20200921/archer/zh_old_cut_145607.vocab",  # noqa: E501
         ocr_max_len=128,
         asr_max_len=128,
         frame_len=8,
@@ -132,9 +119,7 @@ class HighQualityLiveProcessor:
         self.text_keys = text_keys
         self.frame_key = frame_key
         self.label_keys = label_keys
-        self.black_frame = self.frame_process.transform(
-            Image.new("RGB", (256, 256), (255, 255, 255))
-        )
+        self.black_frame = self.frame_process.transform(Image.new("RGB", (256, 256), (255, 255, 255)))
         self.PAD = self.text_process.PAD
         self.frame_len = frame_len
 
@@ -150,7 +135,7 @@ class HighQualityLiveProcessor:
         frame_paths = data_dict[self.frame_key]
         try:
             item_id = frame_paths[0].split("/")[-2]
-        except:
+        except:  # noqa: E722
             item_id = None
         frames = self.frame_process(frame_paths)
         # print('data shape: token_ids({})'.format(len(token_ids)))
@@ -177,14 +162,8 @@ class HighQualityLiveProcessor:
             labels.append(ibatch["label"])
             item_id.append(ibatch["item_id"])
 
-            input_ids.append(
-                ibatch["token_ids"][:max_len]
-                + [self.PAD] * (max_len - len(ibatch["token_ids"]))
-            )
-            input_mask.append(
-                [1] * len(ibatch["token_ids"][:max_len])
-                + [0] * (max_len - len(ibatch["token_ids"]))
-            )
+            input_ids.append(ibatch["token_ids"][:max_len] + [self.PAD] * (max_len - len(ibatch["token_ids"])))
+            input_mask.append([1] * len(ibatch["token_ids"][:max_len]) + [0] * (max_len - len(ibatch["token_ids"])))
             input_segment_ids.append([0] * max_len)
 
             frames_cur = []
@@ -269,9 +248,7 @@ class HighQualityLiveDataModule(CruiseDataModule):
             decode_fn_list=[HighQualityLiveDataDecode()],
         )
 
-    def predict_dataloader(
-        self, data_source=None, batch_size=32, num_workers=8
-    ):
+    def predict_dataloader(self, data_source=None, batch_size=32, num_workers=8):
         return create_cruise_loader(
             data_sources=data_source,
             data_types="kv",

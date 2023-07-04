@@ -1,6 +1,5 @@
 import os
 from collections import OrderedDict
-from email.mime import image
 from typing import Any, Optional, Union
 
 from ...modelzoo.hub import AutoHubClass
@@ -13,13 +12,7 @@ from ...utils import (
     logging,
     pretrained_model_archive_parse,
 )
-from . import (
-    BACKENDS,
-    IMAGE_PROCESSOR_CONFIG_NAMES,
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_CONFIG_NAMES,
-    MODELZOO_CONFIG,
-)
+from . import BACKENDS, IMAGE_PROCESSOR_CONFIG_NAMES, MODEL_ARCHIVE_CONFIG, MODEL_CONFIG_NAMES, MODELZOO_CONFIG
 
 IMAGE_PROCESSOR_MAPPING_NAMES = MODELZOO_CONFIG.get_mapping("image_processor")
 
@@ -85,18 +78,12 @@ class AutoImageProcessor:
             model_url = model_archive.get("url_or_path", None)
             server_name = model_archive.get("server", None)
             is_local = False
-        elif os.path.exists(pretrained_model_name_or_path) and os.path.isdir(
-            pretrained_model_name_or_path
-        ):
-            image_processor_config_file_path = file_exist(
-                pretrained_model_name_or_path, IMAGE_PROCESSOR_CONFIG_NAMES
-            )
+        elif os.path.exists(pretrained_model_name_or_path) and os.path.isdir(pretrained_model_name_or_path):
+            image_processor_config_file_path = file_exist(pretrained_model_name_or_path, IMAGE_PROCESSOR_CONFIG_NAMES)
             assert (
                 image_processor_config_file_path is not None
             ), f"please check the image processor config file in {pretrained_model_name_or_path}"
-            model_config_path = file_exist(
-                pretrained_model_name_or_path, MODEL_CONFIG_NAMES
-            )
+            model_config_path = file_exist(pretrained_model_name_or_path, MODEL_CONFIG_NAMES)
             assert (
                 model_config_path is not None
             ), f"please make sure the model config file exist in f{pretrained_model_name_or_path}"
@@ -106,9 +93,7 @@ class AutoImageProcessor:
             model_type = config_dict_.get("model_type", None)
             is_local = True
         else:
-            logger.warning(
-                "can not found model location, load from huggingface..."
-            )
+            logger.warning("can not found model location, load from huggingface...")
         """ >> preprocessing: download files << """
         if server_name:
             if not image_processor_config_file_path:
@@ -136,14 +121,12 @@ class AutoImageProcessor:
         )
 
         if not model_type:
-            logger.info(f"try to use transformers to load image processor~")
+            logger.info("try to use transformers to load image processor~")
             try:
                 from transformers import AutoImageProcessor
 
-                image_processor = AutoImageProcessor.from_pretrained(
-                    pretrained_model_name_or_path, **kwargs
-                )
-            except:
+                image_processor = AutoImageProcessor.from_pretrained(pretrained_model_name_or_path, **kwargs)
+            except:  # noqa: E722
                 raise KeyError(pretrained_model_name_or_path)
         else:
             model_config = MODELZOO_CONFIG.get(model_type, None)
@@ -180,25 +163,17 @@ class AutoImageProcessor:
                 backend_default_flag = True
 
             if backend_default_flag:
-                image_processor_name_tuple = MODELZOO_CONFIG[model_type][
-                    "image_processor"
-                ]
+                image_processor_name_tuple = MODELZOO_CONFIG[model_type]["image_processor"]
                 (
                     image_processor_module_package,
                     image_processor_module_name,
                 ) = MODELZOO_CONFIG.to_module(image_processor_name_tuple)
-                image_processor_class = lazy_model_import(
-                    image_processor_module_package, image_processor_module_name
-                )
+                image_processor_class = lazy_model_import(image_processor_module_package, image_processor_module_name)
                 AutoHubClass.kwargs = extra_dict
 
-                image_processor_config = file_read(
-                    image_processor_config_file_path
-                )
+                image_processor_config = file_read(image_processor_config_file_path)
                 image_processor_config.update(kwargs)
-                image_processor = image_processor_class(
-                    **image_processor_config
-                )
+                image_processor = image_processor_class(**image_processor_config)
 
         """ >> processsor post processing <<"""
 

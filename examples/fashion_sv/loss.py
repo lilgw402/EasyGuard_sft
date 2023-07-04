@@ -1,7 +1,9 @@
 import math
+
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
+
 from .tools import *
 
 
@@ -37,9 +39,7 @@ class AAMsoftmax(nn.Module):
 class LearnableNTXentLoss(nn.Module):
     def __init__(self, init_tau=0.07, clamp=4.6051):
         super().__init__()
-        self.tau = torch.nn.Parameter(
-            torch.tensor([np.log(1.0 / init_tau)], dtype=torch.float32)
-        )
+        self.tau = torch.nn.Parameter(torch.tensor([np.log(1.0 / init_tau)], dtype=torch.float32))
         self.calc_ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
         self.clamp = clamp  # 4.6051 等价于CLAMP 100, 初始值是2.6593，
 

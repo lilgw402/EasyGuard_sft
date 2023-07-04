@@ -1,19 +1,21 @@
 """An customizable fashion_deberta example"""
-import sys
-import os
 import json
-from typing import Union, List 
+import os
+import sys
+from typing import List, Union
+
 import torch
 
 try:
     import easyguard
 except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from cruise.data_module import CruiseDataModule
-from cruise.utilities.hdfs_io import hlist_files
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
-from easyguard.utils.data_helpers import build_vocab
+from cruise.utilities.hdfs_io import hlist_files
+
 from easyguard.core import AutoTokenizer
+from easyguard.utils.data_helpers import build_vocab
 
 
 class TextProcessor:
@@ -23,10 +25,10 @@ class TextProcessor:
         self._tokenizer = tokenizer
         self._context_length = context_length
         self._vocab = vocab
-        self.PAD_IDX = self._vocab['[PAD]']
-        self.SEP_IDX = self._vocab['[SEP]']
-        self.CLS_IDX = self._vocab['[CLS]']
-        self.MASK_IDX = self._vocab['[MASK]']
+        self.PAD_IDX = self._vocab["[PAD]"]
+        self.SEP_IDX = self._vocab["[SEP]"]
+        self.CLS_IDX = self._vocab["[CLS]"]
+        self.MASK_IDX = self._vocab["[MASK]"]
         self.cnt = 0
 
     def transform(self, data_dict: dict):
@@ -35,13 +37,18 @@ class TextProcessor:
             raise KeyError(f"Unable to find text by keys: {self._text_field} available keys: {data_dict.keys()}")
         text = data_dict.get(self._text_field, "")
         text_token = self._tokenizer.tokenize(text)
-        text_token = text_token[:self._context_length - 2]
+        text_token = text_token[: self._context_length - 2]
         text_token_ids = [self._vocab[token] for token in text_token]
         text_token_ids = [self.CLS_IDX] + text_token_ids + [self.SEP_IDX]
         if not self._text_label_field in data_dict:
-            raise KeyError(f"Unable to find text by keys: {self._text_label_field}, available keys: {data_dict.keys()}")
+            raise KeyError(
+                f"Unable to find text by keys: {self._text_label_field}, available keys: {data_dict.keys()}"
+            )
         label = int(data_dict.get(self._text_label_field))
-        return_dict = {'input_ids': text_token_ids, 'classification_labels': int(label)}
+        return_dict = {
+            "input_ids": text_token_ids,
+            "classification_labels": int(label),
+        }
         return return_dict
 
     def batch_transform(self, batch_data):
@@ -53,11 +60,11 @@ class TextProcessor:
         max_len = self._context_length
 
         for ib, ibatch in enumerate(batch_data):
-            input_ids.append(ibatch['input_ids'][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch['input_ids'])))
-            input_mask.append([1] * len(ibatch['input_ids'][:max_len]) + [0] * (max_len - len(ibatch['input_ids'])))
+            input_ids.append(ibatch["input_ids"][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch["input_ids"])))
+            input_mask.append([1] * len(ibatch["input_ids"][:max_len]) + [0] * (max_len - len(ibatch["input_ids"])))
             input_segment_ids.append([0] * max_len)
 
-            classification_labels.append(ibatch['classification_labels'])
+            classification_labels.append(ibatch["classification_labels"])
 
         input_ids = torch.tensor(input_ids)
         input_mask = torch.tensor(input_mask)
@@ -65,29 +72,34 @@ class TextProcessor:
         classification_labels = torch.tensor(classification_labels)
 
         res = {
-               "input_ids": input_ids,
-               "input_masks": input_mask,
-               "input_segment_ids": input_segment_ids,
-               "classification_labels": classification_labels,
-               }
+            "input_ids": input_ids,
+            "input_masks": input_mask,
+            "input_segment_ids": input_segment_ids,
+            "classification_labels": classification_labels,
+        }
         return res
 
 
 class FashionDataFtModule(CruiseDataModule):
-    def __init__(self,
-                 train_batch_size: int = 32,
-                 val_batch_size: int = 32,
-                 train_paths: Union[str, List[str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/benchmark/asr_risk_predict/train/*.jsonl',
-                 val_paths: Union[str, List[str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/benchmark/asr_risk_predict/valid/*.jsonl',
-                 data_size: int = 10000,
-                 val_step: int = 100,
-                 text_label_field: str = 'label',
-                 text_field: str = 'text',
-                 num_workers: int = 1,
-                 context_length: int = 512,
-                 vocab_file_path: str = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt',
-                 pretrain_model_name: str = "fashion-deberta-asr",
-                 ):
+    def __init__(
+        self,
+        train_batch_size: int = 32,
+        val_batch_size: int = 32,
+        train_paths: Union[
+            str, List[str]
+        ] = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/benchmark/asr_risk_predict/train/*.jsonl",
+        val_paths: Union[
+            str, List[str]
+        ] = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/benchmark/asr_risk_predict/valid/*.jsonl",
+        data_size: int = 10000,
+        val_step: int = 100,
+        text_label_field: str = "label",
+        text_field: str = "text",
+        num_workers: int = 1,
+        context_length: int = 512,
+        vocab_file_path: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt",
+        pretrain_model_name: str = "fashion-deberta-asr",
+    ):
         super().__init__()
         self.save_hparams()
 
@@ -117,7 +129,7 @@ class FashionDataFtModule(CruiseDataModule):
             self.val_files = files[-2:]
         self.text_label_field = self.hparams.text_label_field
         self.text_field = self.hparams.text_field
-            
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.hparams.pretrain_model_name)
         self.vocab = build_vocab(self.hparams.vocab_file_path)
 
@@ -137,7 +149,7 @@ class FashionDataFtModule(CruiseDataModule):
                 self.vocab,
             ),
             predefined_steps=self.hparams.data_size // self.hparams.train_batch_size // self.trainer.world_size,
-            source_types=['jsonl'],
+            source_types=["jsonl"],
             shuffle=True,
         )
 
@@ -157,6 +169,6 @@ class FashionDataFtModule(CruiseDataModule):
                 self.vocab,
             ),
             predefined_steps=self.hparams.val_step,
-            source_types=['jsonl'],
+            source_types=["jsonl"],
             shuffle=False,
         )

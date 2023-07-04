@@ -21,7 +21,6 @@ from functools import lru_cache
 from typing import List, Optional, Tuple
 
 import regex as re
-
 from transformers.tokenization_utils import (
     AddedToken,
     PreTrainedTokenizer,
@@ -70,9 +69,7 @@ def bytes_to_unicode():
     tables between utf-8 bytes and unicode strings.
     """
     bs = (
-        list(range(ord("!"), ord("~") + 1))
-        + list(range(ord("¡"), ord("¬") + 1))
-        + list(range(ord("®"), ord("ÿ") + 1))
+        list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
     )
     cs = bs[:]
     n = 0
@@ -161,11 +158,7 @@ class BasicTokenizer(object):
                 [`PreTrainedTokenizer.tokenize`]) List of token not to split.
         """
         # union() returns a new set by concatenating the two sets.
-        never_split = (
-            self.never_split.union(set(never_split))
-            if never_split
-            else self.never_split
-        )
+        never_split = self.never_split.union(set(never_split)) if never_split else self.never_split
         text = self._clean_text(text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese
@@ -315,21 +308,9 @@ class CLIPTokenizer(PreTrainedTokenizer):
         pad_token="<|endoftext|>",  # hack to enable padding
         **kwargs,
     ):
-        bos_token = (
-            AddedToken(bos_token, lstrip=False, rstrip=False)
-            if isinstance(bos_token, str)
-            else bos_token
-        )
-        eos_token = (
-            AddedToken(eos_token, lstrip=False, rstrip=False)
-            if isinstance(eos_token, str)
-            else eos_token
-        )
-        unk_token = (
-            AddedToken(unk_token, lstrip=False, rstrip=False)
-            if isinstance(unk_token, str)
-            else unk_token
-        )
+        bos_token = AddedToken(bos_token, lstrip=False, rstrip=False) if isinstance(bos_token, str) else bos_token
+        eos_token = AddedToken(eos_token, lstrip=False, rstrip=False) if isinstance(eos_token, str) else eos_token
+        unk_token = AddedToken(unk_token, lstrip=False, rstrip=False) if isinstance(unk_token, str) else unk_token
 
         super().__init__(
             errors=errors,
@@ -345,9 +326,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
 
             self.fix_text = ftfy.fix_text
         except ImportError:
-            logger.info(
-                "ftfy or spacy is not installed using custom BasicTokenizer instead of ftfy."
-            )
+            logger.info("ftfy or spacy is not installed using custom BasicTokenizer instead of ftfy.")
             self.nlp = BasicTokenizer(do_lower_case=True)
             self.fix_text = None
 
@@ -358,11 +337,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
         with open(merges_file, encoding="utf-8") as merges_handle:
-            bpe_merges = (
-                merges_handle.read()
-                .strip()
-                .split("\n")[1 : 49152 - 256 - 2 + 1]
-            )
+            bpe_merges = merges_handle.read().strip().split("\n")[1 : 49152 - 256 - 2 + 1]
         bpe_merges = [tuple(merge.split()) for merge in bpe_merges]
         self.bpe_ranks = dict(zip(bpe_merges, range(len(bpe_merges))))
         self.cache = {
@@ -407,14 +382,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
 
         if token_ids_1 is None:
             return bos_token + token_ids_0 + eos_token
-        return (
-            bos_token
-            + token_ids_0
-            + eos_token
-            + eos_token
-            + token_ids_1
-            + eos_token
-        )
+        return bos_token + token_ids_0 + eos_token + eos_token + token_ids_1 + eos_token
 
     def get_special_tokens_mask(
         self,
@@ -447,14 +415,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
 
         if token_ids_1 is None:
             return [1] + ([0] * len(token_ids_0)) + [1]
-        return (
-            [1]
-            + ([0] * len(token_ids_0))
-            + [1]
-            + [1]
-            + ([0] * len(token_ids_1))
-            + [1]
-        )
+        return [1] + ([0] * len(token_ids_0)) + [1] + [1] + ([0] * len(token_ids_1)) + [1]
 
     def create_token_type_ids_from_sequences(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
@@ -477,14 +438,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
 
         if token_ids_1 is None:
             return len(bos_token + token_ids_0 + eos_token) * [0]
-        return len(
-            bos_token
-            + token_ids_0
-            + eos_token
-            + eos_token
-            + token_ids_1
-            + eos_token
-        ) * [0]
+        return len(bos_token + token_ids_0 + eos_token + eos_token + token_ids_1 + eos_token) * [0]
 
     def bpe(self, token):
         if token in self.cache:
@@ -496,9 +450,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
             return token + "</w>"
 
         while True:
-            bigram = min(
-                pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf"))
-            )
+            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf")))
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -514,11 +466,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
                     new_word.extend(word[i:j])
                     i = j
 
-                if (
-                    word[i] == first
-                    and i < len(word) - 1
-                    and word[i + 1] == second
-                ):
+                if word[i] == first and i < len(word) - 1 and word[i + 1] == second:
                     new_word.append(first + second)
                     i += 2
                 else:
@@ -546,9 +494,7 @@ class CLIPTokenizer(PreTrainedTokenizer):
             token = "".join(
                 self.byte_encoder[b] for b in token.encode("utf-8")
             )  # Maps all our bytes to unicode strings, avoiding control tokens of the BPE (spaces in our case)
-            bpe_tokens.extend(
-                bpe_token for bpe_token in self.bpe(token).split(" ")
-            )
+            bpe_tokens.extend(bpe_token for bpe_token in self.bpe(token).split(" "))
         return bpe_tokens
 
     def _convert_token_to_id(self, token):
@@ -563,54 +509,33 @@ class CLIPTokenizer(PreTrainedTokenizer):
         """Converts a sequence of tokens (string) in a single string."""
         text = "".join(tokens)
         byte_array = bytearray([self.byte_decoder[c] for c in text])
-        text = (
-            byte_array.decode("utf-8", errors=self.errors)
-            .replace("</w>", " ")
-            .strip()
-        )
+        text = byte_array.decode("utf-8", errors=self.errors).replace("</w>", " ").strip()
         return text
 
-    def save_vocabulary(
-        self, save_directory: str, filename_prefix: Optional[str] = None
-    ) -> Tuple[str]:
+    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
         if not os.path.isdir(save_directory):
-            logger.error(
-                "Vocabulary path ({}) should be a directory".format(
-                    save_directory
-                )
-            )
+            logger.error("Vocabulary path ({}) should be a directory".format(save_directory))
             return
         vocab_file = os.path.join(
             save_directory,
-            (filename_prefix + "-" if filename_prefix else "")
-            + VOCAB_FILES_NAMES["vocab_file"],
+            (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["vocab_file"],
         )
         merge_file = os.path.join(
             save_directory,
-            (filename_prefix + "-" if filename_prefix else "")
-            + VOCAB_FILES_NAMES["merges_file"],
+            (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["merges_file"],
         )
 
         with open(vocab_file, "w", encoding="utf-8") as f:
-            f.write(
-                json.dumps(
-                    self.encoder, indent=2, sort_keys=True, ensure_ascii=False
-                )
-                + "\n"
-            )
+            f.write(json.dumps(self.encoder, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
 
         index = 0
         with open(merge_file, "w", encoding="utf-8") as writer:
             writer.write("#version: 0.2\n")
-            for bpe_tokens, token_index in sorted(
-                self.bpe_ranks.items(), key=lambda kv: kv[1]
-            ):
+            for bpe_tokens, token_index in sorted(self.bpe_ranks.items(), key=lambda kv: kv[1]):
                 if index != token_index:
                     logger.warning(
                         "Saving vocabulary to {}: BPE merge indices are not consecutive."
-                        " Please check that the tokenizer is not corrupted!".format(
-                            merge_file
-                        )
+                        " Please check that the tokenizer is not corrupted!".format(merge_file)
                     )
                     index = token_index
                 writer.write(" ".join(bpe_tokens) + "\n")

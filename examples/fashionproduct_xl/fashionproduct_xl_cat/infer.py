@@ -1,31 +1,42 @@
 # -*- coding: utf-8 -*-
+import base64
 import io
 
 # os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # import cv2
 import json
-import torch
-import base64
+
 import numpy as np
-from tqdm import tqdm
+import torch
 import torchvision.transforms as transforms
-from PIL import ImageFile, Image
+from PIL import Image, ImageFile
+
 # from transformers import AutoTokenizer
 from ptx.matx.pipeline import Pipeline
+from tqdm import tqdm
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from cruise import CruiseCLI, CruiseTrainer
 from cruise.utilities.hdfs_io import hopen
-from examples.fashionproduct_xl.fashionproduct_xl_cat.data import FacDataModule
+
+from examples.fashionproduct_xl.fashionproduct_xl_cat.data import FacDataModule, text_concat
 from examples.fashionproduct_xl.fashionproduct_xl_cat.model import FrameAlbertClassify
-from examples.fashionproduct_xl.fashionproduct_xl_cat.data import text_concat
 
 max_len = 128
-gec = np.load('./examples/fashionproduct_xl/fashionproduct_xl_cat/GEC_cat.npy', allow_pickle=True).item()
-pipe = Pipeline.from_option(f'file:./examples/fashionproduct_xl/m_albert_h512a8l12')
+gec = np.load(
+    "./examples/fashionproduct_xl/fashionproduct_xl_cat/GEC_cat.npy",
+    allow_pickle=True,
+).item()
+pipe = Pipeline.from_option(f"file:./examples/fashionproduct_xl/m_albert_h512a8l12")
 # tokenizer = AutoTokenizer.from_pretrained('./examples/fashionproduct_xl/xlm-roberta-base-torch')
-country2idx = {'GB': 0, 'TH': 1, 'ID': 2, 'VN': 3, 'MY': 4, }
+country2idx = {
+    "GB": 0,
+    "TH": 1,
+    "ID": 2,
+    "VN": 3,
+    "MY": 4,
+}
 # default_mean = np.array((0.485, 0.456, 0.406)).reshape(1, 1, 1, 3)
 # default_std = np.array((0.229, 0.224, 0.225)).reshape(1, 1, 1, 3)
 
@@ -44,7 +55,7 @@ def b64_decode(string):
 
 def _load_image(buffer):
     img = Image.open(io.BytesIO(buffer))
-    img = img.convert('RGB')
+    img = img.convert("RGB")
     return img
 
 
@@ -52,26 +63,31 @@ def get_transform(mode: str = "train"):
     """
     根据不同的data，返回不同的transform
     """
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if mode == "train":
-        com_transforms = transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize])
-    elif mode == 'val':
-        com_transforms = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize])
+        com_transforms = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+    elif mode == "val":
+        com_transforms = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
     else:
-        raise ValueError('mode [%s] is not in [train, val]' % mode)
+        raise ValueError("mode [%s] is not in [train, val]" % mode)
     return com_transforms
 
 
-preprocess = get_transform(mode='val')
+preprocess = get_transform(mode="val")
 
 
 # def load_image(image_str):
@@ -97,15 +113,15 @@ preprocess = get_transform(mode='val')
 
 
 def process(data_item: dict):
-    if 'text' in data_item:
-        title = data_item['text']
+    if "text" in data_item:
+        title = data_item["text"]
         desc = None
-        country = data_item['country']
+        country = data_item["country"]
         country_idx = country2idx[country]
     else:
-        title = data_item['title']
-        desc = data_item['desc']
-        country = data_item['country']
+        title = data_item["title"]
+        desc = data_item["desc"]
+        country = data_item["country"]
         country_idx = country2idx[country]
 
     text = text_concat(title, desc)
@@ -127,9 +143,9 @@ def process(data_item: dict):
     head_mask[0, country_idx] = 1
 
     frames = []
-    if 'image' in data_item:
+    if "image" in data_item:
         try:
-            image_tensor = image_preprocess(data_item['image'])
+            image_tensor = image_preprocess(data_item["image"])
             # image_array = cv2transform(load_image(data_item['image']))
             # image_tensor = torch.tensor(image_array)
             # image_tensor = image_tensor.half()
@@ -142,17 +158,25 @@ def process(data_item: dict):
     frames = frames.reshape([1, 1, 3, 224, 224])
     frames_mask = torch.tensor([[1]])
 
-    return token_ids, input_segment_ids, token_mask, frames, frames_mask, head_mask
+    return (
+        token_ids,
+        input_segment_ids,
+        token_mask,
+        frames,
+        frames_mask,
+        head_mask,
+    )
 
 
 if __name__ == "__main__":
-    cli = CruiseCLI(FrameAlbertClassify,
-                    trainer_class=CruiseTrainer,
-                    datamodule_class=FacDataModule,
-                    trainer_defaults={
-                    })
+    cli = CruiseCLI(
+        FrameAlbertClassify,
+        trainer_class=CruiseTrainer,
+        datamodule_class=FacDataModule,
+        trainer_defaults={},
+    )
     cfg, trainer, model, datamodule = cli.parse_args()
-    print(f'finished model config init!')
+    print(f"finished model config init!")
 
     # load ckpt
     model.setup("val")
@@ -163,12 +187,12 @@ if __name__ == "__main__":
     # model = torch.jit.load('./traced_model/FrameAlbertClassify.ts')
     # model.cuda()
 
-    countries = ['GB', 'TH', 'ID', 'VN', 'MY']
+    countries = ["GB", "TH", "ID", "VN", "MY"]
     allres = dict()
     for country in countries:
-        file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl'
+        file = f"hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_high_risk_1013_country/{country}_high_risk_1013.jsonl"
         # file = f'hdfs://harunava/home/byte_magellan_va/user/wangxian/datasets/TTS_KG_TEST/test_jsonl_1013_country/{country}_1013.test.jsonl'
-        with hopen(file, 'r') as f:
+        with hopen(file, "r") as f:
             lines = f.readlines()
 
         num_all = 0
@@ -179,15 +203,24 @@ if __name__ == "__main__":
             data = process(sample)
             if data is None:
                 continue
-            input_ids, input_segment_ids, input_mask, frames, frames_mask, head_mask = data
+            (
+                input_ids,
+                input_segment_ids,
+                input_mask,
+                frames,
+                frames_mask,
+                head_mask,
+            ) = data
 
-            res = model.forward_step(input_ids=input_ids.cuda(),
-                                     input_segment_ids=input_segment_ids.cuda(),
-                                     input_mask=input_mask.cuda(),
-                                     frames=frames.cuda(),
-                                     frames_mask=frames_mask.cuda(),
-                                     head_mask=head_mask.cuda(), )
-            logits = res['logits']
+            res = model.forward_step(
+                input_ids=input_ids.cuda(),
+                input_segment_ids=input_segment_ids.cuda(),
+                input_mask=input_mask.cuda(),
+                frames=frames.cuda(),
+                frames_mask=frames_mask.cuda(),
+                head_mask=head_mask.cuda(),
+            )
+            logits = res["logits"]
 
             # jit load infer
             # res = model(input_ids.cuda(),
@@ -202,18 +235,21 @@ if __name__ == "__main__":
             labels = [int(p) for p in pred[0]]
 
             num_all += 1
-            if gec[sample['leaf_cid']]['label'] == labels[0]:
+            if gec[sample["leaf_cid"]]["label"] == labels[0]:
                 num_top1 += 1
                 num_top5 += 1
-            elif gec[sample['leaf_cid']]['label'] in labels:
+            elif gec[sample["leaf_cid"]]["label"] in labels:
                 num_top5 += 1
             else:
                 # print(gec[sample['leaf_cid']]['label'], labels)
                 pass
             if num_all % 2000 == 0:
-                print(f'{country} top1 acc is {num_top1 / num_all}, with samples: {num_all}')
-        print(f'{country} top1 acc is {num_top1 / num_all}, top5 acc is {num_top5 / num_all}')
-        allres[country] = {'top1': num_top1 / num_all, 'top5': num_top5 / num_all}
+                print(f"{country} top1 acc is {num_top1 / num_all}, with samples: {num_all}")
+        print(f"{country} top1 acc is {num_top1 / num_all}, top5 acc is {num_top5 / num_all}")
+        allres[country] = {
+            "top1": num_top1 / num_all,
+            "top5": num_top5 / num_all,
+        }
 
     for k, v in allres.items():
         print(k, v)

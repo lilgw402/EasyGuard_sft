@@ -1,17 +1,17 @@
-
 import io
-import sys
-import torch
-import torch.distributed as dist
-import numpy as np
 import itertools as it
-from packaging import version
+import sys
 from collections import abc
 from typing import List, Mapping
-from utils.file_util import hopen
-from prettytable import PrettyTable
-from utils.driver import get_logger, DIST_CONTEXT
+
+import numpy as np
+import torch
 import torch.autograd as autograd
+import torch.distributed as dist
+from packaging import version
+from prettytable import PrettyTable
+from utils.driver import DIST_CONTEXT, get_logger
+from utils.file_util import hopen
 
 
 def check_fft_version():
@@ -64,11 +64,7 @@ def default_collate(batch, transposed_list=True):
             storage = elem.storage()._new_shared(numel)
             out = elem.new(storage)
         return torch.stack(batch, 0, out=out)
-    elif (
-            elem_type.__module__ == "numpy"
-            and elem_type.__name__ != "str_"
-            and elem_type.__name__ != "string_"
-    ):
+    elif elem_type.__module__ == "numpy" and elem_type.__name__ != "str_" and elem_type.__name__ != "string_":
         if elem_type.__name__ == "ndarray" or elem_type.__name__ == "memmap":
             return default_collate([torch.as_tensor(b) for b in batch], transposed_list)
         elif elem.shape == ():  # scalars
@@ -135,35 +131,21 @@ def torch_io_save(obj, filepath: str, **kwargs):
 def conv_resblocks_state_to_ptx(state_dict):
     for k in list(state_dict.keys()):
         if k.endswith(".attn.in_proj_weight"):
-            proj_q_w, proj_k_w, proj_v_w = state_dict[k].split(
-                state_dict[k].size(0) // 3
-            )
+            proj_q_w, proj_k_w, proj_v_w = state_dict[k].split(state_dict[k].size(0) // 3)
             del state_dict[k]
-            state_dict[
-                k.replace(".attn.in_proj_weight", ".attn.proj_q.weight")
-            ] = proj_q_w
-            state_dict[
-                k.replace(".attn.in_proj_weight", ".attn.proj_k.weight")
-            ] = proj_k_w
-            state_dict[
-                k.replace(".attn.in_proj_weight", ".attn.proj_v.weight")
-            ] = proj_v_w
+            state_dict[k.replace(".attn.in_proj_weight", ".attn.proj_q.weight")] = proj_q_w
+            state_dict[k.replace(".attn.in_proj_weight", ".attn.proj_k.weight")] = proj_k_w
+            state_dict[k.replace(".attn.in_proj_weight", ".attn.proj_v.weight")] = proj_v_w
         elif k.endswith(".attn.in_proj_bias"):
-            proj_q_b, proj_k_b, proj_v_b = state_dict[k].split(
-                state_dict[k].size(0) // 3
-            )
+            proj_q_b, proj_k_b, proj_v_b = state_dict[k].split(state_dict[k].size(0) // 3)
             del state_dict[k]
             state_dict[k.replace(".attn.in_proj_bias", ".attn.proj_q.bias")] = proj_q_b
             state_dict[k.replace(".attn.in_proj_bias", ".attn.proj_k.bias")] = proj_k_b
             state_dict[k.replace(".attn.in_proj_bias", ".attn.proj_v.bias")] = proj_v_b
         elif k.endswith(".attn.out_proj.weight"):
-            state_dict[
-                k.replace(".attn.out_proj.weight", ".proj.weight")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".attn.out_proj.weight", ".proj.weight")] = state_dict.pop(k)
         elif k.endswith(".attn.out_proj.bias"):
-            state_dict[k.replace(".attn.out_proj.bias", ".proj.bias")] = state_dict.pop(
-                k
-            )
+            state_dict[k.replace(".attn.out_proj.bias", ".proj.bias")] = state_dict.pop(k)
         elif k.endswith(".ln_1.weight"):
             state_dict[k.replace(".ln_1.weight", ".norm1.weight")] = state_dict.pop(k)
         elif k.endswith(".ln_1.bias"):
@@ -173,21 +155,13 @@ def conv_resblocks_state_to_ptx(state_dict):
         elif k.endswith(".ln_2.bias"):
             state_dict[k.replace(".ln_2.bias", ".norm2.bias")] = state_dict.pop(k)
         elif k.endswith(".mlp.c_fc.weight"):
-            state_dict[
-                k.replace(".mlp.c_fc.weight", ".pwff.fc1.weight")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".mlp.c_fc.weight", ".pwff.fc1.weight")] = state_dict.pop(k)
         elif k.endswith(".mlp.c_fc.bias"):
-            state_dict[k.replace(".mlp.c_fc.bias", ".pwff.fc1.bias")] = state_dict.pop(
-                k
-            )
+            state_dict[k.replace(".mlp.c_fc.bias", ".pwff.fc1.bias")] = state_dict.pop(k)
         elif k.endswith(".mlp.c_proj.weight"):
-            state_dict[
-                k.replace(".mlp.c_proj.weight", ".pwff.fc2.weight")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".mlp.c_proj.weight", ".pwff.fc2.weight")] = state_dict.pop(k)
         elif k.endswith(".mlp.c_proj.bias"):
-            state_dict[
-                k.replace(".mlp.c_proj.bias", ".pwff.fc2.bias")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".mlp.c_proj.bias", ".pwff.fc2.bias")] = state_dict.pop(k)
     return state_dict
 
 
@@ -197,15 +171,9 @@ def conv_resblocks_state_from_ptx(state_dict):
             continue
         if k.endswith(".attn.proj_q.weight"):
             proj_q_w = state_dict.pop(k)
-            proj_k_w = state_dict.pop(
-                k.replace(".attn.proj_q.weight", ".attn.proj_k.weight")
-            )
-            proj_v_w = state_dict.pop(
-                k.replace(".attn.proj_q.weight", ".attn.proj_v.weight")
-            )
-            state_dict[
-                k.replace(".attn.proj_q.weight", ".attn.in_proj_weight")
-            ] = torch.cat(
+            proj_k_w = state_dict.pop(k.replace(".attn.proj_q.weight", ".attn.proj_k.weight"))
+            proj_v_w = state_dict.pop(k.replace(".attn.proj_q.weight", ".attn.proj_v.weight"))
+            state_dict[k.replace(".attn.proj_q.weight", ".attn.in_proj_weight")] = torch.cat(
                 [
                     proj_q_w,
                     proj_k_w,
@@ -214,15 +182,9 @@ def conv_resblocks_state_from_ptx(state_dict):
             )
         elif k.endswith(".attn.proj_q.bias"):
             proj_q_b = state_dict.pop(k)
-            proj_k_b = state_dict.pop(
-                k.replace(".attn.proj_q.bias", ".attn.proj_k.bias")
-            )
-            proj_v_b = state_dict.pop(
-                k.replace(".attn.proj_q.bias", ".attn.proj_v.bias")
-            )
-            state_dict[
-                k.replace(".attn.proj_q.bias", ".attn.in_proj_bias")
-            ] = torch.cat(
+            proj_k_b = state_dict.pop(k.replace(".attn.proj_q.bias", ".attn.proj_k.bias"))
+            proj_v_b = state_dict.pop(k.replace(".attn.proj_q.bias", ".attn.proj_v.bias"))
+            state_dict[k.replace(".attn.proj_q.bias", ".attn.in_proj_bias")] = torch.cat(
                 [
                     proj_q_b,
                     proj_k_b,
@@ -230,13 +192,9 @@ def conv_resblocks_state_from_ptx(state_dict):
                 ]
             )
         elif k.endswith(".proj.weight"):
-            state_dict[
-                k.replace(".proj.weight", ".attn.out_proj.weight")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".proj.weight", ".attn.out_proj.weight")] = state_dict.pop(k)
         elif k.endswith(".proj.bias"):
-            state_dict[k.replace(".proj.bias", ".attn.out_proj.bias")] = state_dict.pop(
-                k
-            )
+            state_dict[k.replace(".proj.bias", ".attn.out_proj.bias")] = state_dict.pop(k)
         elif k.endswith(".norm1.weight"):
             state_dict[k.replace(".norm1.weight", ".ln_1.weight")] = state_dict.pop(k)
         elif k.endswith(".norm1.bias"):
@@ -246,21 +204,13 @@ def conv_resblocks_state_from_ptx(state_dict):
         elif k.endswith(".norm2.bias"):
             state_dict[k.replace(".norm2.bias", ".ln_2.bias")] = state_dict.pop(k)
         elif k.endswith(".pwff.fc1.weight"):
-            state_dict[
-                k.replace(".pwff.fc1.weight", ".mlp.c_fc.weight")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".pwff.fc1.weight", ".mlp.c_fc.weight")] = state_dict.pop(k)
         elif k.endswith(".pwff.fc1.bias"):
-            state_dict[k.replace(".pwff.fc1.bias", ".mlp.c_fc.bias")] = state_dict.pop(
-                k
-            )
+            state_dict[k.replace(".pwff.fc1.bias", ".mlp.c_fc.bias")] = state_dict.pop(k)
         elif k.endswith(".pwff.fc2.weight"):
-            state_dict[
-                k.replace(".pwff.fc2.weight", ".mlp.c_proj.weight")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".pwff.fc2.weight", ".mlp.c_proj.weight")] = state_dict.pop(k)
         elif k.endswith(".pwff.fc2.bias"):
-            state_dict[
-                k.replace(".pwff.fc2.bias", ".mlp.c_proj.bias")
-            ] = state_dict.pop(k)
+            state_dict[k.replace(".pwff.fc2.bias", ".mlp.c_proj.bias")] = state_dict.pop(k)
     return state_dict
 
 
@@ -270,7 +220,7 @@ def smart_load_pretrained_state_dict(model, state_dict, show_load_status=True):
     non_match_keys = []
     pretrained_keys = []
     for k, v in state_dict.items():
-        if k in model.state_dict() or 'amax' in k :
+        if k in model.state_dict() or "amax" in k:
             parsed_state_dict[k] = v
             pretrained_keys.append(k)
         else:
@@ -282,11 +232,7 @@ def smart_load_pretrained_state_dict(model, state_dict, show_load_status=True):
             table.add_row([k, v.shape, v.dtype, str(k in pretrained_keys)])
         table.align = "l"
         get_logger().info("\n###### Parameters ######\n{}".format(table.get_string()))
-        get_logger().info(
-            "\n###### Not matched keys ######\n{}".format(
-                "\n".join(non_match_keys) + "\n"
-            )
-        )
+        get_logger().info("\n###### Not matched keys ######\n{}".format("\n".join(non_match_keys) + "\n"))
     DIST_CONTEXT.barrier()
     new_state_dict = model.state_dict()
     new_state_dict.update(parsed_state_dict)
@@ -294,7 +240,7 @@ def smart_load_pretrained_state_dict(model, state_dict, show_load_status=True):
 
 
 def smarter_load_state_dict(model, pretrain_paths, prefix_changes=None, show_load_status=True):
-    """ Load Process: read hdfs/local pth file => parse => state_dict_load => print out"""
+    """Load Process: read hdfs/local pth file => parse => state_dict_load => print out"""
     if not pretrain_paths:
         get_logger().info("No pretrain paths found.")
         return
@@ -307,12 +253,8 @@ def smarter_load_state_dict(model, pretrain_paths, prefix_changes=None, show_loa
     pretrain_state_dict_parsed = {}
     for i, pretrain_path in enumerate(pretrain_paths):
         if pretrain_path != "":
-            get_logger().info(
-                "loading from pretrain path %s: %s " % (i, pretrain_path)
-            )
-            pretrain_state_dict = torch_io_load(
-                pretrain_path, map_location=lambda storage, loc: storage
-            )
+            get_logger().info("loading from pretrain path %s: %s " % (i, pretrain_path))
+            pretrain_state_dict = torch_io_load(pretrain_path, map_location=lambda storage, loc: storage)
             resume_info.append(pretrain_state_dict)
 
             # extract model state dict
@@ -321,16 +263,14 @@ def smarter_load_state_dict(model, pretrain_paths, prefix_changes=None, show_loa
             elif "model" in pretrain_state_dict:
                 pretrain_state_dict = pretrain_state_dict["model"]
 
-            prefix_change = [
-                prefix_change.split("->") for prefix_change in prefix_changes
-            ]
+            prefix_change = [prefix_change.split("->") for prefix_change in prefix_changes]
             for k, v in pretrain_state_dict.items():
                 if k.startswith("module."):
                     k = k.replace("module.", "")
                 no_match = True
                 for pretrain_prefix, new_prefix in prefix_change:
                     if k.startswith(pretrain_prefix):
-                        k = new_prefix + k[len(pretrain_prefix):]
+                        k = new_prefix + k[len(pretrain_prefix) :]
                         pretrain_state_dict_parsed[k] = v
                         no_match = False
                         break
@@ -343,8 +283,7 @@ def smarter_load_state_dict(model, pretrain_paths, prefix_changes=None, show_loa
 
 
 class AllGather(torch.autograd.Function):
-    """An autograd function that performs all gather on a tensor.
-    """
+    """An autograd function that performs all gather on a tensor."""
 
     @staticmethod
     def forward(ctx, tensor, rank, world_size):
@@ -357,10 +296,11 @@ class AllGather(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         return (
-            grad_output[ctx.batch_size * ctx.rank: ctx.batch_size * (ctx.rank + 1)],
+            grad_output[ctx.batch_size * ctx.rank : ctx.batch_size * (ctx.rank + 1)],
             None,
             None,
         )
+
 
 class GatherLayer(autograd.Function):
     """
@@ -379,4 +319,3 @@ class GatherLayer(autograd.Function):
         all_gradients = torch.stack(grads)
         dist.all_reduce(all_gradients)
         return all_gradients[dist.get_rank()]
-

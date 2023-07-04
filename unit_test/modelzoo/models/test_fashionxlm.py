@@ -6,9 +6,7 @@ TEST_FLAGS = ["all"]
 
 
 class TestFashionXLM(unittest.TestCase):
-    @unittest.skipUnless(
-        "all" in TEST_FLAGS or "fashionxlm" in TEST_FLAGS, "just do it"
-    )
+    @unittest.skipUnless("all" in TEST_FLAGS or "fashionxlm" in TEST_FLAGS, "just do it")
     def test_fashionxlm(self):
         from easyguard import AutoModel, AutoTokenizer
 

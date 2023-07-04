@@ -11,7 +11,10 @@ author = ["xiaochen.qiu", "dongjunwei"]
 author_email = ["xiaochen.qiu@bytedance.com", "dongjunwei@bytedance.com"]
 maintainer = "jwdong"
 maintainer_email = "dongjuwnei@bytedance.com"
-description = "EasyGuard is a cruise-based framework, a simple and powerful toolkit to make it easy to train and deploy nlp, cv, and multimodal models for e-commerce."
+description = (
+    "EasyGuard is a cruise-based framework, a simple and powerful toolkit to "
+    "make it easy to train and deploy nlp, cv, and multimodal models for e-commerce."
+)
 home_page = r"https://code.byted.org/ecom_govern/EasyGuard"
 # preprocess
 author = ", ".join(author)

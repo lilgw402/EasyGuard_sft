@@ -1,9 +1,8 @@
-import re
 import json
+import re
 
 
 class BaseMetric:
-
     name = None
 
     def cal(self, file_path_list):
@@ -21,9 +20,9 @@ class BaseMetric:
     def load_json_result(self, json_path_list):
         total_result = []
         if "rank" in json_path_list[0]:
-            regex = r'(.*?)_rank'
+            regex = r"(.*?)_rank"
         else:
-            regex = r'(.*?)\.'
+            regex = r"(.*?)\."
         self.name = "_".join(re.findall(regex, json_path_list[0].split("/")[-1]))
         for json_path in json_path_list:
             with open(json_path) as f:
@@ -32,7 +31,6 @@ class BaseMetric:
 
 
 class Dumper:
-
     name = None
 
     def cal(self, file_path_list):
@@ -47,9 +45,9 @@ class Dumper:
         if not json_path_list:
             return
         if "rank" in json_path_list[0]:
-            regex = r'(.*?)_rank'
+            regex = r"(.*?)_rank"
         else:
-            regex = r'(.*?)\.'
+            regex = r"(.*?)\."
         self.name = "_".join(re.findall(regex, json_path_list[0].split("/")[-1]))
         for json_path in json_path_list:
             with open(json_path) as f:

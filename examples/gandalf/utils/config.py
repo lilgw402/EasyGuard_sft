@@ -19,7 +19,7 @@ config.trainer.auto_resume = False  # True会加载<hdfs_output_dir>/checkpoints
 config.trainer.save_ckpt_iterations = -1  # push best ckpt every each iterations
 config.trainer.save_last_ckpt_interval = -1
 config.trainer.detect_anomaly = False  # for cruise trainer
-config.trainer.resume_dataloader = False   # 数据加载是否需要恢复到特定state，注:auto_resume下会强制set True
+config.trainer.resume_dataloader = False  # 数据加载是否需要恢复到特定state，注:auto_resume下会强制set True
 
 # data_factory
 config.data_factory.batch_size = 8
@@ -49,9 +49,7 @@ config.tester.from_best_checkpoint = False  # auto iteration used
 config.tester.float16 = False
 config.tester.only_infer = False  # if true, will not calculate metrics
 config.tester.dump_cycle = 100000  # dump json per million rows of test result
-config.tester.push_recorddetails_2_hdfs = (
-    True  # push test details to your_hdfs_path/record_details
-)
+config.tester.push_recorddetails_2_hdfs = True  # push test details to your_hdfs_path/record_details
 config.tester.push_details_size_limits = 1e6
 config.tester.check_resume_checkpoint_exist = True  # 检查resume_checkpoint是否填对
 

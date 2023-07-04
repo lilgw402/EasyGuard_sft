@@ -1,20 +1,9 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
-
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
-from easyguard.appzoo.sequence_classification.data import (
-    SequenceClassificationData,
-)
-from easyguard.appzoo.sequence_classification.model import (
-    SequenceClassificationModel,
-)
 
 from cruise import CruiseCLI, CruiseTrainer
+
+from easyguard.appzoo.sequence_classification.data import SequenceClassificationData
+from easyguard.appzoo.sequence_classification.model import SequenceClassificationModel
 
 # from easyguard.utils.arguments import print_cfg
 if __name__ == "__main__":
@@ -35,7 +24,7 @@ if __name__ == "__main__":
             "summarize_model_depth": 2,
             "checkpoint_monitor": "loss",
             "checkpoint_mode": "min",
-            "default_hdfs_dir": "hdfs://harunasg/home/byte_magellan_govern/users/xiaochen.qiu/roberta/",  # use your own path to save model
+            "default_hdfs_dir": "hdfs://harunasg/home/byte_magellan_govern/users/xiaochen.qiu/roberta/",  # use your own path to save model    # noqa: E501
         },
     )
     cfg, trainer, model, datamodule = cli.parse_args()

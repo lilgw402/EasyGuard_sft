@@ -1,18 +1,53 @@
+default_language_version:
+    python: python3.9
+
 repos:
-    # - repo: https://github.com/pre-commit/pre-commit-hooks
-    #   rev: v4.4.0
-    #   hooks:
-    #       - id: end-of-file-fixer
-    #       - id: trailing-whitespace
-    #       - id: check-json
-    #       - id: check-added-large-files
-    #         args: ['--maxkb=500']
-    - repo: https://github.com/python/black
-      rev: 23.1a1
-      hooks:
-      - id: black
-        language_version: python3.7
-    # - repo: https://github.com/pycqa/isort
-    #   rev: 5.11.4
-    #   hooks:
-    #     - id: isort
+-   repo: local
+    hooks:
+    -   id: check-added-large-files                 # 确保每个文件的大小不超过500KB
+        name: check added large files
+        args: ['--maxkb=500']
+        entry: check-added-large-files
+        language: system
+-   repo: local
+    hooks:
+    -   id: end-of-file-fixer                       # 确保文件以换行符结尾并且仅以换行符结尾。
+        name: Fix end-of-file
+        entry: end-of-file-fixer
+        language: system
+        types: [python]
+-   repo: local
+    hooks:
+    -   id: trailing-whitespace                     # 删除句子末尾的空格或者Tab
+        name: trailing-whitespace
+        entry: trailing-whitespace-fixer
+        language: system
+        types: [python]
+-   repo: local
+    hooks:
+    -   id: check-merge-conflict                    # 确保代码里面没有因为git merge引入的代码冲突
+        name: Check merge conflict
+        entry: check-merge-conflict
+        language: system
+        types: [python]
+-   repo: local
+    hooks:
+    -   id: isort                                   # 确保每个文件的import风格满足isort标准
+        name: Check python imports
+        entry: isort --filter-files
+        language: system
+        types: [python]
+-   repo: local
+    hooks:                                         # 代码风格自动format
+    -   id: black
+        name: Auto format python code
+        entry: black -l 119
+        language: system
+        types: [python]
+-   repo: local
+    hooks:
+    -   id: flake8
+        name: Check pep8
+        entry: flake8
+        language: system
+        types: [python]

@@ -1,8 +1,8 @@
 import os
-import sys
 import random
-from utils.driver import get_logger, TRIAL_ID
-from utils.file_util import scan_hdfs_dir,scan_local_dir,safe_int
+
+from utils.driver import TRIAL_ID
+from utils.file_util import safe_int, scan_hdfs_dir, scan_local_dir
 
 data_type_map = {
     "ParquetDataFactory": "parquet",
@@ -11,14 +11,15 @@ data_type_map = {
     "KVDataFactory": "kv",
 }
 
+
 def get_ds_path(
-        folder_path_str,
-        folder_str,
-        data_type,
-        fname_pattern,
-        fmin_size=None,
-        group_keys=None,
-        shuffle=False,
+    folder_path_str,
+    folder_str,
+    data_type,
+    fname_pattern,
+    fmin_size=None,
+    group_keys=None,
+    shuffle=False,
 ):
     if not fmin_size:
         fmin_size = None

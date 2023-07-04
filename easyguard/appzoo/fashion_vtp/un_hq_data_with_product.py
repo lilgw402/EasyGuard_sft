@@ -1,42 +1,37 @@
 # -*- coding: utf-8 -*-
-import io
-import sys
-import os
-import torch
 import base64
-import traceback
+import io
 import json
+import os
+import sys
+import traceback
+
 import numpy as np
 import pandas as pd
-
-from PIL import Image
-
-from torch.utils.data import Dataset
+import torch
 import torchvision.transforms as transforms
-
 from cruise.data_module import CruiseDataModule
 from cruise.utilities.hdfs_io import hopen
+from PIL import Image
+from timm.data import create_transform
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from torch.utils.data import Dataset
 
 from easyguard.appzoo.multimodal_modeling.utils import BertTokenizer
-
-from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from timm.data import create_transform
 
 try:
     from torchvision.transforms import InterpolationMode
 
-
     def _pil_interp(method):
-        if method == 'bicubic':
+        if method == "bicubic":
             return InterpolationMode.BICUBIC
-        elif method == 'lanczos':
+        elif method == "lanczos":
             return InterpolationMode.LANCZOS
-        elif method == 'hamming':
+        elif method == "hamming":
             return InterpolationMode.HAMMING
         else:
             # default bilinear, do we want to allow nearest?
             return InterpolationMode.BILINEAR
-
 
     import timm.data.transforms as timm_transforms
 
@@ -44,8 +39,8 @@ try:
 except:
     from timm.data.transforms import _pil_interp
 
-
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -81,110 +76,110 @@ class UnHqDataModule(CruiseDataModule):
         self.val_path = self.hparams.val_path
         self.predict_path = self.hparams.predict_path
 
-        self.params = {'product_max_len': self.hparams.product_max_len,
-                       'asr_max_len': self.hparams.asr_max_len,
-                       'vocab_file': self.hparams.vocab_file,
-                       'frame_len': self.hparams.frame_len,
-                       'product_image_len': self.hparams.product_image_len,
-                       'train_frame_root': self.hparams.train_frame_root,
-                       'val_frame_root': self.hparams.val_frame_root,
-                    }
+        self.params = {
+            "product_max_len": self.hparams.product_max_len,
+            "asr_max_len": self.hparams.asr_max_len,
+            "vocab_file": self.hparams.vocab_file,
+            "frame_len": self.hparams.frame_len,
+            "product_image_len": self.hparams.product_image_len,
+            "train_frame_root": self.hparams.train_frame_root,
+            "val_frame_root": self.hparams.val_frame_root,
+        }
 
     def train_dataloader(self):
-        self.train_dataset = MMDataset(
-                    self.params,
-                    self.train_path,
-                    is_training=True
-                    )
+        self.train_dataset = MMDataset(self.params, self.train_path, is_training=True)
 
         sampler_train = torch.utils.data.DistributedSampler(
-            self.train_dataset, num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=True
+            self.train_dataset,
+            num_replicas=int(os.environ.get("WORLD_SIZE") or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            shuffle=True,
         )
         return torch.utils.data.DataLoader(
-                                self.train_dataset,
-                                sampler=sampler_train,
-                                batch_size=self.hparams.train_batch_size,
-                                num_workers=self.hparams.num_workers,
-                                pin_memory=True,
-                                prefetch_factor=4,
-                                drop_last=True,
-                                collate_fn=self.train_dataset.collect_fn
-                                )
+            self.train_dataset,
+            sampler=sampler_train,
+            batch_size=self.hparams.train_batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            prefetch_factor=4,
+            drop_last=True,
+            collate_fn=self.train_dataset.collect_fn,
+        )
 
     def val_dataloader(self):
-        self.val_dataset = MMDataset(
-                    self.params,
-                    self.val_path,
-                    is_training=False
-                    )
+        self.val_dataset = MMDataset(self.params, self.val_path, is_training=False)
 
         sampler_val = torch.utils.data.DistributedSampler(
-            self.val_dataset, num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=False
+            self.val_dataset,
+            num_replicas=int(os.environ.get("WORLD_SIZE") or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            shuffle=False,
         )
         return torch.utils.data.DataLoader(
-                                self.val_dataset, 
-                                sampler = sampler_val,
-                                batch_size=self.hparams.val_batch_size,
-                                num_workers=self.hparams.num_workers,
-                                pin_memory=True,
-                                prefetch_factor=4,
-                                drop_last=False,
-                                collate_fn=self.val_dataset.collect_fn
-                                )
+            self.val_dataset,
+            sampler=sampler_val,
+            batch_size=self.hparams.val_batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            prefetch_factor=4,
+            drop_last=False,
+            collate_fn=self.val_dataset.collect_fn,
+        )
 
     def predict_dataloader(self):
-        self.predict_dataset = MMDataset(
-                    self.params,
-                    self.predict_path,
-                    is_training=False
-                    )
+        self.predict_dataset = MMDataset(self.params, self.predict_path, is_training=False)
 
         sampler_predict = torch.utils.data.DistributedSampler(
-            self.predict_dataset, num_replicas=int(os.environ.get('WORLD_SIZE') or 1), rank=int(os.environ.get('RANK') or 0), shuffle=False
+            self.predict_dataset,
+            num_replicas=int(os.environ.get("WORLD_SIZE") or 1),
+            rank=int(os.environ.get("RANK") or 0),
+            shuffle=False,
         )
         return torch.utils.data.DataLoader(
-                                self.predict_dataset, 
-                                sampler = sampler_predict,
-                                batch_size=self.hparams.val_batch_size,
-                                num_workers=self.hparams.num_workers,
-                                pin_memory=True,
-                                drop_last=False,
-                                collate_fn=self.predict_dataset.collect_fn
-                                )
+            self.predict_dataset,
+            sampler=sampler_predict,
+            batch_size=self.hparams.val_batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            drop_last=False,
+            collate_fn=self.predict_dataset.collect_fn,
+        )
 
 
 class MMDataset(Dataset):
-    """
-    """
+    """ """
 
     def __init__(self, params, data_path, is_training):
-
         super().__init__()
-        self.preprocess = get_transform(mode='train' if is_training else 'val')
+        self.preprocess = get_transform(mode="train" if is_training else "val")
 
         self.max_len = {
-            'product_info': params['product_max_len'],
-            'asr_text': params['asr_max_len'],
+            "product_info": params["product_max_len"],
+            "asr_text": params["asr_max_len"],
         }
         self.data_path = data_path
-        self.frame_root = params['train_frame_root'] if is_training else params['val_frame_root']
-        self.frame_len = params['frame_len']
-        self.product_image_len = params['product_image_len']
-        self.tokenizer = BertTokenizer(params['vocab_file'],
-                                       do_lower_case=True,
-                                       tokenize_emoji=False,
-                                       greedy_sharp=False
-                                       )
-        
-        self.PAD = self.tokenizer.vocab['[PAD]']
-        with hopen('hdfs://haruna/home/byte_search_nlp_lq/multimodal/black_frame.jpg', 'rb') as f:
+        self.frame_root = params["train_frame_root"] if is_training else params["val_frame_root"]
+        self.frame_len = params["frame_len"]
+        self.product_image_len = params["product_image_len"]
+        self.tokenizer = BertTokenizer(
+            params["vocab_file"],
+            do_lower_case=True,
+            tokenize_emoji=False,
+            greedy_sharp=False,
+        )
+
+        self.PAD = self.tokenizer.vocab["[PAD]"]
+        with hopen(
+            "hdfs://haruna/home/byte_search_nlp_lq/multimodal/black_frame.jpg",
+            "rb",
+        ) as f:
             self.black_frame = self.preprocess(self._load_image(f.read()))
-        
+
         self.is_training = is_training
-        self.text_types = ['asr_text', 'product_info']
+        self.text_types = ["asr_text", "product_info"]
         # self.text_types = ['asr_text']
 
-        self.extensions = ['.jpg', '.jpeg', '.bmp', '.png']
+        self.extensions = [".jpg", ".jpeg", ".bmp", ".png"]
 
         self.params = params
 
@@ -192,21 +187,25 @@ class MMDataset(Dataset):
         self.num_frames = []
         self.token_ids = []
         self.label_array = []
-        self.label_key = 'label_score'
+        self.label_key = "label_score"
         self.object_ids = []
         self.verify_results = []
 
         self.product_vids = []
         self.product_ids = []
-        
+
         fin = pd.read_csv(self.data_path)
         for index in range(len(fin)):
             if index % 50000 == 0:
-                print('read {} data'.format(index), file=sys.stderr)
-            object_id = '{}_{}_{}'.format(str(fin['room_id'][index]), str(fin['start_time'][index]), str(fin['end_time'][index]))
-            verify_result = fin['verify_result'][index]
+                print("read {} data".format(index), file=sys.stderr)
+            object_id = "{}_{}_{}".format(
+                str(fin["room_id"][index]),
+                str(fin["start_time"][index]),
+                str(fin["end_time"][index]),
+            )
+            verify_result = fin["verify_result"][index]
 
-            video_path = os.path.join(self.frame_root, 'frames_down_data', object_id)
+            video_path = os.path.join(self.frame_root, "frames_down_data", object_id)
 
             if not os.path.exists(video_path):
                 continue
@@ -236,21 +235,23 @@ class MMDataset(Dataset):
             self.vids.append(frame_paths)
             self.label_array.append(label)
 
-            product_info_dict = eval(fin['product_info'][index])
-            product_name = product_info_dict['product_name']
-            if 'shop_info' in product_info_dict:
-                shop_name = product_info_dict['shop_info']['shop_name']
-                product_info = str(shop_name) + ' ' + str(product_name)
+            product_info_dict = eval(fin["product_info"][index])
+            product_name = product_info_dict["product_name"]
+            if "shop_info" in product_info_dict:
+                shop_name = product_info_dict["shop_info"]["shop_name"]
+                product_info = str(shop_name) + " " + str(product_name)
             else:
                 product_info = str(product_name)
 
             # process product image
-            product_id = product_info_dict['product_id']
-            product_path = os.path.join(self.frame_root, 'product_down_data', str(product_id))
+            product_id = product_info_dict["product_id"]
+            product_path = os.path.join(self.frame_root, "product_down_data", str(product_id))
 
             if os.path.exists(product_path):
                 product_image_names = os.listdir(product_path)
-                product_image_paths = [os.path.join(product_path, product_image_name) for product_image_name in product_image_names]
+                product_image_paths = [
+                    os.path.join(product_path, product_image_name) for product_image_name in product_image_names
+                ]
                 self.product_vids.append(product_image_paths)
             else:
                 self.product_vids.append([])
@@ -259,15 +260,12 @@ class MMDataset(Dataset):
             # product_picture_names = sorted(product_picture_names, key=lambda x: int(str(x).split('.')[0]))
 
             # for product_picture in product_picture_names:
-                # frame_paths.append(os.path.join(product_path, product_picture))
+            # frame_paths.append(os.path.join(product_path, product_picture))
             # self.vids.append(frame_paths)
 
-            asr_text = fin['asr_text'][index]
+            asr_text = fin["asr_text"][index]
 
-            texts = {
-                'product_info': product_info,
-                'asr_text': str(asr_text)
-            }
+            texts = {"product_info": product_info, "asr_text": str(asr_text)}
             self.product_ids.append(product_info)
             self.token_ids.append(texts)
 
@@ -289,7 +287,7 @@ class MMDataset(Dataset):
 
         if product_image_paths == []:
             product_images = []
-        for product_image_path in product_image_paths[:self.product_image_len]:
+        for product_image_path in product_image_paths[: self.product_image_len]:
             try:
                 product_image = self.image_preprocess(product_image_path)
                 product_images.append(product_image)
@@ -308,16 +306,18 @@ class MMDataset(Dataset):
                 continue
 
         label = int(self.label_array[index]) - 2
-        '''
+        """
         label = 1 if str(self.label_array[index]) == '2' else 0
-        '''
-        input_dict = {'frames': frames,
-                      'product_frames': product_images,
-                      'input_ids': token_ids,
-                      'product_ids': product_ids,
-                      'label': label,
-                      'object_id': object_id,
-                      'verify_result': verify_result}
+        """
+        input_dict = {
+            "frames": frames,
+            "product_frames": product_images,
+            "input_ids": token_ids,
+            "product_ids": product_ids,
+            "label": label,
+            "object_id": object_id,
+            "verify_result": verify_result,
+        }
         return input_dict
 
     def __len__(self):
@@ -339,28 +339,24 @@ class MMDataset(Dataset):
         product_images = []
         product_images_mask = []
 
-        max_len = max([len(b['input_ids']) for b in data])
+        max_len = max([len(b["input_ids"]) for b in data])
 
         for ib, ibatch in enumerate(data):
             labels.append(ibatch["label"])
             object_ids.append(ibatch["object_id"])
             verify_results.append(ibatch["verify_result"])
-            input_ids.append(ibatch['input_ids'][:max_len] +
-                             [self.PAD] * (max_len - len(ibatch['input_ids'])))
+            input_ids.append(ibatch["input_ids"][:max_len] + [self.PAD] * (max_len - len(ibatch["input_ids"])))
 
-            input_mask.append([1] * len(ibatch['input_ids'][:max_len]) +
-                              [0] * (max_len - len(ibatch['input_ids'])))
+            input_mask.append([1] * len(ibatch["input_ids"][:max_len]) + [0] * (max_len - len(ibatch["input_ids"])))
             input_segment_ids.append([0] * max_len)
 
-            product_ids.append(ibatch['product_ids'][:30] +
-                             [self.PAD] * (30 - len(ibatch['product_ids'])))
-            product_mask.append([1] * len(ibatch['product_ids'][:30]) +
-                              [0] * (30 - len(ibatch['product_ids'])))
+            product_ids.append(ibatch["product_ids"][:30] + [self.PAD] * (30 - len(ibatch["product_ids"])))
+            product_mask.append([1] * len(ibatch["product_ids"][:30]) + [0] * (30 - len(ibatch["product_ids"])))
             product_segment_ids.append([0] * 30)
 
             frames_cur = []
             frames_mask_cur = []
-            for img in ibatch['frames']:
+            for img in ibatch["frames"]:
                 frames_cur.append(img)
                 frames_mask_cur.append(1)
             while len(frames_cur) < self.frame_len:
@@ -371,7 +367,7 @@ class MMDataset(Dataset):
 
             product_frames_cur = []
             product_frames_mask_cur = []
-            for img in ibatch['product_frames']:
+            for img in ibatch["product_frames"]:
                 product_frames_cur.append(img)
                 product_frames_mask_cur.append(1)
             while len(product_frames_cur) < self.product_image_len:
@@ -380,19 +376,21 @@ class MMDataset(Dataset):
             product_images.append(torch.stack(product_frames_cur, dim=0))
             product_images_mask.append(product_frames_mask_cur)
 
-        res = {"product_images": torch.stack(product_images, dim=0),
-               "product_images_mask": torch.tensor(product_images_mask),
-               "frames": torch.stack(frames, dim=0),
-               "frames_mask": torch.tensor(frames_mask),
-               "input_ids":  torch.tensor(input_ids),
-               "input_mask":  torch.tensor(input_mask),
-               "input_segment_ids":  torch.tensor(input_segment_ids),
-               "product_ids": torch.tensor(product_ids),
-               "product_mask": torch.tensor(product_mask),
-               "product_segment_ids": torch.tensor(product_segment_ids),
-               "labels": torch.tensor(labels, dtype=torch.long),
-               "item_ids": object_ids,
-               "verify_results": verify_results}
+        res = {
+            "product_images": torch.stack(product_images, dim=0),
+            "product_images_mask": torch.tensor(product_images_mask),
+            "frames": torch.stack(frames, dim=0),
+            "frames_mask": torch.tensor(frames_mask),
+            "input_ids": torch.tensor(input_ids),
+            "input_mask": torch.tensor(input_mask),
+            "input_segment_ids": torch.tensor(input_segment_ids),
+            "product_ids": torch.tensor(product_ids),
+            "product_mask": torch.tensor(product_mask),
+            "product_segment_ids": torch.tensor(product_segment_ids),
+            "labels": torch.tensor(labels, dtype=torch.long),
+            "item_ids": object_ids,
+            "verify_results": verify_results,
+        }
         return res
 
     # def text_preprocess(self, texts):
@@ -404,17 +402,17 @@ class MMDataset(Dataset):
     #     return token_ids
 
     def text_preprocess(self, texts):
-        tokens = ['[CLS]']
+        tokens = ["[CLS]"]
         for text_type in self.text_types:
-            text = texts[text_type][:self.max_len[text_type] - 2]
-            tokens += self.tokenizer.tokenize(text) + ['[SEP]']
+            text = texts[text_type][: self.max_len[text_type] - 2]
+            tokens += self.tokenizer.tokenize(text) + ["[SEP]"]
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         return token_ids
 
     def product_text_preprocess(self, text):
-        tokens = ['[CLS]']
+        tokens = ["[CLS]"]
         tokens += self.tokenizer.tokenize(text)[:29]
-        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)    
+        token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         return token_ids
 
     def image_preprocess(self, image_path):
@@ -430,7 +428,7 @@ class MMDataset(Dataset):
 
     @staticmethod
     def _load_image(buffer):
-        img = Image.open(io.BytesIO(buffer)).convert('RGB')
+        img = Image.open(io.BytesIO(buffer)).convert("RGB")
         return img
 
 
@@ -438,22 +436,27 @@ def get_transform(mode: str = "train"):
     """
     根据不同的data，返回不同的transform
     """
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     if mode == "train":
-        com_transforms = transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize])
-    elif mode == 'val':
-        com_transforms = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize])
+        com_transforms = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+    elif mode == "val":
+        com_transforms = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
     else:
-        raise ValueError('mode [%s] is not in [train, val]' % mode)
+        raise ValueError("mode [%s] is not in [train, val]" % mode)
     return com_transforms
 
 
@@ -465,11 +468,11 @@ def get_transform_beta(mode: str = "train"):
             input_size=224,
             is_training=True,
             color_jitter=0.4,
-            auto_augment='rand-m9-mstd0.5-inc1',
+            auto_augment="rand-m9-mstd0.5-inc1",
             re_prob=0.25,
-            re_mode='pixel',
+            re_mode="pixel",
             re_count=1,
-            interpolation='bicubic',
+            interpolation="bicubic",
         )
         if not resize_im:
             # replace RandomResizedCropAndInterpolation with
@@ -477,11 +480,11 @@ def get_transform_beta(mode: str = "train"):
             transform.transforms[0] = transforms.RandomCrop(224, padding=4)
         return transform
 
-    elif mode == 'val':
+    elif mode == "val":
         t = []
         size = int((256 / 224) * 224)
         t.append(
-            transforms.Resize(size, interpolation=_pil_interp('bicubic')),
+            transforms.Resize(size, interpolation=_pil_interp("bicubic")),
             # to maintain same ratio w.r.t. 224 images
         )
         t.append(transforms.CenterCrop(224))

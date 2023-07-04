@@ -10,9 +10,7 @@ __all__ = ["TokenPerformer"]
 
 
 class TokenPerformer(nn.Module):
-    def __init__(
-        self, dim, in_dim, head_cnt=1, kernel_ratio=0.5, dp1=0.1, dp2=0.1
-    ):
+    def __init__(self, dim, in_dim, head_cnt=1, kernel_ratio=0.5, dp1=0.1, dp2=0.1):
         super().__init__()
         self.emb = in_dim * head_cnt  # we use 1, so it is no need here
         self.kqv = nn.Linear(dim, 3 * self.emb)
@@ -33,7 +31,8 @@ class TokenPerformer(nn.Module):
         self.m = int(self.emb * kernel_ratio)
         self.w = torch.randn(self.m, self.emb)
         self.w = nn.Parameter(
-            nn.init.orthogonal_(self.w) * math.sqrt(self.m), requires_grad=False
+            nn.init.orthogonal_(self.w) * math.sqrt(self.m),
+            requires_grad=False,
         )
 
     def prm_exp(self, x):
@@ -57,9 +56,7 @@ class TokenPerformer(nn.Module):
         # (B, T, m) * (B, m) -> (B, T, 1)
         D = torch.einsum("bti,bi->bt", qp, kp.sum(dim=1)).unsqueeze(dim=2)
         kptv = torch.einsum("bin,bim->bnm", v.float(), kp)  # (B, emb, m)
-        y = torch.einsum("bti,bni->btn", qp, kptv) / (
-            D.repeat(1, 1, self.emb) + self.epsilon
-        )  # (B, T, emb)/Diag
+        y = torch.einsum("bti,bni->btn", qp, kptv) / (D.repeat(1, 1, self.emb) + self.epsilon)  # (B, T, emb)/Diag
         # skip connection
         # same as token_transformer in T2T layer, use v as skip connection
         y = v + self.dp(self.proj(y))

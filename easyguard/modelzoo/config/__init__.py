@@ -4,9 +4,7 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 MODEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "models.yaml")
-MODEL_ARCHIVE_PATH_BACKUP = os.path.join(
-    os.path.dirname(__file__), "archive.yaml"
-)
+MODEL_ARCHIVE_PATH_BACKUP = os.path.join(os.path.dirname(__file__), "archive.yaml")
 TOS_FILES_PATH = os.path.join(os.path.dirname(__file__), "tos_files.yaml")
 MODELZOO_NAME = "models"
 YAML_DEEP = 3
@@ -15,14 +13,7 @@ import importlib
 
 from ... import EASYGUARD_CONFIG_CACHE
 from ...core.auto import EASYGUARD_PATH
-from ...utils import (
-    HDFS_HUB_CN,
-    YamlConfig,
-    _LazyModule,
-    hmget,
-    load_yaml,
-    logging,
-)
+from ...utils import HDFS_HUB_CN, YamlConfig, _LazyModule, hmget, load_yaml, logging
 
 MODEL_ARCHIVE_PATH = os.path.join(EASYGUARD_CONFIG_CACHE, "archive.yaml")
 MODEL_ARCHIVE_PATH_REMOTE = os.path.join(HDFS_HUB_CN, "config", "archive.yaml")
@@ -78,18 +69,14 @@ class ModelZooYaml(YamlConfig):
         leafs = {}
         prefix = MODELZOO_NAME
 
-        def dfs_leafs(
-            data: Dict[str, Any], deep: int, leafs: List[str], prefix: str
-        ):
+        def dfs_leafs(data: Dict[str, Any], deep: int, leafs: List[str], prefix: str):
             global YAML_DEEP
             deep_ = deep + 1
             for key_item, value in data.items():
                 prefix_ = f"{prefix}.{key_item}"
                 if isinstance(value, dict):
                     if deep_ > YAML_DEEP:
-                        raise ValueError(
-                            f"the modelzoo config `{prefix_}` should not be a dict~"
-                        )
+                        raise ValueError(f"the modelzoo config `{prefix_}` should not be a dict~")
                     dfs_leafs(value, deep_, leafs, f"{prefix_}")
                 else:
                     leafs.append((prefix_, key_item))
@@ -155,9 +142,7 @@ class ModelZooYaml(YamlConfig):
                 if model_value_ is not None:
                     mapping[model_] = model_value_
 
-        mapping_list = [
-            (key_item, value) for key_item, value in mapping.items()
-        ]
+        mapping_list = [(key_item, value) for key_item, value in mapping.items()]
 
         return OrderedDict(mapping_list)
 

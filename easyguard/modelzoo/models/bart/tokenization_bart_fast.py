@@ -17,7 +17,6 @@ import json
 from typing import List, Optional, Tuple
 
 from tokenizers import pre_tokenizers, processors
-
 from transformers.tokenization_utils_base import AddedToken, BatchEncoding
 from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
@@ -189,26 +188,17 @@ class BartTokenizerFast(PreTrainedTokenizerFast):
             **kwargs,
         )
 
-        pre_tok_state = json.loads(
-            self.backend_tokenizer.pre_tokenizer.__getstate__()
-        )
-        if (
-            pre_tok_state.get("add_prefix_space", add_prefix_space)
-            != add_prefix_space
-        ):
+        pre_tok_state = json.loads(self.backend_tokenizer.pre_tokenizer.__getstate__())
+        if pre_tok_state.get("add_prefix_space", add_prefix_space) != add_prefix_space:
             pre_tok_class = getattr(pre_tokenizers, pre_tok_state.pop("type"))
             pre_tok_state["add_prefix_space"] = add_prefix_space
-            self.backend_tokenizer.pre_tokenizer = pre_tok_class(
-                **pre_tok_state
-            )
+            self.backend_tokenizer.pre_tokenizer = pre_tok_class(**pre_tok_state)
 
         self.add_prefix_space = add_prefix_space
 
         # the pre_tokenizer is already updated in the GPT2TokenizerFast `__init__`
         tokenizer_component = "post_processor"
-        tokenizer_component_instance = getattr(
-            self.backend_tokenizer, tokenizer_component, None
-        )
+        tokenizer_component_instance = getattr(self.backend_tokenizer, tokenizer_component, None)
         if tokenizer_component_instance:
             state = json.loads(tokenizer_component_instance.__getstate__())
 
@@ -220,10 +210,7 @@ class BartTokenizerFast(PreTrainedTokenizerFast):
 
             changes_to_apply = False
 
-            if (
-                state.get("add_prefix_space", add_prefix_space)
-                != add_prefix_space
-            ):
+            if state.get("add_prefix_space", add_prefix_space) != add_prefix_space:
                 state["add_prefix_space"] = add_prefix_space
                 changes_to_apply = True
 
@@ -260,11 +247,7 @@ class BartTokenizerFast(PreTrainedTokenizerFast):
         """
         # Mask token behave like a normal word, i.e. include the space before it
         # So we set lstrip to True
-        value = (
-            AddedToken(value, lstrip=True, rstrip=False)
-            if isinstance(value, str)
-            else value
-        )
+        value = AddedToken(value, lstrip=True, rstrip=False) if isinstance(value, str) else value
         self._mask_token = value
 
     def _batch_encode_plus(self, *args, **kwargs) -> BatchEncoding:
@@ -289,9 +272,7 @@ class BartTokenizerFast(PreTrainedTokenizerFast):
 
         return super()._encode_plus(*args, **kwargs)
 
-    def save_vocabulary(
-        self, save_directory: str, filename_prefix: Optional[str] = None
-    ) -> Tuple[str]:
+    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
         files = self._tokenizer.model.save(save_directory, name=filename_prefix)
         return tuple(files)
 

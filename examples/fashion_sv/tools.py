@@ -1,13 +1,13 @@
 import os
-import numpy as np
-import torch
-from sklearn import metrics
 from operator import itemgetter
+
+import numpy as np
+from sklearn import metrics
 
 
 def init_args(args):
-    args.score_save_path = os.path.join(args.save_path, 'score.txt')
-    args.model_save_path = os.path.join(args.save_path, 'model')
+    args.score_save_path = os.path.join(args.save_path, "score.txt")
+    args.model_save_path = os.path.join(args.save_path, "model")
     os.makedirs(args.model_save_path, exist_ok=True)
     return args
 
@@ -35,10 +35,13 @@ def ComputeErrorRates(scores, labels):
     # Sort the scores from smallest to largest, and also get the corresponding
     # indexes of the sorted scores.  We will treat the sorted scores as the
     # thresholds at which the error-rates are evaluated.
-    sorted_indexes, thresholds = zip(*sorted(
-        [(index, threshold) for index, threshold in enumerate(scores)],
-        key=itemgetter(1)))
-    sorted_labels = []
+    sorted_indexes, thresholds = zip(
+        *sorted(
+            [(index, threshold) for index, threshold in enumerate(scores)],
+            key=itemgetter(1),
+        )
+    )
+    # sorted_labels = []
     labels = [labels[i] for i in sorted_indexes]
     fnrs = []
     fprs = []

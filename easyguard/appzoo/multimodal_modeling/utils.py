@@ -10,11 +10,7 @@ import torchvision.transforms as transforms
 from cruise.utilities.hdfs_io import hopen
 from PIL import Image
 
-from .downloads import (
-    download_url_with_exception,
-    further_real_url,
-    get_original_urls,
-)
+from .downloads import download_url_with_exception, further_real_url, get_original_urls
 
 
 class ImageProcess(object):
@@ -22,9 +18,7 @@ class ImageProcess(object):
         self.transform = self.get_transform(mode)
 
     def get_transform(self, mode: str = "train"):
-        normalize = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         if mode == "train":
             com_transforms = transforms.Compose(
                 [
@@ -123,12 +117,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (
-        (cp >= 33 and cp <= 47)
-        or (cp >= 58 and cp <= 64)
-        or (cp >= 91 and cp <= 96)
-        or (cp >= 123 and cp <= 126)
-    ):
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
@@ -423,17 +412,13 @@ class BertTokenizer(object):
             如果greedy_sharp 是true，则会先看 "##x" 是在词表里，如果不在，会看 "x" 是否在词表里。
         """
         self.vocab = load_vocab(vocab_file)
-        self.ids_to_tokens = collections.OrderedDict(
-            [(ids, tok) for tok, ids in self.vocab.items()]
-        )
+        self.ids_to_tokens = collections.OrderedDict([(ids, tok) for tok, ids in self.vocab.items()])
         self.basic_tokenizer = BasicTokenizer(
             do_lower_case=do_lower_case,
             tokenize_emoji=tokenize_emoji,
             never_split=never_split,
         )
-        self.wordpiece_tokenizer = WordpieceTokenizer(
-            vocab=self.vocab, greedy_sharp=greedy_sharp
-        )
+        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, greedy_sharp=greedy_sharp)
         self.max_len = max_len if max_len is not None else int(1e12)
 
     def tokenize(self, text):
@@ -468,9 +453,7 @@ class BertTokenizer(object):
             raise ValueError(
                 "Token indices sequence length is longer than the specified maximum "
                 " sequence length for this BERT model ({} > {}). Running this"
-                " sequence through BERT will result in indexing errors".format(
-                    len(ids), self.max_len
-                )
+                " sequence through BERT will result in indexing errors".format(len(ids), self.max_len)
             )
         return ids
 
@@ -505,38 +488,20 @@ class TextProcess(object):
         self.max_len = max_len
 
     def __call__(self, product_name: str, image_ocr: str = ""):
-        product_name_tokens = self.tokenizer.tokenize(product_name)[
-            : self.max_len // 2
-        ]
+        product_name_tokens = self.tokenizer.tokenize(product_name)[: self.max_len // 2]
         image_ocr_tokens = self.tokenizer.tokenize(image_ocr)
-        image_ocr_tokens = image_ocr_tokens[
-            : self.max_len - 3 - len(product_name_tokens)
-        ]
+        image_ocr_tokens = image_ocr_tokens[: self.max_len - 3 - len(product_name_tokens)]
 
         text_masks = []
         text_segment_ids = []
-        tokens = (
-            ["[CLS]"]
-            + product_name_tokens
-            + ["[SEP]"]
-            + image_ocr_tokens
-            + ["[SEP]"]
-        )
+        tokens = ["[CLS]"] + product_name_tokens + ["[SEP]"] + image_ocr_tokens + ["[SEP]"]
         text_masks.extend([1] * len(tokens))
-        text_segment_ids.extend(
-            [0]
-            + [0] * len(product_name_tokens)
-            + [0]
-            + [1] * len(image_ocr_tokens)
-            + [1]
-        )
+        text_segment_ids.extend([0] + [0] * len(product_name_tokens) + [0] + [1] * len(image_ocr_tokens) + [1])
 
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         text_masks.extend([0] * (self.max_len - len(token_ids)))  # Pad
         text_segment_ids.extend([0] * (self.max_len - len(token_ids)))  # Pad
 
-        token_ids = token_ids + [self.PAD] * (
-            self.max_len - len(token_ids)
-        )  # 填充至最大长度
+        token_ids = token_ids + [self.PAD] * (self.max_len - len(token_ids))  # 填充至最大长度
 
         return token_ids, text_masks, text_segment_ids
