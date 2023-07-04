@@ -14,11 +14,7 @@
 
 from typing import TYPE_CHECKING
 
-from transformers.file_utils import (
-    _BaseLazyModule,
-    is_tokenizers_available,
-    is_torch_available,
-)
+from transformers.file_utils import _BaseLazyModule, is_tokenizers_available, is_torch_available
 
 _import_structure = {
     "configuration_roberta": [

@@ -1,27 +1,18 @@
-from typing import Optional, Dict, Union
-import bytedtos
-import os
 import json
+import os
+from typing import Dict, Optional, Union
+
 import bytedenv
+import bytedtos
 import requests
-from progressbar import *
 from prettytable import PrettyTable
+from progressbar import *
+
+from easyguard.modelzoo.config import MODEL_ARCHIVE_CONFIG, MODEL_ARCHIVE_PATH_BACKUP, TOS_FILES_PATH
+
+from . import AK_CN, BUCKET_CN, BUCKET_SG, CDN_VA, ENDPOINT_CN, TOS_HTTP_CN, TOS_HTTP_VA
 from .logging import get_logger
-from .yaml_utils import load_yaml, json2yaml
-from . import (
-    BUCKET_CN,
-    BUCKET_SG,
-    CDN_VA,
-    TOS_HTTP_CN,
-    TOS_HTTP_VA,
-    AK_CN,
-    ENDPOINT_CN,
-)
-from easyguard.modelzoo.config import (
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_ARCHIVE_PATH_BACKUP,
-    TOS_FILES_PATH,
-)
+from .yaml_utils import json2yaml, load_yaml
 
 logger = get_logger(__name__)
 
@@ -171,15 +162,11 @@ class TOS:
                             pbar.update(total_length)
                             pbar.finish()
                         else:
-                            logger.warning(
-                                f"target file {target_path} exist, please check~"
-                            )
+                            logger.warning(f"target file {target_path} exist, please check~")
                         break
                 if timeout_time_ >= timeout_time:
                     if temp_size < total_length:
-                        logger.warning(
-                            f"\n the size of `{url}` is not same as the downloaded one~"
-                        )
+                        logger.warning(f"\n the size of `{url}` is not same as the downloaded one~")
                     break
 
                 headers = {
@@ -194,19 +181,13 @@ class TOS:
                 with requests.get(url, stream=True, headers=headers) as r:
                     # r.raise_for_status()
                     if not pbar:
-                        pbar = ProgressBar(
-                            widgets=widgets, maxval=total_length
-                        ).start()
+                        pbar = ProgressBar(widgets=widgets, maxval=total_length).start()
                     receive_size = temp_size
                     try:
                         with open(target_path, "ab") as f:
                             for chunk in r.iter_content(part_size):
                                 receive_size += part_size
-                                pbar.update(
-                                    receive_size
-                                    if receive_size < total_length
-                                    else total_length
-                                )
+                                pbar.update(receive_size if receive_size < total_length else total_length)
                                 if chunk:
                                     f.write(chunk)
                     except:
@@ -291,10 +272,7 @@ class TOS:
                 except:
                     ...
             else:
-                if (
-                    requests.head("/".join([self.http_va_, name])).status_code
-                    == 200
-                ):
+                if requests.head("/".join([self.http_va_, name])).status_code == 200:
                     return True
                 else:
                     return False
@@ -332,9 +310,7 @@ class TOS:
             return [name, f"{size}{unit_name}", modified_time]
 
         if self.tos_client:
-            response = self.tos_client.list_prefix(
-                f"{dir_name}/", "", "", max_number
-            ).data
+            response = self.tos_client.list_prefix(f"{dir_name}/", "", "", max_number).data
             dir_obj = json.loads(response)
             object_arr = dir_obj["payload"]["objects"]
         else:
@@ -418,18 +394,14 @@ class TOS:
         #     with open(file_name_local, "wb") as f:
         #         f.write(data)
 
-        assert self.exist(
-            key_name
-        ), f"please check the name exist in tos[{self.bucket}]"
+        assert self.exist(key_name), f"please check the name exist in tos[{self.bucket}]"
 
         idc = self.get_idc()
 
         region = IDC_MAPPING.get(idc, "va")
 
         get_files = self._get_obj_info(key_name)
-        local_files = list(
-            map(lambda x: os.path.join(save_dir, x.split("/")[-1]), get_files)
-        )
+        local_files = list(map(lambda x: os.path.join(save_dir, x.split("/")[-1]), get_files))
         save_dir_ = os.path.dirname(local_files[0])
         os.makedirs(save_dir_, exist_ok=True)
         for index, file_ in enumerate(get_files):
@@ -491,9 +463,7 @@ class TOS:
         for file_ in upload_files:
             file_path, file_name = file_
             file_size, unit_name = self.size_show(os.path.getsize(file_path))
-            logger.info(
-                f"file `{file_[0]}` [{file_size}{unit_name}] start to upload..."
-            )
+            logger.info(f"file `{file_[0]}` [{file_size}{unit_name}] start to upload...")
             file_size_mb = os.path.getsize(file_path) / self.mb
             if file_size_mb < self.size_threshold:
                 statue = self._put_file_small(file_path, file_name)
@@ -506,9 +476,7 @@ class TOS:
         if len(error_files) == 0:
             logger.info(f"all files upload successfully!")
         else:
-            logger.info(
-                f"failed to upload these files: {error_files}, they may do not exist, please check!"
-            )
+            logger.info(f"failed to upload these files: {error_files}, they may do not exist, please check!")
         self.update_local()
         return True
 
@@ -525,9 +493,7 @@ class TOS:
         >>> tos.rm("./fashionxlm_moe")
         >>> tos.rm("./fashionxlm_moe/config.json")
         """
-        assert self.exist(
-            name
-        ), f"please check the name exist in tos[{self.bucket}]"
+        assert self.exist(name), f"please check the name exist in tos[{self.bucket}]"
 
         rm_files = []
         if "." in name:
@@ -552,9 +518,7 @@ class TOS:
             logger.info(f"delete all files successfully!")
             return True
         else:
-            logger.info(
-                f"failed to delete these files: {unrm_files}, they may do not exist, please check tos!"
-            )
+            logger.info(f"failed to delete these files: {unrm_files}, they may do not exist, please check tos!")
             return False
 
         ...

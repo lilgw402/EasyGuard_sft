@@ -5,40 +5,43 @@ except ImportError:
     print(
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
+import torch.nn.functional as F
 from cruise import CruiseModule
 from cruise.utilities.distributed import DIST_ENV
-from easyguard.core.optimizers import *
-from easyguard.core.optimizers import AdamW
+from torch import nn
 
 # import soundfile
 from tqdm import tqdm
-from torch import nn
-import torch.nn.functional as F
-from .tools import *
-from .loss import AAMsoftmax, LearnableNTXentLoss
+
+from easyguard.core.optimizers import *
+from easyguard.core.optimizers import AdamW
+
 from .ecapatdnn import ECAPA_TDNN
+from .loss import AAMsoftmax, LearnableNTXentLoss
+from .tools import *
 
 
 class FashionSV(CruiseModule):
     def __init__(
-            self,
-            mode: str = 'aam',
-            class_num: int = 2100,
-            hidden_dim: int = 192,
-            channel: int = 512,
-            m: float = 0.2,
-            s: float = 30,
-            optim: str = 'AdamW',
-            learning_rate: float = 1.0e-4,
-            weight_decay: float = 1.e-4,
-            lr_schedule: str = 'linear',
-            warmup_steps_factor: float = 4,
-            low_lr_prefix: list = [],
-            freeze_prefix: list = [],
-            load_pretrained: str = None,
-            prefix_changes: list = [],
-            download_files: list = [],
-            **kwargs):
+        self,
+        mode: str = "aam",
+        class_num: int = 2100,
+        hidden_dim: int = 192,
+        channel: int = 512,
+        m: float = 0.2,
+        s: float = 30,
+        optim: str = "AdamW",
+        learning_rate: float = 1.0e-4,
+        weight_decay: float = 1.0e-4,
+        lr_schedule: str = "linear",
+        warmup_steps_factor: float = 4,
+        low_lr_prefix: list = [],
+        freeze_prefix: list = [],
+        load_pretrained: str = None,
+        prefix_changes: list = [],
+        download_files: list = [],
+        **kwargs,
+    ):
         super(FashionSV, self).__init__()
         self.save_hparams()
 
@@ -47,43 +50,44 @@ class FashionSV(CruiseModule):
         self.speaker_encoder = ECAPA_TDNN(C=self.hparams.channel, hidden_dim=self.hparams.hidden_dim)
         # Classifier
         mode = self.hparams.mode
-        if mode == 'aam':
+        if mode == "aam":
             self.speaker_loss = AAMsoftmax(
                 n_class=self.hparams.class_num,
                 m=self.hparams.m,
                 s=self.hparams.s,
-                hidden_dim=self.hparams.hidden_dim
+                hidden_dim=self.hparams.hidden_dim,
             )
-        elif mode == 'cls':
+        elif mode == "cls":
             self.classifier = nn.Linear(self.hparams.hidden_dim, self.hparams.class_num)
             self.ce = nn.CrossEntropyLoss()
-        elif mode == 'clip':
+        elif mode == "clip":
             self.cl_loss = LearnableNTXentLoss()
         else:
-            raise Exception(f'unknown training mode, only support aam, cls and clip for now')
+            raise Exception(f"unknown training mode, only support aam, cls and clip for now")
 
         if self.hparams.load_pretrained:
-            prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
+            prefix_changes = [prefix_change.split("->") for prefix_change in self.hparams.prefix_changes]
             rename_params = {pretrain_prefix: new_prefix for pretrain_prefix, new_prefix in prefix_changes}
             self.partial_load_from_checkpoints(
                 self.hparams.load_pretrained,
-                map_location='cpu',
-                rename_params=rename_params
+                map_location="cpu",
+                rename_params=rename_params,
             )
         self.freeze_params(self.hparams.freeze_prefix)
 
     def local_rank_zero_prepare(self) -> None:
         if self.hparams.download_files:
             import os
-            to_download = [df.split('->') for df in self.hparams.download_files]
+
+            to_download = [df.split("->") for df in self.hparams.download_files]
             for src, tar in to_download:
                 if not os.path.exists(tar):
                     os.makedirs(tar)
-                fdname = src.split('/')[-1]
-                if os.path.exists(f'{tar}/{fdname}'):
-                    print(f'{tar}/{fdname} already existed, pass!')
+                fdname = src.split("/")[-1]
+                if os.path.exists(f"{tar}/{fdname}"):
+                    print(f"{tar}/{fdname} already existed, pass!")
                 else:
-                    print(f'downloading {src} to {tar}')
+                    print(f"downloading {src} to {tar}")
                     os.system(f"hdfs dfs -get {src} {tar}")
 
     def freeze_params(self, freeze_prefix):
@@ -97,9 +101,9 @@ class FashionSV(CruiseModule):
         return speaker_embedding
 
     def training_step(self, batch, idx):
-        feature = batch['feature']
-        labels = batch['labels']
-        if self.hparams.mode == 'aam':
+        feature = batch["feature"]
+        labels = batch["labels"]
+        if self.hparams.mode == "aam":
             speaker_embedding = self.forward_step(feature)
             # allgather
             speaker_embedding = self.all_gather(speaker_embedding.contiguous())
@@ -109,19 +113,19 @@ class FashionSV(CruiseModule):
             #
             nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
             rep_dict = {
-                'loss': nloss,
-                'prec': prec,
-                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+                "loss": nloss,
+                "prec": prec,
+                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0],
             }
-        elif self.hparams.mode == 'cls':
+        elif self.hparams.mode == "cls":
             speaker_embedding = self.forward_step(feature)
             logits = self.classifier(speaker_embedding)
             loss = self.ce(logits, labels)
             rep_dict = {
-                'loss': loss,
-                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+                "loss": loss,
+                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0],
             }
-        elif self.hparams.mode == 'clip':
+        elif self.hparams.mode == "clip":
             splitlen = feature.shape[1] // 2
             sf1, sf2 = feature[:, :splitlen], feature[:, splitlen:]
             se1 = self.forward_step(sf1)
@@ -132,18 +136,18 @@ class FashionSV(CruiseModule):
             allgather_se2 = allgather_se2.flatten(0, 1)
             cl_loss = self.cl_loss(allgather_se1, allgather_se2)
             rep_dict = {
-                'loss': cl_loss,
-                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+                "loss": cl_loss,
+                "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0],
             }
         else:
-            raise Exception(f'only support aam and cls')
+            raise Exception(f"only support aam and cls")
 
         return rep_dict
 
     def validation_step(self, batch, idx):
-        feature = batch['feature']
-        labels = batch['labels']
-        if self.hparams.mode == 'aam':
+        feature = batch["feature"]
+        labels = batch["labels"]
+        if self.hparams.mode == "aam":
             speaker_embedding = self.forward_step(feature)
             # allgather
             speaker_embedding = self.all_gather(speaker_embedding.contiguous())
@@ -153,17 +157,17 @@ class FashionSV(CruiseModule):
             #
             nloss, prec = self.speaker_loss.forward(speaker_embedding, labels)
             rep_dict = {
-                'val_loss': nloss,
-                'val_prec': prec,
+                "val_loss": nloss,
+                "val_prec": prec,
             }
-        elif self.hparams.mode == 'cls':
+        elif self.hparams.mode == "cls":
             speaker_embedding = self.forward_step(feature)
             logits = self.classifier(speaker_embedding)
             loss = self.ce(logits, labels)
             rep_dict = {
-                'val_loss': loss,
+                "val_loss": loss,
             }
-        elif self.hparams.mode == 'clip':
+        elif self.hparams.mode == "clip":
             splitlen = feature.shape[1] // 2
             sf1, sf2 = feature[:, :splitlen], feature[:, splitlen:]
             se1 = self.forward_step(sf1)
@@ -174,10 +178,10 @@ class FashionSV(CruiseModule):
             allgather_se2 = allgather_se2.flatten(0, 1)
             cl_loss = self.cl_loss(allgather_se1, allgather_se2)
             rep_dict = {
-                'val_loss': cl_loss,
+                "val_loss": cl_loss,
             }
         else:
-            raise Exception(f'only support aam and cls')
+            raise Exception(f"only support aam and cls")
 
         return rep_dict
 
@@ -220,7 +224,7 @@ class FashionSV(CruiseModule):
             for low_lr_prefix in self.hparams.low_lr_prefix:
                 if n.startswith(low_lr_prefix):
                     low_lr = True
-                    low_lr_params_dict['params'].append(p)
+                    low_lr_params_dict["params"].append(p)
                     low_lr_keys.append(n)
                     break
             if low_lr:
@@ -232,7 +236,7 @@ class FashionSV(CruiseModule):
                 normal_params_dict["params"].append(p)
 
         if low_lr_keys:
-            print(f'low_lr_keys are: {low_lr_keys}')
+            print(f"low_lr_keys are: {low_lr_keys}")
 
         optimizer_grouped_parameters = [
             no_dacay_params_dict,
@@ -258,8 +262,8 @@ class FashionSV(CruiseModule):
             )
 
         if self.hparams.lr_schedule == "linear":
-            print(f'warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}')
-            print(f'total step: {self.trainer.total_steps}')
+            print(f"warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}")
+            print(f"total step: {self.trainer.total_steps}")
             lr_scheduler = get_linear_schedule_with_warmup(
                 optimizer=optm,
                 num_warmup_steps=int(self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch),
@@ -280,7 +284,11 @@ class FashionSV(CruiseModule):
 
         return {"optimizer": optm, "lr_scheduler": lr_scheduler}
 
-    def lr_scheduler_step(self, schedulers, **kwargs, ) -> None:
+    def lr_scheduler_step(
+        self,
+        schedulers,
+        **kwargs,
+    ) -> None:
         """
         默认是per epoch的lr schedule, 改成per step的
         """

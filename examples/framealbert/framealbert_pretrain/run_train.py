@@ -13,6 +13,7 @@ import random
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
+
 from examples.framealbert.framealbert_pretrain.data import FacDataModule
 from examples.framealbert.framealbert_pretrain.model import FrameAlbertTune
 
@@ -30,7 +31,7 @@ def setup_seed(seed):
         ...
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # random seed
     setup_seed(rand_seed)
     cli = CruiseCLI(

@@ -9,8 +9,10 @@ except ImportError:
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 from cruise import CruiseModule
+
 # from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
+
 from easyguard import AutoModel
 from easyguard.core.optimizers import *
 from easyguard.core.optimizers import AdamW
@@ -18,20 +20,20 @@ from easyguard.core.optimizers import AdamW
 
 class FrameAlbertTune(CruiseModule):
     def __init__(
-            self,
-            backbone='./examples/framealbert/framealbert_finetune/config_backbone/config_backbone.yaml',
-            class_num: int = 2,
-            hidden_dim: int = 768,
-            optim: str = 'AdamW',
-            learning_rate: float = 1.0e-4,
-            weight_decay: float = 1.e-4,
-            lr_schedule: str = 'linear',
-            warmup_steps_factor: float = 4,
-            low_lr_prefix: list = [],
-            freeze_prefix: list = [],
-            load_pretrained: str = None,
-            prefix_changes: list = [],
-            download_files: list = [],
+        self,
+        backbone="./examples/framealbert/framealbert_finetune/config_backbone/config_backbone.yaml",
+        class_num: int = 2,
+        hidden_dim: int = 768,
+        optim: str = "AdamW",
+        learning_rate: float = 1.0e-4,
+        weight_decay: float = 1.0e-4,
+        lr_schedule: str = "linear",
+        warmup_steps_factor: float = 4,
+        low_lr_prefix: list = [],
+        freeze_prefix: list = [],
+        load_pretrained: str = None,
+        prefix_changes: list = [],
+        download_files: list = [],
     ):
         super(FrameAlbertTune, self).__init__()
         self.save_hparams()
@@ -42,9 +44,12 @@ class FrameAlbertTune(CruiseModule):
         """
         # self.backbone = AutoModel.from_pretrained(self.hparams.backbone)
         ##########
-        from easyguard.modelzoo.models.falbert.modeling_falbert import FalBertModel
         from types import SimpleNamespace
+
         import yaml
+
+        from easyguard.modelzoo.models.falbert.modeling_falbert import FalBertModel
+
         with open(self.hparams.backbone) as fp:
             self.config_backbone = SimpleNamespace(**yaml.load(fp, yaml.Loader))
         self.backbone = FalBertModel(self.config_backbone)
@@ -58,27 +63,28 @@ class FrameAlbertTune(CruiseModule):
         """
 
         if self.hparams.load_pretrained:
-            prefix_changes = [prefix_change.split('->') for prefix_change in self.hparams.prefix_changes]
+            prefix_changes = [prefix_change.split("->") for prefix_change in self.hparams.prefix_changes]
             rename_params = {pretrain_prefix: new_prefix for pretrain_prefix, new_prefix in prefix_changes}
             self.partial_load_from_checkpoints(
                 self.hparams.load_pretrained,
-                map_location='cpu',
-                rename_params=rename_params
+                map_location="cpu",
+                rename_params=rename_params,
             )
         self.freeze_params(self.hparams.freeze_prefix)
 
     def local_rank_zero_prepare(self) -> None:
         import os
+
         if self.hparams.download_files:
-            to_download = [df.split('->') for df in self.hparams.download_files]
+            to_download = [df.split("->") for df in self.hparams.download_files]
             for src, tar in to_download:
                 if not os.path.exists(tar):
                     os.makedirs(tar)
-                fdname = src.split('/')[-1]
-                if os.path.exists(f'{tar}/{fdname}'):
-                    print(f'{tar}/{fdname} already existed, pass!')
+                fdname = src.split("/")[-1]
+                if os.path.exists(f"{tar}/{fdname}"):
+                    print(f"{tar}/{fdname} already existed, pass!")
                 else:
-                    print(f'downloading {src} to {tar}')
+                    print(f"downloading {src} to {tar}")
                     os.system(f"hdfs dfs -get {src} {tar}")
 
     def freeze_params(self, freeze_prefix):
@@ -88,12 +94,12 @@ class FrameAlbertTune(CruiseModule):
                     param.requires_grad = False
 
     def forward_step(
-            self,
-            input_ids,
-            input_segment_ids,
-            input_mask,
-            frames=None,
-            frames_mask=None
+        self,
+        input_ids,
+        input_segment_ids,
+        input_mask,
+        frames=None,
+        frames_mask=None,
     ):
         # rep_dict = self.backbone(input_ids=input_ids,
         #                          input_segment_ids=input_segment_ids,
@@ -102,13 +108,15 @@ class FrameAlbertTune(CruiseModule):
         #                          frames_mask=frames_mask,
         #                          output_hidden=False, )
         # cls_emb = rep_dict['pooler']
-        rep_dict = self.backbone(input_ids=input_ids,
-                                 input_segment_ids=input_segment_ids,
-                                 input_mask=input_mask,
-                                 frames=frames,
-                                 frames_mask=frames_mask,
-                                 mode="tv")
-        cls_emb = rep_dict['pooled_output']
+        rep_dict = self.backbone(
+            input_ids=input_ids,
+            input_segment_ids=input_segment_ids,
+            input_mask=input_mask,
+            frames=frames,
+            frames_mask=frames_mask,
+            mode="tv",
+        )
+        cls_emb = rep_dict["pooled_output"]
 
         logits = self.classifier(cls_emb)
 
@@ -133,11 +141,11 @@ class FrameAlbertTune(CruiseModule):
         loss = self.criterion(rep_dict["logits"], rep_dict["label"])
         res = {
             "loss": loss,
-            "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+            "train_lr": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0],
         }
         acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1,))
         for k, v in acc_dict.items():
-            res.update({f'train_{k}': v})
+            res.update({f"train_{k}": v})
 
         return res
 
@@ -147,7 +155,7 @@ class FrameAlbertTune(CruiseModule):
             batch["input_segment_ids"],
             batch["input_mask"],
             batch["frames"],
-            batch["frames_mask"]
+            batch["frames_mask"],
         )
         rep_dict = self.forward_step(
             input_ids=token_ids,
@@ -162,7 +170,7 @@ class FrameAlbertTune(CruiseModule):
 
         acc_dict = self.cal_acc(rep_dict["logits"], label=rep_dict["label"], topk=(1,))
         for k, v in acc_dict.items():
-            res.update({f'val_{k}': v})
+            res.update({f"val_{k}": v})
 
         return res
 
@@ -207,7 +215,7 @@ class FrameAlbertTune(CruiseModule):
             input_segment_ids=segment_ids,
             input_mask=attn_mask,
             frames=image,
-            frames_mask=image_mask
+            frames_mask=image_mask,
         )
         logits = rep_dict["logits"]
         return logits
@@ -235,7 +243,7 @@ class FrameAlbertTune(CruiseModule):
             for low_lr_prefix in self.hparams.low_lr_prefix:
                 if n.startswith(low_lr_prefix):
                     low_lr = True
-                    low_lr_params_dict['params'].append(p)
+                    low_lr_params_dict["params"].append(p)
                     low_lr_keys.append(n)
                     break
             if low_lr:
@@ -247,7 +255,7 @@ class FrameAlbertTune(CruiseModule):
                 normal_params_dict["params"].append(p)
 
         if low_lr_keys:
-            print(f'low_lr_keys are: {low_lr_keys}')
+            print(f"low_lr_keys are: {low_lr_keys}")
 
         optimizer_grouped_parameters = [
             no_dacay_params_dict,
@@ -273,8 +281,8 @@ class FrameAlbertTune(CruiseModule):
             )
 
         if self.hparams.lr_schedule == "linear":
-            print(f'warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}')
-            print(f'total step: {self.trainer.total_steps}')
+            print(f"warmup: {self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch}")
+            print(f"total step: {self.trainer.total_steps}")
             lr_scheduler = get_linear_schedule_with_warmup(
                 optimizer=optm,
                 num_warmup_steps=int(self.hparams.warmup_steps_factor * self.trainer.steps_per_epoch),
@@ -295,7 +303,11 @@ class FrameAlbertTune(CruiseModule):
 
         return {"optimizer": optm, "lr_scheduler": lr_scheduler}
 
-    def lr_scheduler_step(self, schedulers, **kwargs, ) -> None:
+    def lr_scheduler_step(
+        self,
+        schedulers,
+        **kwargs,
+    ) -> None:
         """
         默认是per epoch的lr schedule, 改成per step的
         """
@@ -303,7 +315,12 @@ class FrameAlbertTune(CruiseModule):
             scheduler.step()
 
     @torch.no_grad()
-    def cal_acc(self, output: torch.Tensor, label: torch.Tensor, topk: Tuple[int] = (1,)):
+    def cal_acc(
+        self,
+        output: torch.Tensor,
+        label: torch.Tensor,
+        topk: Tuple[int] = (1,),
+    ):
         """
         Computes the accuracy over the k top predictions for the specified values of k
         """

@@ -5,6 +5,7 @@
 import torch
 import torch.nn as nn
 
+
 class Expert(nn.Module):
     def __init__(self, input_size, output_size, hidden_size):
         super(Expert, self).__init__()
@@ -19,6 +20,7 @@ class Expert(nn.Module):
         out = self.dropout(out)
         out = self.fc2(out)
         return out
+
 
 class Tower(nn.Module):
     def __init__(self, input_size, output_size, hidden_size):
@@ -37,8 +39,17 @@ class Tower(nn.Module):
         out = self.sigmoid(out)
         return out
 
+
 class MMoE(nn.Module):
-    def __init__(self, input_size, num_experts, experts_out, experts_hidden, towers_hidden, tasks):
+    def __init__(
+        self,
+        input_size,
+        num_experts,
+        experts_out,
+        experts_hidden,
+        towers_hidden,
+        tasks,
+    ):
         super(MMoE, self).__init__()
         self.input_size = input_size
         self.num_experts = num_experts
@@ -49,8 +60,12 @@ class MMoE(nn.Module):
 
         self.softmax = nn.Softmax(dim=1)
 
-        self.experts = nn.ModuleList([Expert(self.input_size, self.experts_out, self.experts_hidden) for i in range(self.num_experts)])
-        self.w_gates = nn.ParameterList([nn.Parameter(torch.randn(input_size, num_experts), requires_grad=True) for i in range(self.tasks)])
+        self.experts = nn.ModuleList(
+            [Expert(self.input_size, self.experts_out, self.experts_hidden) for i in range(self.num_experts)]
+        )
+        self.w_gates = nn.ParameterList(
+            [nn.Parameter(torch.randn(input_size, num_experts), requires_grad=True) for i in range(self.tasks)]
+        )
         self.towers = nn.ModuleList([Tower(self.experts_out, 1, self.towers_hidden) for i in range(self.tasks)])
 
     def forward(self, x):
@@ -64,6 +79,7 @@ class MMoE(nn.Module):
 
         final_output = [t(ti) for t, ti in zip(self.towers, tower_input)]
         return final_output
+
 
 class MMoEMtl(nn.Module):
     def __init__(self, input_size, units, num_experts, num_tasks):
@@ -85,12 +101,14 @@ class MMoEMtl(nn.Module):
         )
 
         self.expert_kernels_bias = torch.nn.Parameter(
-            torch.randn(units, num_experts, device=self.device), requires_grad=True
+            torch.randn(units, num_experts, device=self.device),
+            requires_grad=True,
         )
         self.gate_kernels_bias = torch.nn.ParameterList(
             [
                 torch.nn.Parameter(
-                    torch.randn(num_experts, device=self.device), requires_grad=True
+                    torch.randn(num_experts, device=self.device),
+                    requires_grad=True,
                 )
                 for i in range(num_tasks)
             ]
@@ -125,9 +143,7 @@ class MMoEMtl(nn.Module):
 
         for gate_output in gate_outputs:
             expanded_gate_output = torch.unsqueeze(gate_output, 1)
-            weighted_expert_output = expert_outputs * expanded_gate_output.expand_as(
-                expert_outputs
-            )
+            weighted_expert_output = expert_outputs * expanded_gate_output.expand_as(expert_outputs)
             final_outputs.append(torch.sum(weighted_expert_output, 2))
 
         return final_outputs

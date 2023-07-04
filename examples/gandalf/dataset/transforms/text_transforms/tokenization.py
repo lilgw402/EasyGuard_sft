@@ -16,25 +16,27 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import io
-from io import open
-import os
 import collections
+import io
+import os
 import unicodedata
+from io import open
+
 import torch
-from .hdfs_io import hopen, hexists, hisdir
+
+from .hdfs_io import hexists, hisdir, hopen
 
 
 def load_vocab(vocab_file):
     """Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     index = 0
-    if vocab_file.startswith('hdfs://'):
+    if vocab_file.startswith("hdfs://"):
         with hopen(vocab_file, "r") as reader:
             accessor = io.BytesIO(reader.read())
             while True:
                 token = accessor.readline()
-                token = token.decode('utf-8')  # 要解码使得数据接口类型一致
+                token = token.decode("utf-8")  # 要解码使得数据接口类型一致
                 if not token:
                     break
                 token = token.strip()
@@ -66,8 +68,15 @@ def whitespace_tokenize(text):
 class BertTokenizer(object):
     """Runs end-to-end tokenization: punctuation splitting + wordpiece"""
 
-    def __init__(self, vocab_file, do_lower_case=True, tokenize_emoji=False, greedy_sharp=True, max_len=None,
-                 never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")):
+    def __init__(
+        self,
+        vocab_file,
+        do_lower_case=True,
+        tokenize_emoji=False,
+        greedy_sharp=True,
+        max_len=None,
+        never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
+    ):
         """
         vocab_file: 词表文件
         do_lower_case: 是否小写
@@ -78,14 +87,14 @@ class BertTokenizer(object):
             如果greedy_sharp 是true，则会先看 "##x" 是在词表里，如果不在，会看 "x" 是否在词表里。
         """
         if not hexists(vocab_file):
-            raise ValueError(
-                "Can't find a vocabulary file at path '{}'. ".format(vocab_file))
+            raise ValueError("Can't find a vocabulary file at path '{}'. ".format(vocab_file))
         self.vocab = load_vocab(vocab_file)
-        self.ids_to_tokens = collections.OrderedDict(
-            [(ids, tok) for tok, ids in self.vocab.items()])
-        self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
-                                              tokenize_emoji=tokenize_emoji,
-                                              never_split=never_split)
+        self.ids_to_tokens = collections.OrderedDict([(ids, tok) for tok, ids in self.vocab.items()])
+        self.basic_tokenizer = BasicTokenizer(
+            do_lower_case=do_lower_case,
+            tokenize_emoji=tokenize_emoji,
+            never_split=never_split,
+        )
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, greedy_sharp=greedy_sharp)
         self.max_len = max_len if max_len is not None else int(1e12)
 
@@ -97,7 +106,7 @@ class BertTokenizer(object):
         return split_tokens
 
     def tokenize_with_ww(self, text):
-        """ 保留 word info 的 tokenize"""
+        """保留 word info 的 tokenize"""
         split_tokens = []
         word_infos = []
         for i, token in enumerate(self.basic_tokenizer.tokenize(text)):
@@ -110,7 +119,7 @@ class BertTokenizer(object):
         """
         将 token 恢复成原本的term。注意只能做到term级别，因为空格信息不知道
         """
-        return ''.join([t.replace("##", "") for t in tokens])
+        return "".join([t.replace("##", "") for t in tokens])
 
     def convert_tokens_to_ids(self, tokens):
         """Converts a sequence of tokens into ids using the vocab."""
@@ -136,10 +145,12 @@ class BertTokenizer(object):
 class BasicTokenizer(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
-    def __init__(self,
-                 do_lower_case=True,
-                 tokenize_emoji=False,
-                 never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")):
+    def __init__(
+        self,
+        do_lower_case=True,
+        tokenize_emoji=False,
+        never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
+    ):
         """Constructs a BasicTokenizer.
 
         Args:
@@ -224,8 +235,8 @@ class BasicTokenizer(object):
         """
         if not char_code:
             return False
-        range_min = ord(u'\U0001F300')  # 127744
-        range_max = ord(u'\U0001FAD6')  # 129750
+        range_min = ord("\U0001F300")  # 127744
+        range_max = ord("\U0001FAD6")  # 129750
         range_min_2 = 126980  # 0x1f004
         range_max_2 = 127569  # 0x1f251
         range_min_3 = 169  # 0xa9
@@ -267,14 +278,16 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
-                (cp >= 0x3400 and cp <= 0x4DBF) or  #
-                (cp >= 0x20000 and cp <= 0x2A6DF) or  #
-                (cp >= 0x2A700 and cp <= 0x2B73F) or  #
-                (cp >= 0x2B740 and cp <= 0x2B81F) or  #
-                (cp >= 0x2B820 and cp <= 0x2CEAF) or
-                (cp >= 0xF900 and cp <= 0xFAFF) or  #
-                (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+        if (
+            (cp >= 0x4E00 and cp <= 0x9FFF)
+            or (cp >= 0x3400 and cp <= 0x4DBF)  #
+            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
+            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
+            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
+            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
+            or (cp >= 0xF900 and cp <= 0xFAFF)
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
+        ):  #
             return True
 
         return False
@@ -284,7 +297,7 @@ class BasicTokenizer(object):
         output = []
         for char in text:
             cp = ord(char)
-            if cp == 0 or cp == 0xfffd or _is_control(char):
+            if cp == 0 or cp == 0xFFFD or _is_control(char):
                 continue
             if _is_whitespace(char):
                 output.append(" ")
@@ -296,7 +309,13 @@ class BasicTokenizer(object):
 class WordpieceTokenizer(object):
     """Runs WordPiece tokenization."""
 
-    def __init__(self, vocab, greedy_sharp=True, unk_token="[UNK]", max_input_chars_per_word=100):
+    def __init__(
+        self,
+        vocab,
+        greedy_sharp=True,
+        unk_token="[UNK]",
+        max_input_chars_per_word=100,
+    ):
         self.vocab = vocab
         self.greedy_sharp = greedy_sharp
         self.unk_token = unk_token
@@ -394,8 +413,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if ((cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or
-            (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126)):
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):

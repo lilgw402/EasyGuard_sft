@@ -14,16 +14,11 @@
 # limitations under the License.
 """ Auto Model class."""
 
-import warnings
 from collections import OrderedDict
 
 from ...modelzoo import MODELZOO_CONFIG
 from ...utils import logging
-from .auto_factory import (
-    _BaseAutoModelClass,
-    _LazyAutoMapping,
-    auto_class_update,
-)
+from .auto_factory import _BaseAutoModelClass, _LazyAutoMapping
 from .configuration_auto import CONFIG_MAPPING_NAMES
 
 # TODO (junwei.Dong): 需要进一步优化modeling_auto的机制
@@ -84,9 +79,7 @@ MODEL_FOR_CAUSAL_LM_MAPPING_NAMES = OrderedDict(
 
 
 MODEL_MAPPING = _LazyAutoMapping(CONFIG_MAPPING_NAMES, MODEL_MAPPING_NAMES)
-MODEL_FOR_CAUSAL_LM_MAPPING = _LazyAutoMapping(
-    CONFIG_MAPPING_NAMES, MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
-)
+MODEL_FOR_CAUSAL_LM_MAPPING = _LazyAutoMapping(CONFIG_MAPPING_NAMES, MODEL_FOR_CAUSAL_LM_MAPPING_NAMES)
 
 
 class AutoModel(_BaseAutoModelClass):

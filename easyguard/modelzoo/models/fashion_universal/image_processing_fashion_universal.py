@@ -2,15 +2,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, List, Optional
 
 import torch
-from matplotlib.pyplot import isinteractive
 from torchvision.transforms import transforms
 
-from ...processor_utils import (
-    CENTER_IMAGE,
-    RESIZE_IMAGE,
-    ImageInput,
-    ProcessorImageBase,
-)
+from ...processor_utils import CENTER_IMAGE, RESIZE_IMAGE, ImageInput, ProcessorImageBase
 
 
 @dataclass
@@ -43,9 +37,7 @@ class FashionUniversalProcessor(ProcessorImageBase):
         if not self.transform:
             resize = transforms.Resize(self.size)
             center_crop = transforms.CenterCrop(self.center)
-            to_tensor = (
-                transforms.ToTensor() if not torch.is_tensor(image) else None
-            )
+            to_tensor = transforms.ToTensor() if not torch.is_tensor(image) else None
             normalize = transforms.Normalize(mean=self.mean, std=self.std)
 
             funcs = [

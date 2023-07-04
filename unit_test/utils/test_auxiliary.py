@@ -6,15 +6,12 @@ TEST_FLAGS = ["hdfs_open"]
 
 
 class TestAuxiliary(unittest.TestCase):
-    @unittest.skipUnless(
-        "all" in TEST_FLAGS or "hdfs_open" in TEST_FLAGS, "just do it"
-    )
+    @unittest.skipUnless("all" in TEST_FLAGS or "hdfs_open" in TEST_FLAGS, "just do it")
     def test_hdfs_open(self) -> str:
         import io
-        import json
 
         import torch
-        import yaml
+
         from easyguard.utils.hdfs_utils import hdfs_open
 
         path = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/xlmr_base/pytorch_model.bin"
@@ -25,9 +22,7 @@ class TestAuxiliary(unittest.TestCase):
             state_dict = torch.load(content, map_location="cpu")
             return state_dict
 
-    @unittest.skipUnless(
-        "all" in TEST_FLAGS or "sha256" in TEST_FLAGS, "just do it"
-    )
+    @unittest.skipUnless("all" in TEST_FLAGS or "sha256" in TEST_FLAGS, "just do it")
     def test_sha256(self) -> str:
         from easyguard.utils.auxiliary_utils import sha256
 
@@ -35,9 +30,7 @@ class TestAuxiliary(unittest.TestCase):
         result = sha256(data)
         print(result)
 
-    @unittest.skipUnless(
-        "all" in TEST_FLAGS or "cache_file" in TEST_FLAGS, "just do it"
-    )
+    @unittest.skipUnless("all" in TEST_FLAGS or "cache_file" in TEST_FLAGS, "just do it")
     def test_cache_file(self):
         from easyguard.utils.auxiliary_utils import cache_file
 
@@ -75,7 +68,7 @@ class TestAuxiliary(unittest.TestCase):
 
         name_or_path = "fashion-deberta-ccr-order"
         model_url = "hdfs://haruna/home/byte_ecom_govern/easyguard/models/fashion_deberta_ccr_order"
-        file_name = "vocab.txt"
+        # file_name = "vocab.txt"
         model_type = "debert"
         print(hf_name_or_path_check(name_or_path, model_url, model_type))
 

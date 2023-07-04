@@ -1,7 +1,6 @@
 """ Fusion model """
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from easyguard.modelzoo.models.falbert import albert
 
@@ -34,9 +33,7 @@ class ALBertFusion(nn.Module):
         if isinstance(module, (nn.Linear, nn.Embedding)):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range
-            )
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
@@ -62,7 +59,6 @@ class ALBertFusion(nn.Module):
         *args,
         **kwargs,
     ):
-
         frames_emb = self.tv_projector(visual_embeds)
         text_emb = self.tv_projector(input_embs)
 
@@ -82,9 +78,7 @@ class ALBertFusion(nn.Module):
             encoded_layers = out
             attention_probs = None
         sequence_output = encoded_layers[-1]
-        pooled_output = (
-            self.pooler(sequence_output) if self.config.with_pooler else None
-        )
+        pooled_output = self.pooler(sequence_output) if self.config.with_pooler else None
 
         if self.is_visual_front:
             visual_length = frames_mask.shape[1]  # frame_num+1
@@ -117,18 +111,10 @@ class VEmbedding(nn.Module):
         super().__init__()
 
         self.project_embedding_first = config.project_embedding_first
-        dim = (
-            config.hidden_size
-            if self.project_embedding_first
-            else config.embedding_size
-        )
+        dim = config.hidden_size if self.project_embedding_first else config.embedding_size
 
-        self.token_embedder_positions = torch.nn.Embedding(
-            config.max_position_embeddings, dim
-        )
-        self.token_embedder_segments = torch.nn.Embedding(
-            config.type_vocab_size, dim
-        )
+        self.token_embedder_positions = torch.nn.Embedding(config.max_position_embeddings, dim)
+        self.token_embedder_segments = torch.nn.Embedding(config.type_vocab_size, dim)
 
         self.norm = nn.LayerNorm(dim, eps=config.layernorm_eps)
         self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
@@ -138,17 +124,13 @@ class VEmbedding(nn.Module):
             self.visual_ln = nn.LayerNorm(dim, eps=config.layernorm_eps)
 
         if config.embedding_size != config.hidden_size:
-            self.proj_embedding_hidden = torch.nn.Linear(
-                config.embedding_size, config.hidden_size
-            )
+            self.proj_embedding_hidden = torch.nn.Linear(config.embedding_size, config.hidden_size)
         else:
             self.proj_embedding_hidden = None
 
         self.img_embedder_tokens = torch.nn.Embedding(1, dim)
         self.v_segment_embeddings = torch.nn.Embedding(1, dim)
-        self.v_token_embedder_positions = torch.nn.Embedding(
-            config.max_frame_num, dim
-        )
+        self.v_token_embedder_positions = torch.nn.Embedding(config.max_frame_num, dim)
         # TODO: 是否要用上面的做初始化
         # self.v_token_embedder_positions.weight = self.token_embedder_positions.weight[:config.max_frame_num]
 
@@ -175,13 +157,9 @@ class VEmbedding(nn.Module):
         """
         if mode == "tv":
             # 文本
-            embeddings = self.text_forward(
-                input_embs, token_type_ids, position_ids
-            )
+            embeddings = self.text_forward(input_embs, token_type_ids, position_ids)
             # 视觉
-            v_embeddings, v_input_mask = self.visual_forward(
-                visual_embeds, visual_mask
-            )
+            v_embeddings, v_input_mask = self.visual_forward(visual_embeds, visual_mask)
 
             if self.is_visual_front:
                 embeddings = torch.cat([v_embeddings, embeddings], dim=1)
@@ -205,9 +183,7 @@ class VEmbedding(nn.Module):
         # position
         bsz, length = inputs_embeds.size()[:2]
         if position_ids is None:
-            position_ids = torch.arange(
-                0, length, dtype=torch.long, device=input_embs.device
-            ).expand(bsz, length)
+            position_ids = torch.arange(0, length, dtype=torch.long, device=input_embs.device).expand(bsz, length)
         position_embeddings = self.token_embedder_positions(position_ids)
         # segment
         token_type_embeddings = self.token_embedder_segments(token_type_ids)
@@ -217,9 +193,7 @@ class VEmbedding(nn.Module):
         embeddings = inputs_embeds + position_embeddings + token_type_embeddings
         return embeddings
 
-    def visual_forward(
-        self, visual_embeds, visual_mask, position_ids=None, *args, **kwargs
-    ):
+    def visual_forward(self, visual_embeds, visual_mask, position_ids=None, *args, **kwargs):
         # 1. token
         if self.need_visual_ln:
             visual_embeds = self.visual_ln(visual_embeds)
@@ -229,9 +203,7 @@ class VEmbedding(nn.Module):
         inputs_embeds = torch.cat([img_embeds, visual_embeds], dim=1)
         length = visual_length + 1
         # 3. mask 多加一个 [IMG] 的位置
-        img_token_mask = (
-            torch.sum(visual_mask, dim=1, keepdim=True) > 0
-        ).long()
+        img_token_mask = (torch.sum(visual_mask, dim=1, keepdim=True) > 0).long()
         input_mask = torch.cat(
             [
                 img_token_mask,
@@ -244,16 +216,12 @@ class VEmbedding(nn.Module):
             inputs_embeds = self.proj_embedding_hidden(inputs_embeds)
         # 5. position embedding
         if position_ids is None:
-            position_ids = torch.arange(
-                0, length, dtype=torch.long, device=visual_embeds.device
-            ).expand(bsz, length)
+            position_ids = torch.arange(0, length, dtype=torch.long, device=visual_embeds.device).expand(bsz, length)
         # position_embeddings = self.v_token_embedder_positions(position_ids) # fix
         position_embeddings = self.token_embedder_positions(position_ids)
         # 6. segment embedding
         segment_embeddings = self.v_segment_embeddings(
-            torch.zeros_like(
-                input_mask, device=input_mask.device, dtype=torch.long
-            )
+            torch.zeros_like(input_mask, device=input_mask.device, dtype=torch.long)
         )
         # 7. 后处理
         embeddings = inputs_embeds + position_embeddings + segment_embeddings

@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ XLM-RoBERTa configuration"""
-from collections import OrderedDict
-from typing import Mapping
 
 from ...configuration_utils import PretrainedConfig
 from ...utils import logging

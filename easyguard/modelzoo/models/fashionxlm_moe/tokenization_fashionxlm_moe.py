@@ -19,7 +19,6 @@ import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 
 import sentencepiece as sp
-
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 PRETRAINED_VOCAB_FILES_MAP = {
@@ -121,9 +120,7 @@ class FashionxlmMoETokenizer(PreTrainedTokenizer):
         sp_model_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> None:
-        self.sp_model_kwargs = (
-            {} if sp_model_kwargs is None else sp_model_kwargs
-        )
+        self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
 
         super().__init__(
             do_lower_case=do_lower_case,
@@ -179,11 +176,7 @@ class FashionxlmMoETokenizer(PreTrainedTokenizer):
 
     def _convert_id_to_token(self, index):
         """Converts an index (integer) in a token (str) using the vocab."""
-        return (
-            self._tokenizer.spm.IdToPiece(index)
-            if index < self.vocab_size
-            else self.unk_token
-        )
+        return self._tokenizer.spm.IdToPiece(index) if index < self.vocab_size else self.unk_token
 
     def convert_tokens_to_string(self, tokens):
         """Converts a sequence of tokens (string) in a single string."""
@@ -213,9 +206,7 @@ class FashionxlmMoETokenizer(PreTrainedTokenizer):
         sep = [self.sep_token_id]
         return cls + token_ids_0 + sep + token_ids_1 + sep
 
-    def get_special_tokens_mask(
-        self, token_ids_0, token_ids_1=None, already_has_special_tokens=False
-    ):
+    def get_special_tokens_mask(self, token_ids_0, token_ids_1=None, already_has_special_tokens=False):
         """
         Retrieves sequence ids from a token list that has no special tokens added. This method is called when adding
         special tokens using the tokenizer `prepare_for_model` or `encode_plus` methods.
@@ -240,18 +231,10 @@ class FashionxlmMoETokenizer(PreTrainedTokenizer):
             )
 
         if token_ids_1 is not None:
-            return (
-                [1]
-                + ([0] * len(token_ids_0))
-                + [1]
-                + ([0] * len(token_ids_1))
-                + [1]
-            )
+            return [1] + ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
         return [1] + ([0] * len(token_ids_0)) + [1]
 
-    def create_token_type_ids_from_sequences(
-        self, token_ids_0, token_ids_1=None
-    ):
+    def create_token_type_ids_from_sequences(self, token_ids_0, token_ids_1=None):
         """
         Create a mask from the two sequences passed to be used in a sequence-pair classification task. A DeBERTa
         sequence pair mask has the following format:
@@ -278,20 +261,14 @@ class FashionxlmMoETokenizer(PreTrainedTokenizer):
             return len(cls + token_ids_0 + sep) * [0]
         return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
 
-    def prepare_for_tokenization(
-        self, text, is_split_into_words=False, **kwargs
-    ):
+    def prepare_for_tokenization(self, text, is_split_into_words=False, **kwargs):
         add_prefix_space = kwargs.pop("add_prefix_space", False)
         if is_split_into_words or add_prefix_space:
             text = " " + text
         return (text, kwargs)
 
-    def save_vocabulary(
-        self, save_directory: str, filename_prefix: Optional[str] = None
-    ) -> Tuple[str]:
-        return self._tokenizer.save_pretrained(
-            save_directory, filename_prefix=filename_prefix
-        )
+    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+        return self._tokenizer.save_pretrained(save_directory, filename_prefix=filename_prefix)
 
 
 class SPMTokenizer:
@@ -328,9 +305,7 @@ class SPMTokenizer:
     ):
         self.split_by_punct = split_by_punct
         self.vocab_file = vocab_file
-        self.sp_model_kwargs = (
-            {} if sp_model_kwargs is None else sp_model_kwargs
-        )
+        self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
         spm = sp.SentencePieceProcessor(**self.sp_model_kwargs)
         if not os.path.exists(vocab_file):
             raise FileNotFoundError(f"{vocab_file} does not exist!")
@@ -384,9 +359,7 @@ class SPMTokenizer:
                 if token in self.special_tokens:
                     if not prev_is_special:
                         out_string += " "
-                    out_string += (
-                        self.spm.decode_pieces(current_sub_tokens) + token
-                    )
+                    out_string += self.spm.decode_pieces(current_sub_tokens) + token
                     prev_is_special = True
                     current_sub_tokens = []
                 else:
@@ -421,11 +394,7 @@ class SPMTokenizer:
             return True
         if (
             len(token) == 1
-            and (
-                _is_whitespace(list(token)[0])
-                or _is_control(list(token)[0])
-                or _is_punctuation(list(token)[0])
-            )
+            and (_is_whitespace(list(token)[0]) or _is_control(list(token)[0]) or _is_punctuation(list(token)[0]))
         ) or token in self.special_tokens:
             return False
 
@@ -570,12 +539,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (
-        (cp >= 33 and cp <= 47)
-        or (cp >= 58 and cp <= 64)
-        or (cp >= 91 and cp <= 96)
-        or (cp >= 123 and cp <= 126)
-    ):
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):

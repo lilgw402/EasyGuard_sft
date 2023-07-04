@@ -16,9 +16,7 @@ class FalBertProcessor(ProcessorBase):
     ) -> None:
         super().__init__()
 
-        self.tokenizer = FalBertTokenizer(
-            vocab_file=vocab_path, **text_processor["tokenizer_config"]
-        )
+        self.tokenizer = FalBertTokenizer(vocab_file=vocab_path, **text_processor["tokenizer_config"])
         self.image_processor = FalBertImageProcessor(**image_processor)
 
         # preprocess
@@ -30,18 +28,14 @@ class FalBertProcessor(ProcessorBase):
         self.PAD = self.tokenizer.vocab["[PAD]"]
         self.SEP = self.tokenizer.vocab["[SEP]"]
         self.MASK = self.tokenizer.vocab["[MASK]"]
-        self.text_types = text_processor.get(
-            "text_types", ["text_ocr", "text_asr"]
-        )
+        self.text_types = text_processor.get("text_types", ["text_ocr", "text_asr"])
 
     def text_process(self, texts):
         """preprocess for text"""
         tokens = ["[CLS]"]
         for text_type in self.text_types:
             text = texts[text_type]
-            tokens += self.tokenizer.tokenize(text)[
-                : self.max_len[text_type] - 2
-            ] + ["[SEP]"]
+            tokens += self.tokenizer.tokenize(text)[: self.max_len[text_type] - 2] + ["[SEP]"]
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         return OrderedDict(token_ids=token_ids)
 

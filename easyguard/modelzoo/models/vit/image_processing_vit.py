@@ -17,18 +17,8 @@
 from typing import Dict, List, Optional, Union
 
 import numpy as np
-
-from transformers.image_processing_utils import (
-    BaseImageProcessor,
-    BatchFeature,
-    get_size_dict,
-)
-from transformers.image_transforms import (
-    normalize,
-    rescale,
-    resize,
-    to_channel_dimension_format,
-)
+from transformers.image_processing_utils import BaseImageProcessor, BatchFeature, get_size_dict
+from transformers.image_transforms import normalize, rescale, resize, to_channel_dimension_format
 from transformers.image_utils import (
     IMAGENET_STANDARD_MEAN,
     IMAGENET_STANDARD_STD,
@@ -100,12 +90,8 @@ class ViTImageProcessor(BaseImageProcessor):
         self.size = size
         self.resample = resample
         self.rescale_factor = rescale_factor
-        self.image_mean = (
-            image_mean if image_mean is not None else IMAGENET_STANDARD_MEAN
-        )
-        self.image_std = (
-            image_std if image_std is not None else IMAGENET_STANDARD_STD
-        )
+        self.image_mean = image_mean if image_mean is not None else IMAGENET_STANDARD_MEAN
+        self.image_std = image_std if image_std is not None else IMAGENET_STANDARD_STD
 
     def resize(
         self,
@@ -136,9 +122,7 @@ class ViTImageProcessor(BaseImageProcessor):
         """
         size = get_size_dict(size)
         if "height" not in size or "width" not in size:
-            raise ValueError(
-                f"The `size` dictionary must contain the keys `height` and `width`. Got {size.keys()}"
-            )
+            raise ValueError(f"The `size` dictionary must contain the keys `height` and `width`. Got {size.keys()}")
         return resize(
             image,
             size=(size["height"], size["width"]),
@@ -200,9 +184,7 @@ class ViTImageProcessor(BaseImageProcessor):
         Returns:
             `np.ndarray`: The normalized image.
         """
-        return normalize(
-            image, mean=mean, std=std, data_format=data_format, **kwargs
-        )
+        return normalize(image, mean=mean, std=std, data_format=data_format, **kwargs)
 
     def preprocess(
         self,
@@ -258,15 +240,9 @@ class ViTImageProcessor(BaseImageProcessor):
         """
         do_resize = do_resize if do_resize is not None else self.do_resize
         do_rescale = do_rescale if do_rescale is not None else self.do_rescale
-        do_normalize = (
-            do_normalize if do_normalize is not None else self.do_normalize
-        )
+        do_normalize = do_normalize if do_normalize is not None else self.do_normalize
         resample = resample if resample is not None else self.resample
-        rescale_factor = (
-            rescale_factor
-            if rescale_factor is not None
-            else self.rescale_factor
-        )
+        rescale_factor = rescale_factor if rescale_factor is not None else self.rescale_factor
         image_mean = image_mean if image_mean is not None else self.image_mean
         image_std = image_std if image_std is not None else self.image_std
 
@@ -286,34 +262,21 @@ class ViTImageProcessor(BaseImageProcessor):
             raise ValueError("Size must be specified if do_resize is True.")
 
         if do_rescale and rescale_factor is None:
-            raise ValueError(
-                "Rescale factor must be specified if do_rescale is True."
-            )
+            raise ValueError("Rescale factor must be specified if do_rescale is True.")
 
         # All transformations expect numpy arrays.
         images = [to_numpy_array(image) for image in images]
 
         if do_resize:
-            images = [
-                self.resize(image=image, size=size_dict, resample=resample)
-                for image in images
-            ]
+            images = [self.resize(image=image, size=size_dict, resample=resample) for image in images]
 
         if do_rescale:
-            images = [
-                self.rescale(image=image, scale=rescale_factor)
-                for image in images
-            ]
+            images = [self.rescale(image=image, scale=rescale_factor) for image in images]
 
         if do_normalize:
-            images = [
-                self.normalize(image=image, mean=image_mean, std=image_std)
-                for image in images
-            ]
+            images = [self.normalize(image=image, mean=image_mean, std=image_std) for image in images]
 
-        images = [
-            to_channel_dimension_format(image, data_format) for image in images
-        ]
+        images = [to_channel_dimension_format(image, data_format) for image in images]
 
         data = {"pixel_values": images}
         return BatchFeature(data=data, tensor_type=return_tensors)

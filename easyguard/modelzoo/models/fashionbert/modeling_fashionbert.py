@@ -1,13 +1,13 @@
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .albert import ALBert
-from .swin import SwinTransformer
-from collections import OrderedDict
-
 from ....utils.losses import LearnableNTXentLoss, LearnablePCLLoss, SCELoss
 from ...modeling_utils import ModelBase
+from .albert import ALBert
+from .swin import SwinTransformer
 
 
 class FashionBert(ModelBase):
@@ -46,32 +46,20 @@ class FashionBert(ModelBase):
             num_layers=1,
         )
         self.visual_pooler = nn.Sequential(
-            nn.Linear(
-                self.config_visual.output_dim, self.config_visual.output_dim
-            ),
+            nn.Linear(self.config_visual.output_dim, self.config_visual.output_dim),
             nn.GELU(),
         )
 
-        self.t_projector = nn.Linear(
-            self.config_text.hidden_size, self.config_fusion.hidden_size
-        )
-        self.v_projector = nn.Linear(
-            self.config_visual.output_dim, self.config_fusion.hidden_size
-        )
+        self.t_projector = nn.Linear(self.config_text.hidden_size, self.config_fusion.hidden_size)
+        self.v_projector = nn.Linear(self.config_visual.output_dim, self.config_fusion.hidden_size)
 
-        self.t_projector_fuse = nn.Linear(
-            self.config_text.hidden_size, self.config_fusion.hidden_size
-        )
-        self.v_projector_fuse = nn.Linear(
-            self.config_visual.output_dim, self.config_fusion.hidden_size
-        )
+        self.t_projector_fuse = nn.Linear(self.config_text.hidden_size, self.config_fusion.hidden_size)
+        self.v_projector_fuse = nn.Linear(self.config_visual.output_dim, self.config_fusion.hidden_size)
         self.segment_embedding = nn.Embedding(2, self.config_fusion.hidden_size)
         self.ln_text = nn.LayerNorm(self.config_fusion.hidden_size)
         self.ln_visual = nn.LayerNorm(self.config_fusion.hidden_size)
         self.ln_cls = nn.LayerNorm(self.config_fusion.hidden_size)
-        self.fuse_cls = nn.Linear(
-            self.config_fusion.hidden_size * 2, self.config_fusion.hidden_size
-        )
+        self.fuse_cls = nn.Linear(self.config_fusion.hidden_size * 2, self.config_fusion.hidden_size)
 
         self.fuse_dropout = nn.Dropout(0.2)
         self.fuse = nn.TransformerEncoder(
@@ -83,9 +71,7 @@ class FashionBert(ModelBase):
             ),
             num_layers=self.config_fusion.num_layers,
         )
-        self.fuse_pooler = nn.Linear(
-            self.config_fusion.hidden_size, self.config_fusion.hidden_size
-        )
+        self.fuse_pooler = nn.Linear(self.config_fusion.hidden_size, self.config_fusion.hidden_size)
 
         # """
         # Initialize output layer
@@ -139,14 +125,14 @@ class FashionBert(ModelBase):
             requires_grad=False,
         )  # [512, ]
         self.image_segment_ids = nn.Parameter(
-            data=torch.ones(size=(512,), dtype=torch.int64), requires_grad=False
+            data=torch.ones(size=(512,), dtype=torch.int64),
+            requires_grad=False,
         )  # [512, ]
         self.image_masks = nn.Parameter(
-            data=torch.ones(size=(512,), dtype=torch.int64), requires_grad=False
+            data=torch.ones(size=(512,), dtype=torch.int64),
+            requires_grad=False,
         )  # [512, ]
-        self.clsf_masks = nn.Parameter(
-            data=torch.ones(size=(1,), dtype=torch.int64), requires_grad=False
-        )
+        self.clsf_masks = nn.Parameter(data=torch.ones(size=(1,), dtype=torch.int64), requires_grad=False)
 
         # self.initialize_weights()
 
@@ -165,14 +151,10 @@ class FashionBert(ModelBase):
     def forward_text(self, token_ids: torch.Tensor):
         text_masks = (token_ids != self.PAD).long()
         text_segment_ids = (token_ids == self.SEP).long()
-        text_segment_ids = (
-            torch.cumsum(text_segment_ids, dim=-1) - text_segment_ids
-        )
+        text_segment_ids = torch.cumsum(text_segment_ids, dim=-1) - text_segment_ids
         text_segment_ids = torch.clamp(text_segment_ids, min=0, max=1)
         batch_size, text_length = token_ids.shape
-        position_ids = (
-            self.text_position_ids[:text_length].unsqueeze(0).expand((batch_size, -1))
-        )  # [B, M]
+        position_ids = self.text_position_ids[:text_length].unsqueeze(0).expand((batch_size, -1))  # [B, M]
 
         t_out = self.text(
             input_ids=token_ids,
@@ -194,9 +176,7 @@ class FashionBert(ModelBase):
 
         v_cat = torch.cat([v_rep.unsqueeze(1), v_emb], dim=1)  # [B, 1 + N, d_v]
         batch_size, image_length, _ = v_cat.shape
-        position_ids = (
-            self.image_position_ids[:image_length].unsqueeze(0).expand((batch_size, -1))
-        )
+        position_ids = self.image_position_ids[:image_length].unsqueeze(0).expand((batch_size, -1))
         v_cat = v_cat + self.visual_pos(position_ids)
         v_cat = self.visual_fuse(v_cat)  # [B, 1 + N, d_v]
         v_rep = self.visual_pooler(v_cat[:, 0])  # [B, d_v]
@@ -206,42 +186,28 @@ class FashionBert(ModelBase):
 
     def forward_fuse(self, t_emb, t_rep, text_masks, v_emb, v_rep):
         batch_size, text_length, _ = t_emb.shape
-        text_segment_ids = (
-            self.text_segment_ids[:text_length].unsqueeze(0).expand((batch_size, -1))
-        )
-        t_emb = self.ln_text(
-            self.t_projector_fuse(t_emb) + self.segment_embedding(text_segment_ids)
-        )  # [B, M, d_f]
+        text_segment_ids = self.text_segment_ids[:text_length].unsqueeze(0).expand((batch_size, -1))
+        t_emb = self.ln_text(self.t_projector_fuse(t_emb) + self.segment_embedding(text_segment_ids))  # [B, M, d_f]
 
         batch_size, image_length, _ = v_emb.shape
-        image_segment_ids = (
-            self.image_segment_ids[:image_length].unsqueeze(0).expand((batch_size, -1))
-        )
+        image_segment_ids = self.image_segment_ids[:image_length].unsqueeze(0).expand((batch_size, -1))
         v_emb = self.ln_visual(
             self.v_projector_fuse(v_emb) + self.segment_embedding(image_segment_ids)
         )  # [B, 1 + N, d_f]
-        cls_emb = self.ln_cls(
-            self.fuse_cls(torch.cat([t_rep, v_rep], dim=-1))
-        ).unsqueeze(1)  # [B, 1, d_f]
-        fuse_emb = self.fuse_dropout(
-            torch.cat([cls_emb, t_emb, v_emb], dim=1)
-        )  # [B, 1 + M + 1 + N, d_f]
+        cls_emb = self.ln_cls(self.fuse_cls(torch.cat([t_rep, v_rep], dim=-1))).unsqueeze(1)  # [B, 1, d_f]
+        fuse_emb = self.fuse_dropout(torch.cat([cls_emb, t_emb, v_emb], dim=1))  # [B, 1 + M + 1 + N, d_f]
 
-        image_masks = (
-            self.image_masks[:image_length].unsqueeze(0).expand((batch_size, -1))
-        )
+        image_masks = self.image_masks[:image_length].unsqueeze(0).expand((batch_size, -1))
         cls_masks = self.clsf_masks.unsqueeze(0).expand((batch_size, -1))
         fuse_mask = (
             torch.cat([cls_masks, text_masks, image_masks], dim=1) == 0
         )  # [B, 1 + M + 1 + N], True indicates mask
-        fuse_emb = self.fuse(
-            fuse_emb, src_key_padding_mask=fuse_mask
-        )  # [B, 1 + M + 1 + N, d_f]
+        fuse_emb = self.fuse(fuse_emb, src_key_padding_mask=fuse_mask)  # [B, 1 + M + 1 + N, d_f]
 
         fuse_rep = self.fuse_pooler(fuse_emb[:, 0])  # [B, d_f]
         # fuse_cat = self.fuse_category(fuse_emb[:, 0])  # [B, num_categories]
 
-        return fuse_emb, fuse_rep   # fuse_cat
+        return fuse_emb, fuse_rep  # fuse_cat
 
     def forward(
         self,
@@ -253,9 +219,7 @@ class FashionBert(ModelBase):
         text_masks = (token_ids != self.PAD).long()
         t_rep, t_emb = self.forward_text(token_ids)
         v_rep, v_emb = self.forward_image(image)
-        fuse_emb, fuse_rep = self.forward_fuse(
-            t_emb, t_rep, text_masks, v_emb, v_rep
-        )
+        fuse_emb, fuse_rep = self.forward_fuse(t_emb, t_rep, text_masks, v_emb, v_rep)
 
         return {
             "t_rep": t_rep,

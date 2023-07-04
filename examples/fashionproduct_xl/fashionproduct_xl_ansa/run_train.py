@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
-print(f'start running: run_train')
-import os
-import sys
-
-# sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../..", ".."))
-print(f'running: run_train')
+print("start running: run_train")
+print("running: run_train")
 import random
 
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
+
 from examples.fashionproduct_xl.fashionproduct_xl_ansa.data import FacDataModule
 from examples.fashionproduct_xl.fashionproduct_xl_ansa.model import FrameAlbertClassify
 
@@ -27,13 +20,13 @@ def setup_seed(seed):
     random.seed(seed)
     try:
         torch.backends.cudnn.deterministic = True
-    except:
+    except:  # noqa: E722
         ...
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # random seed
-    print(f'set seed: {rand_seed}')
+    print(f"set seed: {rand_seed}")
     setup_seed(rand_seed)
 
     cli = CruiseCLI(
@@ -48,4 +41,5 @@ if __name__ == '__main__':
 
     trainer.fit(model, datamodule)
 
-# python3 examples/fashionproduct_xl/fashionproduct_xl_ansa/run_train.py --config examples/fashionproduct_xl/fashionproduct_xl_ansa/default_config.yaml
+# python3 examples/fashionproduct_xl/fashionproduct_xl_ansa/run_train.py \
+#    --config examples/fashionproduct_xl/fashionproduct_xl_ansa/default_config.yaml

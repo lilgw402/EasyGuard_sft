@@ -73,8 +73,6 @@ class DeBERTaConfig(ConfigBase):
                     if kk in editable_keys:
                         self.__dict__[k][kk] = vv
                     else:
-                        raise ValueError(
-                            f"Cannot edit 'extra_da_transformer_config.{kk}={vv}' with pretrained=True"
-                        )
+                        raise ValueError(f"Cannot edit 'extra_da_transformer_config.{kk}={vv}' with pretrained=True")
             elif k in editable_keys:
                 self.__dict__[k] = v

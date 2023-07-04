@@ -1,7 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
-from bisect import bisect_right
 import math
+from bisect import bisect_right
 
 import torch
 from torch.optim import Optimizer
@@ -66,15 +66,19 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
         return max(
-            lr_end, float(num_training_steps - current_step) /
-            float(max(1, num_training_steps - num_warmup_steps))
+            lr_end,
+            float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps)),
         )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def get_cosine_schedule_with_warmup(
-    optimizer: Optimizer, num_warmup_steps: int, num_training_steps: int, num_cycles: float = 0.5, last_epoch: int = -1
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    num_cycles: float = 0.5,
+    last_epoch: int = -1,
 ):
     """
     Create a schedule with a learning rate that decreases following the values of the cosine function between the
@@ -99,14 +103,22 @@ def get_cosine_schedule_with_warmup(
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
-        progress = float(current_step - num_warmup_steps) / \
-            float(max(1, num_training_steps - num_warmup_steps))
-        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)))
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+        return max(
+            0.0,
+            0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)),
+        )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
+
 def get_cosine_schedule_with_warmup_lrdecay(
-    optimizer, num_warmup_steps: int, num_training_steps: int, lr_decay_rate: float = 0.87, last_epoch: int = -1, lr_end: float = 1e-7,
+    optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    lr_decay_rate: float = 0.87,
+    last_epoch: int = -1,
+    lr_end: float = 1e-7,
 ):
     """
     Create a schedule with a learning rate that decreases following the values of the cosine function between the
@@ -125,10 +137,10 @@ def get_cosine_schedule_with_warmup_lrdecay(
         lr_end: (:obj:`int`, `optional`, defaults to 1e-7): Final lr rate.
     Return:
         :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
-    """
+    """  # noqa: E501
 
     def lr_lambda(current_step):
-        lr_decay_steps = int(lr_decay_rate*num_training_steps)
+        lr_decay_steps = int(lr_decay_rate * num_training_steps)
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
         if current_step > lr_decay_steps:
@@ -136,14 +148,18 @@ def get_cosine_schedule_with_warmup_lrdecay(
 
         decay_ratio = (current_step - num_warmup_steps) / (lr_decay_steps - num_warmup_steps)
         assert 0 <= decay_ratio <= 1
-        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
+        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))  # coeff ranges 0..1
         return lr_end + coeff * (1 - lr_end)
+
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
-
 def get_cosine_with_hard_restarts_schedule_with_warmup(
-    optimizer: Optimizer, num_warmup_steps: int, num_training_steps: int, num_cycles: int = 1, last_epoch: int = -1
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    num_cycles: int = 1,
+    last_epoch: int = -1,
 ):
     """
     Create a schedule with a learning rate that decreases following the values of the cosine function between the
@@ -167,17 +183,24 @@ def get_cosine_with_hard_restarts_schedule_with_warmup(
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
-        progress = float(current_step - num_warmup_steps) / \
-            float(max(1, num_training_steps - num_warmup_steps))
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
         if progress >= 1.0:
             return 0.0
-        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * ((float(num_cycles) * progress) % 1.0))))
+        return max(
+            0.0,
+            0.5 * (1.0 + math.cos(math.pi * ((float(num_cycles) * progress) % 1.0))),
+        )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def get_polynomial_decay_schedule_with_warmup(
-    optimizer, num_warmup_steps, num_training_steps, lr_end=1e-7, power=1.0, last_epoch=-1
+    optimizer,
+    num_warmup_steps,
+    num_training_steps,
+    lr_end=1e-7,
+    power=1.0,
+    last_epoch=-1,
 ):
     """
     Create a schedule with a learning rate that decreases as a polynomial decay from the initial lr set in the
@@ -215,7 +238,7 @@ def get_polynomial_decay_schedule_with_warmup(
             lr_range = lr_init - lr_end
             decay_steps = num_training_steps - num_warmup_steps
             pct_remaining = 1 - (current_step - num_warmup_steps) / decay_steps
-            decay = lr_range * pct_remaining ** power + lr_end
+            decay = lr_range * pct_remaining**power + lr_end
             return decay / lr_init  # as LambdaLR multiplies by lr_init
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
@@ -242,10 +265,7 @@ class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):
             )
 
         if warmup_method not in ("constant", "linear"):
-            raise ValueError(
-                "Only 'constant' or 'linear' warmup_method accepted"
-                "got {}".format(warmup_method)
-            )
+            raise ValueError("Only 'constant' or 'linear' warmup_method accepted" "got {}".format(warmup_method))
         self.milestones = milestones
         self.gamma = gamma
         self.warmup_factor = warmup_factor
@@ -262,8 +282,6 @@ class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):
                 alpha = self.last_epoch / self.warmup_iters
                 warmup_factor = self.warmup_factor * (1 - alpha) + alpha
         return [
-            base_lr
-            * warmup_factor
-            * self.gamma ** bisect_right(self.milestones, self.last_epoch)
+            base_lr * warmup_factor * self.gamma ** bisect_right(self.milestones, self.last_epoch)
             for base_lr in self.base_lrs
         ]

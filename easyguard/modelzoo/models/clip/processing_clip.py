@@ -73,22 +73,16 @@ class CLIPProcessor(ProcessorMixin):
               `return_attention_mask=True` or if *"attention_mask"* is in `self.model_input_names` and if `text` is not
               `None`).
             - **pixel_values** -- Pixel values to be fed to a model. Returned when `images` is not `None`.
-        """
+        """  # noqa: E501
 
         if text is None and images is None:
-            raise ValueError(
-                "You have to specify either text or images. Both cannot be none."
-            )
+            raise ValueError("You have to specify either text or images. Both cannot be none.")
 
         if text is not None:
-            encoding = self.tokenizer(
-                text, return_tensors=return_tensors, **kwargs
-            )
+            encoding = self.tokenizer(text, return_tensors=return_tensors, **kwargs)
 
         if images is not None:
-            image_features = self.feature_extractor(
-                images, return_tensors=return_tensors, **kwargs
-            )
+            image_features = self.feature_extractor(images, return_tensors=return_tensors, **kwargs)
 
         if text is not None and images is not None:
             encoding["pixel_values"] = image_features.pixel_values
@@ -96,9 +90,7 @@ class CLIPProcessor(ProcessorMixin):
         elif text is not None:
             return encoding
         else:
-            return BatchEncoding(
-                data=dict(**image_features), tensor_type=return_tensors
-            )
+            return BatchEncoding(data=dict(**image_features), tensor_type=return_tensors)
 
     def batch_decode(self, *args, **kwargs):
         """
@@ -118,6 +110,4 @@ class CLIPProcessor(ProcessorMixin):
     def model_input_names(self):
         tokenizer_input_names = self.tokenizer.model_input_names
         feature_extractor_input_names = self.feature_extractor.model_input_names
-        return list(
-            dict.fromkeys(tokenizer_input_names + feature_extractor_input_names)
-        )
+        return list(dict.fromkeys(tokenizer_input_names + feature_extractor_input_names))

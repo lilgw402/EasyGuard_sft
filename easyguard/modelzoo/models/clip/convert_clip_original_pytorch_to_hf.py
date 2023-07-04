@@ -16,16 +16,13 @@
 import argparse
 
 import torch
-
 from clip import load
 from transformers import CLIPConfig, CLIPModel
 
 
 def copy_attn_layer(hf_attn_layer, pt_attn_layer):
     q_proj, k_proj, v_proj = pt_attn_layer.in_proj_weight.chunk(3, dim=0)
-    q_proj_bias, k_proj_bias, v_proj_bias = pt_attn_layer.in_proj_bias.chunk(
-        3, dim=0
-    )
+    q_proj_bias, k_proj_bias, v_proj_bias = pt_attn_layer.in_proj_bias.chunk(3, dim=0)
 
     out_proj_weights = pt_attn_layer.out_proj.weight
     out_proj_bias = pt_attn_layer.out_proj.bias
@@ -72,12 +69,8 @@ def copy_layers(hf_layers, pt_layers):
 
 def copy_encoder(hf_encoder, pt_model):
     # copy  embeds
-    hf_encoder.embeddings.token_embedding.weight = (
-        pt_model.token_embedding.weight
-    )
-    hf_encoder.embeddings.position_embedding.weight.data = (
-        pt_model.positional_embedding
-    )
+    hf_encoder.embeddings.token_embedding.weight = pt_model.token_embedding.weight
+    hf_encoder.embeddings.position_embedding.weight.data = pt_model.positional_embedding
 
     # copy layer norm
     copy_linear(hf_encoder.final_layer_norm, pt_model.ln_final)
@@ -103,15 +96,9 @@ def copy_vison_model_and_projection(hf_model, pt_model):
     copy_linear(hf_model.vision_model.post_layernorm, pt_model.visual.ln_post)
 
     # copy embeds
-    hf_model.vision_model.embeddings.patch_embedding.weight.data = (
-        pt_model.visual.conv1.weight.data
-    )
-    hf_model.vision_model.embeddings.class_embedding = (
-        pt_model.visual.class_embedding
-    )
-    hf_model.vision_model.embeddings.position_embedding.weight.data = (
-        pt_model.visual.positional_embedding.data
-    )
+    hf_model.vision_model.embeddings.patch_embedding.weight.data = pt_model.visual.conv1.weight.data
+    hf_model.vision_model.embeddings.class_embedding = pt_model.visual.class_embedding
+    hf_model.vision_model.embeddings.position_embedding.weight.data = pt_model.visual.positional_embedding.data
 
     # copy encoder
     copy_layers(
@@ -121,18 +108,14 @@ def copy_vison_model_and_projection(hf_model, pt_model):
 
 
 @torch.no_grad()
-def convert_clip_checkpoint(
-    checkpoint_path, pytorch_dump_folder_path, config_path=None
-):
+def convert_clip_checkpoint(checkpoint_path, pytorch_dump_folder_path, config_path=None):
     """
     Copy/paste/tweak model's weights to transformers design.
     """
     if config_path is not None:
         config = CLIPConfig.from_pretrained(config_path)
     else:
-        config = CLIPConfig(
-            projection_dim=512, text_config={}, vision_config={}
-        )
+        config = CLIPConfig(projection_dim=512, text_config={}, vision_config={})
 
     hf_model = CLIPModel(config).eval()
 
@@ -179,6 +162,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    convert_clip_checkpoint(
-        args.checkpoint_path, args.pytorch_dump_folder_path, args.config_path
-    )
+    convert_clip_checkpoint(args.checkpoint_path, args.pytorch_dump_folder_path, args.config_path)

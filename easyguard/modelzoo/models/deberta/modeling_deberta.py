@@ -1,5 +1,6 @@
 """https://arxiv.org/abs/2006.03654
-Standalone, all-in-one code copied from ptx deberta implementation: https://code.byted.org/nlp/ptx/blob/master/ptx/model/deberta/model.py
+Standalone, all-in-one code copied from ptx deberta implementation:
+https://code.byted.org/nlp/ptx/blob/master/ptx/model/deberta/model.py
 """
 from functools import partial
 from typing import Dict, List, Optional
@@ -15,11 +16,7 @@ from ...components.bert_components import (
     BertPreTrainingHeads,
     init_weights,
 )
-from ...components.disentangled_attention import (
-    DAConfig,
-    DisentangledMHA,
-    build_relative_position,
-)
+from ...components.disentangled_attention import DAConfig, DisentangledMHA, build_relative_position
 from ...components.transformer_encoder_decoder import (
     BareTransformerEncoder,
     BareTransformerEncoderLayer,
@@ -40,15 +37,13 @@ def get_configs():
 
 """Deberta model"""
 
-__all__ = ["DebertaModel", "deberta_base_6l", "deberta_base_moe_6l"]
+__all__ = ["DebertaModel"]
 
 
 logger = logging.get_logger(__name__)
 
 
-def gather_positions(
-    sequence: torch.Tensor, positions: torch.Tensor
-) -> torch.Tensor:
+def gather_positions(sequence: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
     """
     Args:
         sequence: tensor (batch_size, seq_len, dim)
@@ -59,9 +54,7 @@ def gather_positions(
     """
 
     batch_size, seq_len, dim = sequence.shape
-    position_shift = (
-        seq_len * torch.arange(batch_size, device=sequence.device)
-    ).unsqueeze(-1)
+    position_shift = (seq_len * torch.arange(batch_size, device=sequence.device)).unsqueeze(-1)
     flat_positions = torch.reshape(positions + position_shift, [-1]).long()
     flat_sequence = torch.reshape(sequence, [batch_size * seq_len, dim])
     gathered = flat_sequence.index_select(0, flat_positions)
@@ -78,9 +71,7 @@ class CategoricalAccuracy:
 
     def __init__(self, top_k: int = 1, tie_break: bool = False) -> None:
         if top_k > 1 and tie_break:
-            raise Exception(
-                "Tie break in Categorical Accuracy can be done only for maximum (top_k = 1)"
-            )
+            raise Exception("Tie break in Categorical Accuracy can be done only for maximum (top_k = 1)")
         if top_k <= 0:
             raise Exception("top_k passed to Categorical Accuracy must be > 0")
         self._top_k = top_k
@@ -105,9 +96,7 @@ class CategoricalAccuracy:
             mask : `torch.Tensor`, optional (default = None).
                 A masking tensor the same size as `gold_labels`.
         """
-        predictions, gold_labels, mask = self.unwrap_to_tensors(
-            predictions, gold_labels, mask
-        )
+        predictions, gold_labels, mask = self.unwrap_to_tensors(predictions, gold_labels, mask)
 
         predictions_within_classes = True
         if predictions.dim() - gold_labels.dim() == 1:
@@ -119,9 +108,7 @@ class CategoricalAccuracy:
                 )
             predictions = predictions.view((-1, num_classes)).float()
         else:
-            assert (
-                self._top_k == 1
-            ), "`top_k` should be 1 if `predictions` has no `num_classes` dimension."
+            assert self._top_k == 1, "`top_k` should be 1 if `predictions` has no `num_classes` dimension."
             predictions_within_classes = False
             predictions = predictions.view(-1).float()
 
@@ -131,22 +118,16 @@ class CategoricalAccuracy:
             # Special case topk == 1, because it's common and .max() is much faster than .topk().
             if self._top_k == 1:
                 top_k = (
-                    predictions.max(-1)[1].unsqueeze(-1)
-                    if predictions_within_classes
-                    else predictions.unsqueeze(-1)
+                    predictions.max(-1)[1].unsqueeze(-1) if predictions_within_classes else predictions.unsqueeze(-1)
                 )
             else:
-                top_k = predictions.topk(
-                    min(self._top_k, predictions.shape[-1]), -1
-                )[1]
+                top_k = predictions.topk(min(self._top_k, predictions.shape[-1]), -1)[1]
 
             # This is of shape (batch_size, ..., top_k).
             correct = top_k.eq(gold_labels.unsqueeze(-1)).float()
         else:
             # TODO
-            assert (
-                predictions_within_classes
-            ), "`tie_break` requires `predictions` with `num_classes` dimension."
+            assert predictions_within_classes, "`tie_break` requires `predictions` with `num_classes` dimension."
 
             # prediction is correct if gold label falls on any of the max scores. distribute score by tie_counts
             max_predictions = predictions.max(-1)[0]
@@ -155,9 +136,7 @@ class CategoricalAccuracy:
             # ith entry in gold_labels points to index (0-num_classes) for ith row in max_predictions
             # For each row check if index pointed by gold_label is was 1 or not (among max scored classes)
             correct = max_predictions_mask[
-                torch.arange(
-                    gold_labels.numel(), device=gold_labels.device
-                ).long(),
+                torch.arange(gold_labels.numel(), device=gold_labels.device).long(),
                 gold_labels,
             ].float()
             tie_counts = max_predictions_mask.sum(-1)
@@ -285,11 +264,7 @@ class DebertaEncoder(BareTransformerEncoder):
         self.l_aux_attn = list()
 
     def forward(self, hidden_states, attn_mask=None) -> List[torch.Tensor]:
-        attn_mask_expanded = (
-            _expand_mask(attn_mask, hidden_states.dtype)
-            if attn_mask.dim() != 4
-            else attn_mask
-        )
+        attn_mask_expanded = _expand_mask(attn_mask, hidden_states.dtype) if attn_mask.dim() != 4 else attn_mask
 
         relative_pos = build_relative_position(
             hidden_states.size(-2),
@@ -390,9 +365,7 @@ class DebertaBare(nn.Module):
         """
         super().__init__()
         if use_fast:
-            raise NotImplementedError(
-                "use_fast version of deberta is not supported in titan."
-            )
+            raise NotImplementedError("use_fast version of deberta is not supported in titan.")
         embedding_dim = embedding_dim or dim
         self.initializer_range = initializer_range
         self.vocab_size = vocab_size
@@ -402,9 +375,7 @@ class DebertaBare(nn.Module):
             vocab_size=self.vocab_size,
             n_segments=n_segments,
             max_len=0,
-            p_drop_hidden=p_drop_hidden
-            if embedding_dropout is None
-            else embedding_dropout,
+            p_drop_hidden=p_drop_hidden if embedding_dropout is None else embedding_dropout,
             layer_norm_eps=layer_norm_eps,
             layernorm_type=layernorm_type,
             token_embedding_dim=token_embedding_dim,
@@ -427,9 +398,7 @@ class DebertaBare(nn.Module):
             layernorm_type=layernorm_type,
             p_drop_hidden=p_drop_hidden,
             p_drop_attn=p_drop_attn,
-            return_layers=list(range(n_layers + 1))
-            if not self._omit_other_output
-            else [],
+            return_layers=list(range(n_layers + 1)) if not self._omit_other_output else [],
             clamp_inf_nan=attention_clamp_inf,
             layer_norm_eps=layer_norm_eps,
             max_relative_positions=max_relative_positions,
@@ -441,13 +410,9 @@ class DebertaBare(nn.Module):
 
         self.pooler = BertPooler(dict(dim=dim)) if pool else None
 
-        self.proj_shrink_dim = (
-            nn.Linear(dim, dim_shrink) if dim_shrink and self.pooler else None
-        )
+        self.proj_shrink_dim = nn.Linear(dim, dim_shrink) if dim_shrink and self.pooler else None
 
-        self.apply(
-            partial(init_weights, initializer_range=self.initializer_range)
-        )
+        self.apply(partial(init_weights, initializer_range=self.initializer_range))
 
         self.padding_index = padding_index
 
@@ -500,27 +465,14 @@ class DebertaBare(nn.Module):
         if self._use_moe:
             loss = 0
             for i in range(len(self.encoder.l_aux)):
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor", 0.01
-                    )
-                    * self.encoder.l_aux[i]
-                )
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_z_loss_factor", 0.0
-                    )
-                    * self.encoder.z_loss[i]
-                )
+                loss += self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01) * self.encoder.l_aux[i]
+                loss += self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0) * self.encoder.z_loss[i]
             ret["loss"] = loss
         if self._use_moe_attn:
             loss = ret.get("loss", 0)
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor_attn", 0.01
-                    )
-                    * self.encoder.l_aux_attn[i]
+                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01) * self.encoder.l_aux_attn[i]
                 )
             ret["loss"] = loss
 
@@ -535,9 +487,7 @@ class DebertaBare(nn.Module):
                 ret["pooled_output"] = None
             ret["shrinked_output"] = shrinked_output
             if output_rel_pos:
-                if (
-                    relative_pos is None
-                ):  # In case of FT, which does not return rel pos
+                if relative_pos is None:  # In case of FT, which does not return rel pos
                     # print('Recreating relative_pos')
                     relative_pos = build_relative_position(
                         embedding_output.size(-2),
@@ -572,15 +522,11 @@ class DebertaEMD(nn.Module):
     ):
         super().__init__()
         assert not use_fast
-        self.blocks = nn.ModuleList(
-            [DebertaEncoderLayer(config) for _ in range(num_emd_groups)]
-        )
+        self.blocks = nn.ModuleList([DebertaEncoderLayer(config) for _ in range(num_emd_groups)])
         self.group_repeat = emd_group_repeat
 
     def forward(self, i, h, mask, relative_pos=None, rel_embedding=None):
-        attn_mask_expanded = (
-            _expand_mask(mask, h.dtype) if mask.dim() != 4 else mask
-        )
+        attn_mask_expanded = _expand_mask(mask, h.dtype) if mask.dim() != 4 else mask
         for m, block in enumerate(self.blocks):
             for n in range(self.group_repeat):
                 i = block(
@@ -630,9 +576,7 @@ class DebertaBarePinyin(nn.Module):
         """
         super().__init__()
         if use_fast:
-            raise NotImplementedError(
-                "use_fast version of deberta is not supported in titan."
-            )
+            raise NotImplementedError("use_fast version of deberta is not supported in titan.")
         embedding_dim = embedding_dim or dim
         self.initializer_range = initializer_range
         self.vocab_size = vocab_size
@@ -643,9 +587,7 @@ class DebertaBarePinyin(nn.Module):
             pinyin_vocab_size=pinyin_vocab_size,
             n_segments=n_segments,
             max_len=0,
-            p_drop_hidden=p_drop_hidden
-            if embedding_dropout is None
-            else embedding_dropout,
+            p_drop_hidden=p_drop_hidden if embedding_dropout is None else embedding_dropout,
             layer_norm_eps=layer_norm_eps,
             layernorm_type=layernorm_type,
             token_embedding_dim=token_embedding_dim,
@@ -668,9 +610,7 @@ class DebertaBarePinyin(nn.Module):
             layernorm_type=layernorm_type,
             p_drop_hidden=p_drop_hidden,
             p_drop_attn=p_drop_attn,
-            return_layers=list(range(n_layers + 1))
-            if not self._omit_other_output
-            else [],
+            return_layers=list(range(n_layers + 1)) if not self._omit_other_output else [],
             clamp_inf_nan=attention_clamp_inf,
             layer_norm_eps=layer_norm_eps,
             max_relative_positions=max_relative_positions,
@@ -682,9 +622,7 @@ class DebertaBarePinyin(nn.Module):
 
         self.pooler = BertPooler(dict(dim=dim)) if pool else None
 
-        self.apply(
-            partial(init_weights, initializer_range=self.initializer_range)
-        )
+        self.apply(partial(init_weights, initializer_range=self.initializer_range))
 
         self.padding_index = padding_index
 
@@ -736,27 +674,14 @@ class DebertaBarePinyin(nn.Module):
         if self._use_moe:
             loss = 0
             for i in range(len(self.encoder.l_aux)):
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor", 0.01
-                    )
-                    * self.encoder.l_aux[i]
-                )
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_z_loss_factor", 0.0
-                    )
-                    * self.encoder.z_loss[i]
-                )
+                loss += self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01) * self.encoder.l_aux[i]
+                loss += self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0) * self.encoder.z_loss[i]
             ret["loss"] = loss
         if self._use_moe_attn:
             loss = ret.get("loss", 0)
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor_attn", 0.01
-                    )
-                    * self.encoder.l_aux_attn[i]
+                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01) * self.encoder.l_aux_attn[i]
                 )
             ret["loss"] = loss
 
@@ -770,9 +695,7 @@ class DebertaBarePinyin(nn.Module):
             else:
                 ret["pooled_output"] = None
             if output_rel_pos:
-                if (
-                    relative_pos is None
-                ):  # In case of FT, which does not return rel pos
+                if relative_pos is None:  # In case of FT, which does not return rel pos
                     # print('Recreating relative_pos')
                     relative_pos = build_relative_position(
                         embedding_output.size(-2),
@@ -841,17 +764,13 @@ class DebertaModel(DebertaBare, ModelBase):
             self._tie_weights()
 
         self._omit_other_output = omit_other_output
-        self._calc_mlm_accuracy = (
-            calc_mlm_accuracy and not self._omit_other_output
-        )
+        self._calc_mlm_accuracy = calc_mlm_accuracy and not self._omit_other_output
         self._use_moe = self.encoder.config.use_moe
         self._use_moe_attn = self.encoder.config.use_moe_attn
         self.mlm_accuracy = self._calc_mlm_accuracy and CategoricalAccuracy()
 
         self.ignore_index = ignore_index
-        self.loss_function = torch.nn.CrossEntropyLoss(
-            ignore_index=self.ignore_index
-        )
+        self.loss_function = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
         self.nsp_loss_function = torch.nn.CrossEntropyLoss()
 
         self.local_metrics = {}
@@ -865,20 +784,14 @@ class DebertaModel(DebertaBare, ModelBase):
                 use_fast=use_fast,
             )
 
-        self.apply(
-            partial(init_weights, initializer_range=self.initializer_range)
-        )
+        self.apply(partial(init_weights, initializer_range=self.initializer_range))
 
     def load_pretrained_weights(self, weight_file_path, **kwargs):
-        load_pretrained_model_weights(
-            self, weight_file_path, rm_prefix="deberta.", **kwargs
-        )
+        load_pretrained_model_weights(self, weight_file_path, rm_prefix="deberta.", **kwargs)
         ...
 
     def _tie_weights(self):
-        self.cls.predictions.decoder.weight = (
-            self.embedding.token_embedder_tokens.weight
-        )
+        self.cls.predictions.decoder.weight = self.embedding.token_embedder_tokens.weight
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         global_metrics = {}
@@ -889,26 +802,12 @@ class DebertaModel(DebertaBare, ModelBase):
 
     def _update_local_metrics(self, mlm_logits, mlm_labels):
         if self._calc_mlm_accuracy:
-            total_count, correct_count = float(
-                self.mlm_accuracy.total_count
-            ), float(self.mlm_accuracy.correct_count)
-            mlm_positions = torch.nonzero(
-                mlm_labels != self.ignore_index, as_tuple=False
-            ).view(-1)
-            self.mlm_accuracy(
-                mlm_logits[mlm_positions], mlm_labels[mlm_positions]
-            )
-            local_total_count = (
-                float(self.mlm_accuracy.total_count) - total_count
-            )
-            local_correct_count = (
-                float(self.mlm_accuracy.correct_count) - correct_count
-            )
-            local_accuracy = (
-                0.0
-                if local_total_count == 0
-                else (float(local_correct_count) / float(local_total_count))
-            )
+            total_count, correct_count = float(self.mlm_accuracy.total_count), float(self.mlm_accuracy.correct_count)
+            mlm_positions = torch.nonzero(mlm_labels != self.ignore_index, as_tuple=False).view(-1)
+            self.mlm_accuracy(mlm_logits[mlm_positions], mlm_labels[mlm_positions])
+            local_total_count = float(self.mlm_accuracy.total_count) - total_count
+            local_correct_count = float(self.mlm_accuracy.correct_count) - correct_count
+            local_accuracy = 0.0 if local_total_count == 0 else (float(local_correct_count) / float(local_total_count))
             self.local_metrics.update(
                 {
                     "local_mlm_total_count": local_total_count,
@@ -976,12 +875,7 @@ class DebertaModel(DebertaBare, ModelBase):
         decoder_last_seq_output = sequence_output
         # print('decoder_last_seq_output', sequence_output)
 
-        if (
-            masked_tokens is None
-            and sentence_label is None
-            and masked_lm_positions is None
-            and masked_lm_ids is None
-        ):
+        if masked_tokens is None and sentence_label is None and masked_lm_positions is None and masked_lm_ids is None:
             return {
                 "sequence_output": decoder_last_seq_output,
                 "pooled_output": pooled_output,
@@ -995,21 +889,15 @@ class DebertaModel(DebertaBare, ModelBase):
             masked_lm_positions_dim = masked_lm_positions.dim()
             if masked_lm_positions_dim == 2:
                 position_ids = masked_lm_positions
-                sequence_output = gather_positions(
-                    sequence_output, masked_lm_positions
-                )
+                sequence_output = gather_positions(sequence_output, masked_lm_positions)
                 # Well, `ignore_index` may vary with this case
                 masked_tokens = masked_lm_ids
             elif masked_lm_positions_dim == 1:
                 position_ids = position_ids.view(-1)[masked_lm_positions]
-                sequence_output = sequence_output.contiguous().view(
-                    -1, sequence_output.size(-1)
-                )[masked_lm_positions]
+                sequence_output = sequence_output.contiguous().view(-1, sequence_output.size(-1))[masked_lm_positions]
                 masked_tokens = masked_lm_ids
             else:
-                raise Exception(
-                    "Invalid dim of masked_lm_positions and masked_lm_ids"
-                )
+                raise Exception("Invalid dim of masked_lm_positions and masked_lm_ids")
 
         pred_score, seq_score = self.cls(sequence_output, pooled_output)
 
@@ -1022,39 +910,20 @@ class DebertaModel(DebertaBare, ModelBase):
                 self._update_local_metrics(mlm_logits, mlm_labels)
                 self.local_metrics["local_mlm_loss"] = loss.item()
         if sentence_label is not None:
-            next_sentence_loss = self.nsp_loss_function(
-                seq_score.view(-1, 2), sentence_label.view(-1)
-            )
+            next_sentence_loss = self.nsp_loss_function(seq_score.view(-1, 2), sentence_label.view(-1))
             if not self._omit_other_output:
                 self.local_metrics["local_nsp_loss"] = next_sentence_loss.item()
             loss = loss + next_sentence_loss
         if self._use_moe:
             for i in range(len(self.encoder.l_aux)):
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor", 0.01
-                    )
-                    * self.encoder.l_aux[i]
-                )
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_z_loss_factor", 0.0
-                    )
-                    * self.encoder.z_loss[i]
-                )
-                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[
-                    i
-                ].item()
-                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[
-                    i
-                ].item()
+                loss += self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01) * self.encoder.l_aux[i]
+                loss += self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0) * self.encoder.z_loss[i]
+                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[i].item()
+                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[i].item()
         if self._use_moe_attn:
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor_attn", 0.01
-                    )
-                    * self.encoder.l_aux_attn[i]
+                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01) * self.encoder.l_aux_attn[i]
                 )
 
         # print('encoder_last_hidden_state', encoder_last_seq_output)
@@ -1114,17 +983,13 @@ class DebertaModelPinyin(DebertaBarePinyin):
             self._tie_weights()
 
         self._omit_other_output = omit_other_output
-        self._calc_mlm_accuracy = (
-            calc_mlm_accuracy and not self._omit_other_output
-        )
+        self._calc_mlm_accuracy = calc_mlm_accuracy and not self._omit_other_output
         self._use_moe = self.encoder.config.use_moe
         self._use_moe_attn = self.encoder.config.use_moe_attn
         self.mlm_accuracy = self._calc_mlm_accuracy and CategoricalAccuracy()
 
         self.ignore_index = ignore_index
-        self.loss_function = torch.nn.CrossEntropyLoss(
-            ignore_index=self.ignore_index
-        )
+        self.loss_function = torch.nn.CrossEntropyLoss(ignore_index=self.ignore_index)
         self.nsp_loss_function = torch.nn.CrossEntropyLoss()
 
         self.local_metrics = {}
@@ -1138,14 +1003,10 @@ class DebertaModelPinyin(DebertaBarePinyin):
                 use_fast=use_fast,
             )
 
-        self.apply(
-            partial(init_weights, initializer_range=self.initializer_range)
-        )
+        self.apply(partial(init_weights, initializer_range=self.initializer_range))
 
     def _tie_weights(self):
-        self.cls.predictions.decoder.weight = (
-            self.embedding.token_embedder_tokens.weight
-        )
+        self.cls.predictions.decoder.weight = self.embedding.token_embedder_tokens.weight
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         global_metrics = {}
@@ -1156,26 +1017,12 @@ class DebertaModelPinyin(DebertaBarePinyin):
 
     def _update_local_metrics(self, mlm_logits, mlm_labels):
         if self._calc_mlm_accuracy:
-            total_count, correct_count = float(
-                self.mlm_accuracy.total_count
-            ), float(self.mlm_accuracy.correct_count)
-            mlm_positions = torch.nonzero(
-                mlm_labels != self.ignore_index, as_tuple=False
-            ).view(-1)
-            self.mlm_accuracy(
-                mlm_logits[mlm_positions], mlm_labels[mlm_positions]
-            )
-            local_total_count = (
-                float(self.mlm_accuracy.total_count) - total_count
-            )
-            local_correct_count = (
-                float(self.mlm_accuracy.correct_count) - correct_count
-            )
-            local_accuracy = (
-                0.0
-                if local_total_count == 0
-                else (float(local_correct_count) / float(local_total_count))
-            )
+            total_count, correct_count = float(self.mlm_accuracy.total_count), float(self.mlm_accuracy.correct_count)
+            mlm_positions = torch.nonzero(mlm_labels != self.ignore_index, as_tuple=False).view(-1)
+            self.mlm_accuracy(mlm_logits[mlm_positions], mlm_labels[mlm_positions])
+            local_total_count = float(self.mlm_accuracy.total_count) - total_count
+            local_correct_count = float(self.mlm_accuracy.correct_count) - correct_count
+            local_accuracy = 0.0 if local_total_count == 0 else (float(local_correct_count) / float(local_total_count))
             self.local_metrics.update(
                 {
                     "local_mlm_total_count": local_total_count,
@@ -1235,12 +1082,7 @@ class DebertaModelPinyin(DebertaBarePinyin):
         decoder_last_seq_output = sequence_output
         # print('decoder_last_seq_output', sequence_output)
 
-        if (
-            masked_tokens is None
-            and sentence_label is None
-            and masked_lm_positions is None
-            and masked_lm_ids is None
-        ):
+        if masked_tokens is None and sentence_label is None and masked_lm_positions is None and masked_lm_ids is None:
             return {
                 "sequence_output": decoder_last_seq_output,
                 "pooled_output": pooled_output,
@@ -1252,21 +1094,15 @@ class DebertaModelPinyin(DebertaBarePinyin):
             masked_lm_positions_dim = masked_lm_positions.dim()
             if masked_lm_positions_dim == 2:
                 position_ids = masked_lm_positions
-                sequence_output = gather_positions(
-                    sequence_output, masked_lm_positions
-                )
+                sequence_output = gather_positions(sequence_output, masked_lm_positions)
                 # Well, `ignore_index` may vary with this case
                 masked_tokens = masked_lm_ids
             elif masked_lm_positions_dim == 1:
                 position_ids = position_ids.view(-1)[masked_lm_positions]
-                sequence_output = sequence_output.contiguous().view(
-                    -1, sequence_output.size(-1)
-                )[masked_lm_positions]
+                sequence_output = sequence_output.contiguous().view(-1, sequence_output.size(-1))[masked_lm_positions]
                 masked_tokens = masked_lm_ids
             else:
-                raise Exception(
-                    "Invalid dim of masked_lm_positions and masked_lm_ids"
-                )
+                raise Exception("Invalid dim of masked_lm_positions and masked_lm_ids")
 
         pred_score, seq_score = self.cls(sequence_output, pooled_output)
 
@@ -1279,39 +1115,20 @@ class DebertaModelPinyin(DebertaBarePinyin):
                 self._update_local_metrics(mlm_logits, mlm_labels)
                 self.local_metrics["local_mlm_loss"] = loss.item()
         if sentence_label is not None:
-            next_sentence_loss = self.nsp_loss_function(
-                seq_score.view(-1, 2), sentence_label.view(-1)
-            )
+            next_sentence_loss = self.nsp_loss_function(seq_score.view(-1, 2), sentence_label.view(-1))
             if not self._omit_other_output:
                 self.local_metrics["local_nsp_loss"] = next_sentence_loss.item()
             loss = loss + next_sentence_loss
         if self._use_moe:
             for i in range(len(self.encoder.l_aux)):
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor", 0.01
-                    )
-                    * self.encoder.l_aux[i]
-                )
-                loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_z_loss_factor", 0.0
-                    )
-                    * self.encoder.z_loss[i]
-                )
-                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[
-                    i
-                ].item()
-                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[
-                    i
-                ].item()
+                loss += self.extra_da_transformer_config.get("moe_l_aux_factor", 0.01) * self.encoder.l_aux[i]
+                loss += self.extra_da_transformer_config.get("moe_z_loss_factor", 0.0) * self.encoder.z_loss[i]
+                self.local_metrics["l_aux" + str(i)] = self.encoder.l_aux[i].item()
+                self.local_metrics["z_loss" + str(i)] = self.encoder.z_loss[i].item()
         if self._use_moe_attn:
             for i in range(len(self.encoder.l_aux_attn)):
                 loss += (
-                    self.extra_da_transformer_config.get(
-                        "moe_l_aux_factor_attn", 0.01
-                    )
-                    * self.encoder.l_aux_attn[i]
+                    self.extra_da_transformer_config.get("moe_l_aux_factor_attn", 0.01) * self.encoder.l_aux_attn[i]
                 )
 
         # print('encoder_last_hidden_state', encoder_last_seq_output)

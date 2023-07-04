@@ -23,13 +23,7 @@ import requests
 import torch
 from huggingface_hub import hf_hub_download
 from PIL import Image
-
-from transformers import (
-    ViTConfig,
-    ViTFeatureExtractor,
-    ViTForImageClassification,
-    ViTModel,
-)
+from transformers import ViTConfig, ViTFeatureExtractor, ViTForImageClassification, ViTModel
 
 from ...utils import logging
 
@@ -128,10 +122,7 @@ def create_rename_keys(config, base_model=False):
         )
 
         # if just the base model, we should remove "vit" from all keys that start with "vit"
-        rename_keys = [
-            (pair[0], pair[1][4:]) if pair[1].startswith("vit") else pair
-            for pair in rename_keys
-        ]
+        rename_keys = [(pair[0], pair[1][4:]) if pair[1].startswith("vit") else pair for pair in rename_keys]
     else:
         # layernorm + classification head
         rename_keys.extend(
@@ -157,24 +148,20 @@ def read_in_q_k_v(state_dict, config, base_model=False):
         in_proj_weight = state_dict.pop(f"blocks.{i}.attn.qkv.weight")
         in_proj_bias = state_dict.pop(f"blocks.{i}.attn.qkv.bias")
         # next, add query, keys and values (in that order) to the state dict
-        state_dict[
-            f"{prefix}encoder.layer.{i}.attention.attention.query.weight"
-        ] = in_proj_weight[: config.hidden_size, :]
-        state_dict[
-            f"{prefix}encoder.layer.{i}.attention.attention.query.bias"
-        ] = in_proj_bias[: config.hidden_size]
-        state_dict[
-            f"{prefix}encoder.layer.{i}.attention.attention.key.weight"
-        ] = in_proj_weight[config.hidden_size : config.hidden_size * 2, :]
-        state_dict[
-            f"{prefix}encoder.layer.{i}.attention.attention.key.bias"
-        ] = in_proj_bias[config.hidden_size : config.hidden_size * 2]
-        state_dict[
-            f"{prefix}encoder.layer.{i}.attention.attention.value.weight"
-        ] = in_proj_weight[-config.hidden_size :, :]
-        state_dict[
-            f"{prefix}encoder.layer.{i}.attention.attention.value.bias"
-        ] = in_proj_bias[-config.hidden_size :]
+        state_dict[f"{prefix}encoder.layer.{i}.attention.attention.query.weight"] = in_proj_weight[
+            : config.hidden_size, :
+        ]
+        state_dict[f"{prefix}encoder.layer.{i}.attention.attention.query.bias"] = in_proj_bias[: config.hidden_size]
+        state_dict[f"{prefix}encoder.layer.{i}.attention.attention.key.weight"] = in_proj_weight[
+            config.hidden_size : config.hidden_size * 2, :
+        ]
+        state_dict[f"{prefix}encoder.layer.{i}.attention.attention.key.bias"] = in_proj_bias[
+            config.hidden_size : config.hidden_size * 2
+        ]
+        state_dict[f"{prefix}encoder.layer.{i}.attention.attention.value.weight"] = in_proj_weight[
+            -config.hidden_size :, :
+        ]
+        state_dict[f"{prefix}encoder.layer.{i}.attention.attention.value.bias"] = in_proj_bias[-config.hidden_size :]
 
 
 def remove_classification_head_(state_dict):
@@ -196,9 +183,7 @@ def prepare_img():
 
 
 @torch.no_grad()
-def convert_vit_checkpoint(
-    model_name, pytorch_dump_folder_path, base_model=True
-):
+def convert_vit_checkpoint(model_name, pytorch_dump_folder_path, base_model=True):
     """
     Copy/paste/tweak model's weights to our ViT structure.
     """
@@ -213,9 +198,7 @@ def convert_vit_checkpoint(
         config.num_labels = 1000
         repo_id = "huggingface/label-files"
         filename = "imagenet-1k-id2label.json"
-        id2label = json.load(
-            open(hf_hub_download(repo_id, filename, repo_type="dataset"), "r")
-        )
+        id2label = json.load(open(hf_hub_download(repo_id, filename, repo_type="dataset"), "r"))
         id2label = {int(k): v for k, v in id2label.items()}
         config.id2label = id2label
         config.label2id = {v: k for k, v in id2label.items()}
@@ -294,6 +277,4 @@ if __name__ == "__main__":
 
     parser.set_defaults(base_model=True)
     args = parser.parse_args()
-    convert_vit_checkpoint(
-        args.model_name, args.pytorch_dump_folder_path, args.base_model
-    )
+    convert_vit_checkpoint(args.model_name, args.pytorch_dump_folder_path, args.base_model)

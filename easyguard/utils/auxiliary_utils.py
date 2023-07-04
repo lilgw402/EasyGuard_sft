@@ -10,19 +10,12 @@ import torch
 from prettytable import PrettyTable
 
 from ..modelzoo.config import MODEL_ARCHIVE_PATH_BACKUP
-from . import (
-    EASYGUARD_CACHE,
-    EASYGUARD_MODEL_CACHE,
-    REGION_MAPPING,
-    REMOTE_PATH_SEP,
-    SERVER_MAPPING,
-)
+from . import EASYGUARD_CACHE, EASYGUARD_MODEL_CACHE, REGION_MAPPING, REMOTE_PATH_SEP, SERVER_MAPPING
 from .hdfs_utils import hdfs_open, hexists, hlist_files, hmget
 from .logging import get_logger
+from .tos_utils import TOS
 from .type_utils import typecheck
 from .yaml_utils import file_read
-from .tos_utils import TOS
-
 
 PRINT_HELP = []
 # hdfs may fail to download target file, wo we use this variable to control the number of download
@@ -129,14 +122,10 @@ def cache_file(
         return model_name_path
     elif not if_cache and not remote_url.startswith("tos"):
         model_path_remote = remote_url
-        assert (
-            model_path_remote is not None
-        ), f"the argument `remote_url` doesn't exist"
+        assert model_path_remote is not None, f"the argument `remote_url` doesn't exist"
         model_file_remote_list = []
         if isinstance(file_name, str):
-            model_file_remote_list = [
-                REMOTE_PATH_SEP.join([model_path_remote, file_name])
-            ]
+            model_file_remote_list = [REMOTE_PATH_SEP.join([model_path_remote, file_name])]
         else:
             model_file_remote_list = list(
                 map(
@@ -153,21 +142,13 @@ def cache_file(
                     break
         if model_file_path_remote:
             return model_file_path_remote
-        raise FileExistsError(
-            f"failed to obtain one of the remote files `{model_file_remote_list}`"
-        )
+        raise FileExistsError(f"failed to obtain one of the remote files `{model_file_remote_list}`")
     elif model_type is not None:
         hash_ = sha256(model_name_path)
-        hash_file = (
-            sha256(file_name)
-            if isinstance(file_name, str)
-            else sha256("-".join(sorted(file_name)))
-        )
+        hash_file = sha256(file_name) if isinstance(file_name, str) else sha256("-".join(sorted(file_name)))
 
         file_temp_ = FILE_TEMP.format(hash_file)
-        model_path_local = os.path.join(
-            EASYGUARD_MODEL_CACHE, model_type, hash_
-        )
+        model_path_local = os.path.join(EASYGUARD_MODEL_CACHE, model_type, hash_)
         # a temp file to indicate whether the download is in progress
         file_temp_path = os.path.join(model_path_local, file_temp_)
         if os.path.exists(file_temp_path):
@@ -189,19 +170,13 @@ def cache_file(
         else:
             # TODO (junwei.Dong): 如果本地不存在那么需要根据url去远程获取，然后放置在特定的缓存目录下, 现目前只支持hdfs
             model_path_remote = (
-                ("tos:" + model_name_path.replace("-", "_"))
-                if remote_url.startswith("tos")
-                else remote_url
+                ("tos:" + model_name_path.replace("-", "_")) if remote_url.startswith("tos") else remote_url
             )
-            assert (
-                model_path_remote is not None
-            ), f"the argument `remote_url` doesn't exist"
+            assert model_path_remote is not None, f"the argument `remote_url` doesn't exist"
             os.makedirs(model_path_local, exist_ok=True)
             model_file_remote_list = []
             if isinstance(file_name, str):
-                model_file_remote_list = [
-                    REMOTE_PATH_SEP.join([model_path_remote, file_name])
-                ]
+                model_file_remote_list = [REMOTE_PATH_SEP.join([model_path_remote, file_name])]
             else:
                 model_file_remote_list = list(
                     map(
@@ -232,9 +207,7 @@ def cache_file(
                             # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
                             model_file_path_local = os.path.join(
                                 model_path_local,
-                                model_file_path_remote.split(REMOTE_PATH_SEP)[
-                                    -1
-                                ],
+                                model_file_path_remote.split(REMOTE_PATH_SEP)[-1],
                             )
                             if os.path.exists(model_file_path_local):
                                 if os.path.getsize(model_file_path_local) == 0:
@@ -248,9 +221,7 @@ def cache_file(
                                     PRINT_HELP.append(model_file_path_remote)
                                     break
                     else:
-                        raise FileNotFoundError(
-                            f"`{model_file_remote_list}` can not be found in remote server"
-                        )
+                        raise FileNotFoundError(f"`{model_file_remote_list}` can not be found in remote server")
                 elif model_path_remote.startswith("tos"):
                     model_file_path_remote = None
                     for remote_path_ in model_file_remote_list:
@@ -272,9 +243,7 @@ def cache_file(
                             # whether the request is successful or not, the `model_file_local` will be created, so we need to check the target file
                             model_file_path_local = os.path.join(
                                 model_path_local,
-                                model_file_path_remote.split(REMOTE_PATH_SEP)[
-                                    -1
-                                ],
+                                model_file_path_remote.split(REMOTE_PATH_SEP)[-1],
                             )
                             if os.path.exists(model_file_path_local):
                                 if os.path.getsize(model_file_path_local) == 0:
@@ -288,9 +257,7 @@ def cache_file(
                                     PRINT_HELP.append(model_file_path_remote)
                                     break
                     else:
-                        raise FileNotFoundError(
-                            f"`{model_file_remote_list}` can not be found in remote server"
-                        )
+                        raise FileNotFoundError(f"`{model_file_remote_list}` can not be found in remote server")
             finally:
                 # just delete the temp file whether the download is successful or not
                 if os.path.exists(file_temp_path):
@@ -298,9 +265,7 @@ def cache_file(
             final_file_path = file_exist(model_path_local, file_name)
             if final_file_path:
                 return final_file_path
-            raise FileExistsError(
-                f"failed to obtain one of the remote files `{model_file_remote_list}`"
-            )
+            raise FileExistsError(f"failed to obtain one of the remote files `{model_file_remote_list}`")
             ...
 
     else:
@@ -344,9 +309,7 @@ def hf_name_or_path_check(
         return pretrained_model_name_or_path
     else:
         if model_url.startswith("tos"):
-            file_list = tos.ls(
-                pretrained_model_name_or_path.replace("-", "_"), if_log=False
-            )
+            file_list = tos.ls(pretrained_model_name_or_path.replace("-", "_"), if_log=False)
             if file_list:
                 file_list = list(map(lambda x: x["key"], file_list))
         else:
@@ -369,13 +332,9 @@ def hf_name_or_path_check(
                         model_type,
                         if_cache=True,
                     )
-            return REMOTE_PATH_SEP.join(
-                target_file_path.split(REMOTE_PATH_SEP)[:-1]
-            )
+            return REMOTE_PATH_SEP.join(target_file_path.split(REMOTE_PATH_SEP)[:-1])
         else:
-            raise FileExistsError(
-                f"not file found in server, please check the url `{model_url}`"
-            )
+            raise FileExistsError(f"not file found in server, please check the url `{model_url}`")
         # if isinstance(file_name, (str, set)):
         #     target_file_path = cache_file(
         #         pretrained_model_name_or_path, file_name, model_url, model_type
@@ -453,17 +412,13 @@ def pretrained_model_archive_parse(
         server = server_default if server_default in severs else severs[0]
         region = model_config.get("region", "CN")
         regions = region.split("/")
-        target_region_ = (
-            target_region if target_region in regions else regions[0]
-        )
+        target_region_ = target_region if target_region in regions else regions[0]
         region_index = REGION_MAPPING[target_region_]
         model_dir_remote = SERVER_MAPPING[server][region_index]
         if server == "tos":
             model_config["url_or_path"] = "tos"
         elif server == "hdfs":
-            model_config["url_or_path"] = REMOTE_PATH_SEP.join(
-                [model_dir_remote, "models", model_name_]
-            )
+            model_config["url_or_path"] = REMOTE_PATH_SEP.join([model_dir_remote, "models", model_name_])
         return model_config
 
 
@@ -521,9 +476,7 @@ def convert_model_weights(
     if not os.path.exists(model_weights_path):
         raise FileExistsError(f"the file {model_weights_path} does not exist")
     logger.info(f"start load weights from {model_weights_path}")
-    weights: OrderedDict = torch.load(
-        model_weights_path, map_location=map_location
-    )
+    weights: OrderedDict = torch.load(model_weights_path, map_location=map_location)
     for key_ in list(weights.keys()):
         if key_.startswith(prefix):
             key_new = key_.repalce(prefix, "", 1)
@@ -537,9 +490,7 @@ def convert_model_weights(
 def get_configs(**kwargs):
     pretrained_config = {}
     pretrained_config["tos_helper"] = kwargs.pop("tos_helper", None)
-    pretrained_config["pretrained_version"] = kwargs.pop(
-        "pretrained_version", None
-    )
+    pretrained_config["pretrained_version"] = kwargs.pop("pretrained_version", None)
     pretrained_config["pretrained_uri"] = kwargs.pop("pretrained_uri", None)
     pretrained_config["local_rank"] = kwargs.pop("local_rank", None)
     pretrained_config["rank"] = kwargs.pop("rank", None)
@@ -630,18 +581,14 @@ def load_pretrained_model_weights(
         values = list(map(lambda x: [x], keys.missing_keys))
         align = {"missing_keys": "l"}
 
-        logger.warning(
-            f"=> Pretrained: missing_keys: \n{table_formatter(field_names, values, align)}\n"
-        )
+        logger.warning(f"=> Pretrained: missing_keys: \n{table_formatter(field_names, values, align)}\n")
     else:
         logger.info(f"Pretrained: no missing_keys.")
     if len(keys.unexpected_keys) > 0:
         field_names = ["unexpected_keys"]
         values = list(map(lambda x: [x], keys.unexpected_keys))
         align = {"unexpected_keys": "l"}
-        logger.warning(
-            f"=> Pretrained: unexpected_keys: \n{table_formatter(field_names, values, align)}\n"
-        )
+        logger.warning(f"=> Pretrained: unexpected_keys: \n{table_formatter(field_names, values, align)}\n")
     else:
         logger.info(f"Pretrained: no unexpected_keys.")
 

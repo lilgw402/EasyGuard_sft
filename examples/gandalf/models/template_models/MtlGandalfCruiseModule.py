@@ -1,25 +1,37 @@
+from collections import defaultdict
+
 import numpy as np
 import torch.nn as nn
-from collections import defaultdict
 from cruise.utilities.distributed import DIST_ENV
-from cruise.utilities.rank_zero import rank_zero_warn, rank_zero_info
-from .TemplateCruiseModule import TemplateCruiseModule
-from utils.util import merge_into_target_dict
+from cruise.utilities.rank_zero import rank_zero_info, rank_zero_warn
 from utils.registry import get_metric_instance
-from training.metrics import ClsMetric
+from utils.util import merge_into_target_dict
+
+from .TemplateCruiseModule import TemplateCruiseModule
+
 
 class MtlGandalfCruiseModule(TemplateCruiseModule):
-    def __init__(self,kwargs):
-        super(MtlGandalfCruiseModule,self).__init__(kwargs)
+    def __init__(self, kwargs):
+        super(MtlGandalfCruiseModule, self).__init__(kwargs)
         self._sigmoid = nn.Sigmoid()
         self._gather_val_loss = True
-        self._metric_params = {'censor':{'score_key':'censor_prob','label_key':'censor_label','type':'ClsMetric'},
-                               'reject':{'score_key':'reject_prob','label_key':'reject_label','type':'ClsMetric'}}
-        self._label_logging_names = ['censor_label','reject_label']
-        self._loss_logging_names =  ["censor_loss", "reject_loss"]
+        self._metric_params = {
+            "censor": {
+                "score_key": "censor_prob",
+                "label_key": "censor_label",
+                "type": "ClsMetric",
+            },
+            "reject": {
+                "score_key": "reject_prob",
+                "label_key": "reject_label",
+                "type": "ClsMetric",
+            },
+        }
+        self._label_logging_names = ["censor_label", "reject_label"]
+        self._loss_logging_names = ["censor_loss", "reject_loss"]
         self._extra_metrics = []
         self._parse_eval_output_advanced_metrics()  # check if metrics like AUC/MPR will need to be calculated
-    
+
     def forward(self, batch, batch_idx):
         pass
 
@@ -31,8 +43,12 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
             train_loss_dict[loss_name] = loss_val_list.mean()
         for output_name in self._label_logging_names:
             if output_name in train_output_dict:
-                merge_into_target_dict(train_output_dict,{output_name:train_output_dict[output_name]})
-        # 'output':[batch,1], 'loss':[],'acc', 'binary_prec', 'binary_recall', 'binary_f1', 'input_neg_ratio', 'input_pos_ratio', 'output_neg_ratio', 'output_pos_ratio', 'binary_auc']
+                merge_into_target_dict(
+                    train_output_dict,
+                    {output_name: train_output_dict[output_name]},
+                )
+        # 'output':[batch,1], 'loss':[],'acc', 'binary_prec', 'binary_recall', 'binary_f1', 'input_neg_ratio',
+        # 'input_pos_ratio', 'output_neg_ratio', 'output_pos_ratio', 'binary_auc']
         # self.track_logging_info(train_loss_dict,{},prefix='loss',is_loss_item=True)
         # self.track_logging_info(train_output_dict,{},prefix='train',hidden_keys={'loss'},is_loss_item=False)
         train_loss_dict.update(train_output_dict)
@@ -50,7 +66,7 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
                 if output_name not in self._all_gather_output_names:
                     continue
                 reduced_output[output_name] = output_val.cpu().numpy()
-        for idx,output_name in enumerate(self._label_logging_names):
+        for idx, output_name in enumerate(self._label_logging_names):
             reduced_output[output_name] = targets[idx].cpu().numpy()
         return reduced_output
 
@@ -86,11 +102,20 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
                     raise TypeError(f"Unexpected output/label type: {type(v[0])} of {k}")
 
             for extra_metric in self._extra_metrics:
-                assert all(m_key in extra_metric for m_key in ('op', 'name', 'type', 'score_key', 'label_key'))
-                metric_name = extra_metric['name']
-                op = extra_metric['op']
-                score_key = extra_metric['score_key']
-                label_key = extra_metric['label_key']
+                assert all(
+                    m_key in extra_metric
+                    for m_key in (
+                        "op",
+                        "name",
+                        "type",
+                        "score_key",
+                        "label_key",
+                    )
+                )
+                metric_name = extra_metric["name"]
+                op = extra_metric["op"]
+                score_key = extra_metric["score_key"]
+                label_key = extra_metric["label_key"]
                 scores = final_result.get(score_key, None)
                 labels = final_result.get(label_key, None)
                 if scores is None or labels is None:
@@ -110,9 +135,9 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
                 if result:
                     # save to callback metrics
                     rank_zero_info(f"Result of {extra_metric['name']}: \n{result}")
-                    op_type = extra_metric['type']
+                    # op_type = extra_metric["type"]
                     for k, v in result.items():
-                        new_name = f'{metric_name}.{k}'
+                        new_name = f"{metric_name}.{k}"
                         extra_reduced_outputs[new_name] = v
         else:
             # no need to all gather and calculate extra metrics
@@ -159,25 +184,37 @@ class MtlGandalfCruiseModule(TemplateCruiseModule):
         if layer is None:  # Not freeze asr encoder
             pass
         elif layer == 0:  # Freeze asr encoder embedding layer
-            self._freeze_params(['_asr_encoder.embeddings'])
+            self._freeze_params(["_asr_encoder.embeddings"])
         elif layer > 6:
-            self._freeze_params(['_asr_encoder'])  # Freeze all asr encoder params
+            self._freeze_params(["_asr_encoder"])  # Freeze all asr encoder params
         else:  # Freeze asr encoder embeding layer and part mha layers
             self._freeze_params(
-                ['_asr_encoder.embeddings'] + ['_asr_encoder.encoder.layer.{}'.format(i) for i in range(layer)])
+                ["_asr_encoder.embeddings"] + ["_asr_encoder.encoder.layer.{}".format(i) for i in range(layer)]
+            )
 
     def _parse_eval_output_advanced_metrics(self):
         self._extra_metrics = []
         self._all_gather_output_names = set()
         for metric_name in self._metric_params:
-            metric_op = get_metric_instance(self._metric_params[metric_name]['type'],self._metric_params[metric_name])
-            assert hasattr(metric_op, 'cal_metric')
-            score_key = self._metric_params[metric_name].get('score_key','output')
-            label_key = self._metric_params[metric_name].get('label_key','label')
-            self._extra_metrics.append({'type': self._metric_params[metric_name]['type'], 'name': metric_name, 'op': metric_op, 'score_key':score_key , 'label_key': label_key})
+            metric_op = get_metric_instance(
+                self._metric_params[metric_name]["type"],
+                self._metric_params[metric_name],
+            )
+            assert hasattr(metric_op, "cal_metric")
+            score_key = self._metric_params[metric_name].get("score_key", "output")
+            label_key = self._metric_params[metric_name].get("label_key", "label")
+            self._extra_metrics.append(
+                {
+                    "type": self._metric_params[metric_name]["type"],
+                    "name": metric_name,
+                    "op": metric_op,
+                    "score_key": score_key,
+                    "label_key": label_key,
+                }
+            )
             self._all_gather_output_names.add(score_key)
             self._all_gather_output_names.add(label_key)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     module = MtlGandalfCruiseModule()

@@ -1,52 +1,48 @@
 # -*- coding: utf-8 -*-
 import os
-import sys
-
-import random
 import os.path
+import random
+import sys
 from collections import OrderedDict
 from types import SimpleNamespace
 from typing import Dict, List, Tuple
-import yaml
 
 import numpy as np
 import torch
-from torch import optim
 import torch.nn as nn
 import torch.nn.functional as F
-
-from cruise import CruiseModule
+import yaml
+from cruise import CruiseCLI, CruiseModule, CruiseTrainer
+from cruise.trainer.callback import EarlyStopping
 from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.hdfs_io import hexists, hopen
-from cruise import CruiseCLI, CruiseTrainer
-
-from cruise.trainer.callback import EarlyStopping
+from torch import optim
 
 try:
     import easyguard
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
+# add metric
+from sklearn.metrics import roc_auc_score
+
 from easyguard.appzoo.fashion_vtp.un_hq_data_with_product import UnHqDataModule
-from easyguard.utils.arguments import print_cfg
+from easyguard.appzoo.fashion_vtp.utils import compute_accuracy, p_fix_r, print_res, r_fix_p
 
 # model
 from easyguard.core import AutoModel
 
 # optimizer
 from easyguard.core.lr_scheduler import build_scheduler
-
+from easyguard.utils.arguments import print_cfg
 from easyguard.utils.losses import cross_entropy
-# add metric 
-from sklearn.metrics import roc_auc_score
-from easyguard.appzoo.fashion_vtp.utils import p_fix_r, compute_accuracy, r_fix_p, print_res
 
 
 class MyModel(CruiseModule):
     def __init__(
         self,
-        config_optim: str = './examples/fashion_vtp/un_hq_configs/config_optim.yaml',
+        config_optim: str = "./examples/fashion_vtp/un_hq_configs/config_optim.yaml",
     ):
         super(MyModel, self).__init__()
         self.save_hparams()
@@ -62,7 +58,7 @@ class MyModel(CruiseModule):
         self.fashionbert_model = AutoModel.from_pretrained("fashionbert-base")
 
         # fashionbert:512, fashionvtp:768
-        self.reduc = nn.Linear(768+512, 768) 
+        self.reduc = nn.Linear(768 + 512, 768)
         self.classifier = torch.nn.Linear(768, self.config_optim.class_num)
 
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -88,20 +84,21 @@ class MyModel(CruiseModule):
         product_images,
         product_images_mask,
         labels,
-        *args, **kwargs
+        *args,
+        **kwargs,
     ):
         mm_emb, t_emb, v_emb = self.fashionvtp_model(
-                                    input_ids=input_ids,
-                                    input_segment_ids=input_segment_ids,
-                                    input_mask=input_mask,
-                                    images=frames,
-                                    images_mask=frames_mask
-                                    )
+            input_ids=input_ids,
+            input_segment_ids=input_segment_ids,
+            input_mask=input_mask,
+            images=frames,
+            images_mask=frames_mask,
+        )
 
-        b,t,c,h,w = product_images.size()
-        product_image = product_images.view(b*t, c, h, w)
+        b, t, c, h, w = product_images.size()
+        product_image = product_images.view(b * t, c, h, w)
 
-        product_emb = self.fashionbert_model(product_ids, product_image)['fuse_rep'] #512
+        product_emb = self.fashionbert_model(product_ids, product_image)["fuse_rep"]  # 512
         emb = torch.cat((mm_emb, product_emb), dim=-1)
         final_emb = self.reduc(emb)
 
@@ -117,20 +114,26 @@ class MyModel(CruiseModule):
             batch["input_segment_ids"],
             batch["input_mask"],
             batch["frames"],
-            batch["frames_mask"]
+            batch["frames_mask"],
         )
 
-        product_ids, product_segment_ids, product_mask, product_image, product_image_mask = (
+        (
+            product_ids,
+            product_segment_ids,
+            product_mask,
+            product_image,
+            product_image_mask,
+        ) = (
             batch["product_ids"],
             batch["product_segment_ids"],
             batch["product_mask"],
             batch["product_images"],
-            batch["product_images_mask"]
+            batch["product_images_mask"],
         )
 
         rep_dict = self.forward(
             input_ids=token_ids,
-            input_segment_ids=segment_ids, 
+            input_segment_ids=segment_ids,
             input_mask=attn_mask,
             product_ids=product_ids,
             product_mask=product_mask,
@@ -139,13 +142,13 @@ class MyModel(CruiseModule):
             frames_mask=image_mask,
             product_images=product_image,
             product_images_mask=product_image_mask,
-            labels = batch["labels"]
+            labels=batch["labels"],
         )
         rep_dict.update({"labels": batch["labels"]})
         cls_loss = self.cal_cls_loss(**rep_dict)
         acc = compute_accuracy(rep_dict["logits"], rep_dict["labels"])
 
-        train_loss_dict = {'loss': cls_loss, 'train_acc': acc}
+        train_loss_dict = {"loss": cls_loss, "train_acc": acc}
         return train_loss_dict
 
     def validation_step(self, batch, idx):
@@ -157,17 +160,23 @@ class MyModel(CruiseModule):
             batch["frames_mask"],
         )
 
-        product_ids, product_segment_ids, product_mask, product_image, product_image_mask = (
+        (
+            product_ids,
+            product_segment_ids,
+            product_mask,
+            product_image,
+            product_image_mask,
+        ) = (
             batch["product_ids"],
             batch["product_segment_ids"],
             batch["product_mask"],
             batch["product_images"],
-            batch["product_images_mask"]
+            batch["product_images_mask"],
         )
 
         val_rep_dict = self.forward(
             input_ids=token_ids,
-            input_segment_ids=segment_ids, 
+            input_segment_ids=segment_ids,
             input_mask=attn_mask,
             product_ids=product_ids,
             product_mask=product_mask,
@@ -176,18 +185,23 @@ class MyModel(CruiseModule):
             frames_mask=image_mask,
             product_images=product_image,
             product_images_mask=product_image_mask,
-            labels = batch["labels"]
+            labels=batch["labels"],
         )
         val_rep_dict.update({"labels": batch["labels"]})
         val_loss = self.cal_cls_loss(**val_rep_dict)
-        
-        val_loss_dict = {'val_loss': val_loss}
+
+        val_loss_dict = {"val_loss": val_loss}
         # compute metric
         gt = torch.eq(val_rep_dict["labels"], 0).int()
         pred_score = F.softmax(val_rep_dict["logits"], dim=1)[:, 0]
 
         val_loss_dict.update({"scores": pred_score, "gts": gt})
-        val_loss_dict.update({"logits": val_rep_dict["logits"], "labels": val_rep_dict["labels"]})
+        val_loss_dict.update(
+            {
+                "logits": val_rep_dict["logits"],
+                "labels": val_rep_dict["labels"],
+            }
+        )
 
         return val_loss_dict
 
@@ -212,7 +226,7 @@ class MyModel(CruiseModule):
         all_labels = []
         all_scores = []
         all_gts = []
-        
+
         for out in all_results:
             all_logits.extend(out["logits"].detach().cpu().tolist())
             all_labels.extend(out["labels"].detach().cpu().tolist())
@@ -221,13 +235,22 @@ class MyModel(CruiseModule):
 
         logits = torch.from_numpy(np.array(all_logits))
         labels = torch.from_numpy(np.array(all_labels))
-    
+
         accuracy = compute_accuracy(logits, labels)
 
         auc = roc_auc_score(np.asarray(all_gts, dtype=int), np.asarray(all_scores, dtype=float))
-        precision, recall, thr = r_fix_p(np.asarray(all_scores, dtype=float), np.asarray(all_gts, dtype=int), 0.7)
+        precision, recall, thr = r_fix_p(
+            np.asarray(all_scores, dtype=float),
+            np.asarray(all_gts, dtype=int),
+            0.7,
+        )
 
-        val_metric_dict = {'val_acc': accuracy, 'auc': auc, 'precision': precision, 'recall': recall}
+        val_metric_dict = {
+            "val_acc": accuracy,
+            "auc": auc,
+            "precision": precision,
+            "recall": recall,
+        }
         self.log_dict(val_metric_dict, console=True)
 
     def predict_step(self, batch, idx):
@@ -239,17 +262,23 @@ class MyModel(CruiseModule):
             batch["frames_mask"],
         )
 
-        product_ids, product_segment_ids, product_mask, product_image, product_image_mask = (
+        (
+            product_ids,
+            product_segment_ids,
+            product_mask,
+            product_image,
+            product_image_mask,
+        ) = (
             batch["product_ids"],
             batch["product_segment_ids"],
             batch["product_mask"],
             batch["product_images"],
-            batch["product_images_mask"]
+            batch["product_images_mask"],
         )
 
         rep_dict = self.forward(
             input_ids=token_ids,
-            input_segment_ids=segment_ids, 
+            input_segment_ids=segment_ids,
             input_mask=attn_mask,
             product_ids=product_ids,
             product_mask=product_mask,
@@ -258,7 +287,7 @@ class MyModel(CruiseModule):
             frames_mask=image_mask,
             product_images=product_image,
             product_images_mask=product_image_mask,
-            labels = batch["labels"]
+            labels=batch["labels"],
         )
         # compute metric
         # gt = torch.eq(rep_dict["labels"], 2).int()
@@ -266,7 +295,7 @@ class MyModel(CruiseModule):
         return {
             "pred": F.softmax(rep_dict["logits"]),
             "label": batch["labels"],
-            "object_id": batch["object_ids"]
+            "object_id": batch["object_ids"],
         }
 
     def configure_optimizers(self):
@@ -286,7 +315,7 @@ class MyModel(CruiseModule):
         for n, p in self.named_parameters():
             if any(nd in n for nd in no_decay):
                 no_dacay_params_dict["params"].append(p)
-            elif n.startswith('fashionvtp_model') or n.startswith('fashionbert_model'):
+            elif n.startswith("fashionvtp_model") or n.startswith("fashionbert_model"):
                 low_lr_params_dict["params"].append(p)
             else:
                 normal_params_dict["params"].append(p)
@@ -298,17 +327,29 @@ class MyModel(CruiseModule):
         ]
 
         if self.config_optim.optimizer == "sgd":
-            optimizer = torch.optim.SGD(optimizer_grouped_parameters, momentum=self.config_optim.momentum, nesterov=True,
-                                lr=self.config_optim.base_lr, weight_decay=self.config_optim.weight_decay)
+            optimizer = torch.optim.SGD(
+                optimizer_grouped_parameters,
+                momentum=self.config_optim.momentum,
+                nesterov=True,
+                lr=self.config_optim.base_lr,
+                weight_decay=self.config_optim.weight_decay,
+            )
 
         elif self.config_optim.optimizer == "adamw":
-            optimizer = optim.AdamW(optimizer_grouped_parameters, eps=self.config_optim.optimizer_eps, betas=(0.9, 0.999),
-                                lr=self.config_optim.base_lr, weight_decay=self.config_optim.weight_decay)
+            optimizer = optim.AdamW(
+                optimizer_grouped_parameters,
+                eps=self.config_optim.optimizer_eps,
+                betas=(0.9, 0.999),
+                lr=self.config_optim.base_lr,
+                weight_decay=self.config_optim.weight_decay,
+            )
 
         lr_scheduler = build_scheduler(
-            self.config_optim, optimizer,
+            self.config_optim,
+            optimizer,
             self.trainer.max_epochs,
-            self.trainer.steps_per_epoch // self.trainer._accumulate_grad_batches)
+            self.trainer.steps_per_epoch // self.trainer._accumulate_grad_batches,
+        )
         return [optimizer], [lr_scheduler]
 
     def lr_scheduler_step(self, schedulers, **kwargs):
@@ -317,34 +358,36 @@ class MyModel(CruiseModule):
             scheduler.step_update(self.trainer.global_step // self.trainer._accumulate_grad_batches)
 
 
-if __name__ == '__main__':
-    cli = CruiseCLI(MyModel,
-                    trainer_class=CruiseTrainer,
-                    datamodule_class=UnHqDataModule,
-                    trainer_defaults={
-                        'precision': 16,
-                        'log_every_n_steps': 100,
-                        'max_epochs': 30,
-                        'enable_versions': True,
-                        'val_check_interval': [1000, 1.0], 
-                        'sync_batchnorm': True,
-                        'find_unused_parameters': True,
-                        'summarize_model_depth': 5,
-                        'checkpoint_monitor': 'loss',
-                        'checkpoint_mode': 'min',
-                        'default_root_dir': '/mnt/bn/ecom-tianke-lq/cruise_train',
-                        'default_hdfs_dir': None
-                        # 'callbacks': [EarlyStopping(monitor='precision',
-                        #                             mode='max',
-                        #                             min_delta=0.001,
-                        #                             patience=2,
-                        #                             verbose=True,
-                        #                             stopping_threshold=0.5)]
-                    })
+if __name__ == "__main__":
+    cli = CruiseCLI(
+        MyModel,
+        trainer_class=CruiseTrainer,
+        datamodule_class=UnHqDataModule,
+        trainer_defaults={
+            "precision": 16,
+            "log_every_n_steps": 100,
+            "max_epochs": 30,
+            "enable_versions": True,
+            "val_check_interval": [1000, 1.0],
+            "sync_batchnorm": True,
+            "find_unused_parameters": True,
+            "summarize_model_depth": 5,
+            "checkpoint_monitor": "loss",
+            "checkpoint_mode": "min",
+            "default_root_dir": "/mnt/bn/ecom-tianke-lq/cruise_train",
+            "default_hdfs_dir": None
+            # 'callbacks': [EarlyStopping(monitor='precision',
+            #                             mode='max',
+            #                             min_delta=0.001,
+            #                             patience=2,
+            #                             verbose=True,
+            #                             stopping_threshold=0.5)]
+        },
+    )
     cfg, trainer, model, datamodule = cli.parse_args()
     print_cfg(cfg)
     trainer.fit(model, datamodule)
-    '''
+    """
     datamodule.local_rank_zero_prepare()
     datamodule.setup()
     # model.partial_load_from_checkpoints('/mnt/bn/ecom-tianke-lq/cruise_train/version_1/checkpoints/epoch=14-step=25000-loss=0.193.ckpt', rename_params={})
@@ -376,4 +419,4 @@ if __name__ == '__main__':
         for i in range(pred.shape[0]):
             fw.write('{} {} {} {} {}\n'.format(str(item_ids[i]), pred[i, 0], pred[i, 1], pred[i, 2], grt[i]))
 
-    '''
+    """

@@ -27,13 +27,7 @@ from transformers import BertModel
 from easyguard.modelzoo.models.albert import ALBert
 from easyguard.modelzoo.models.swin import SwinTransformer
 
-from ...utils.losses import (
-    ArcMarginProduct,
-    LearnableNTXentLoss,
-    LearnablePCLLoss,
-    SCELoss,
-    cross_entropy,
-)
+from ...utils.losses import ArcMarginProduct, LearnableNTXentLoss, LearnablePCLLoss, SCELoss, cross_entropy
 from .convnext import ConvNeXt
 from .roberta import RoBerta
 from .temporal_fusion import TemporalFusion
@@ -47,9 +41,7 @@ def p_fix_r(output, labels, fix_r):
     recall_sort = np.cumsum(labels_sort) / float(num_pos)
     index = np.abs(recall_sort - fix_r).argmin()
     thr = output_sort[index]
-    precision = np.sum(((output >= thr) == labels) * labels) / np.sum(
-        output >= thr
-    )
+    precision = np.sum(((output >= thr) == labels) * labels) / np.sum(output >= thr)
     return precision, recall_sort[index], thr
 
 
@@ -108,9 +100,7 @@ class AuthenticMM(CruiseModule):
                 num_heads=self.config_visual.num_heads,
             )
         elif self.config_visual.name == "convnext":
-            self.visual = ConvNeXt(
-                depths=self.config_visual.depths, dims=self.config_visual.dims
-            )
+            self.visual = ConvNeXt(depths=self.config_visual.depths, dims=self.config_visual.dims)
 
         if self.config_visual.pooling_type:
             self.frame_fusion = TemporalFusion(
@@ -119,12 +109,8 @@ class AuthenticMM(CruiseModule):
                 self.config_visual.num_frames,
             )
 
-        self.t_projector = nn.Linear(
-            self.config_text.hidden_size, self.config_fusion.hidden_size
-        )
-        self.v_projector = nn.Linear(
-            self.config_visual.output_dim, self.config_fusion.hidden_size
-        )
+        self.t_projector = nn.Linear(self.config_text.hidden_size, self.config_fusion.hidden_size)
+        self.v_projector = nn.Linear(self.config_visual.output_dim, self.config_fusion.hidden_size)
 
         if self.config_fusion.name == "transformer":
             self.cls_emb = nn.Embedding(1, self.config_fusion.hidden_size)
@@ -150,9 +136,7 @@ class AuthenticMM(CruiseModule):
             if self.config_visual.pooling_type:
                 fuse_emb_size = self.config_fusion.hidden_size * 3
             else:
-                fuse_emb_size = self.config_fusion.hidden_size * (
-                    2 + self.config_visual.num_frames
-                )
+                fuse_emb_size = self.config_fusion.hidden_size * (2 + self.config_visual.num_frames)
         self.fuse_category_lvl1 = nn.Sequential(
             nn.Linear(fuse_emb_size, self.config_fusion.hidden_size * 2),
             nn.GELU(),
@@ -207,26 +191,21 @@ class AuthenticMM(CruiseModule):
             state_dict_ori = self.state_dict()
             # load weights of pretrained model
             state_dict_new = OrderedDict()
-            pretrained_weights = load(
-                self.hparams.load_pretrained, map_location="cpu"
-            )
+            pretrained_weights = load(self.hparams.load_pretrained, map_location="cpu")
             if "state_dict" in pretrained_weights:
                 pretrained_weights = pretrained_weights["state_dict"]
             for key, value in pretrained_weights.items():
-                if (
-                    key in state_dict_ori
-                    and state_dict_ori[key].shape == value.shape
-                ):
+                if key in state_dict_ori and state_dict_ori[key].shape == value.shape:
                     state_dict_new[key] = value
-            missing_keys, unexpected_keys = self.load_state_dict(
-                state_dict_new, strict=False
-            )
+            missing_keys, unexpected_keys = self.load_state_dict(state_dict_new, strict=False)
             print("missing_keys: ", missing_keys)
             print("unexpected_keys: ", unexpected_keys)
         else:
             if self.config_text.name == "albert":
                 # load weights of text backbone
-                text_pretrained = "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/videoclip_swin_dy_20211206/model.th"
+                text_pretrained = (
+                    "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/videoclip_swin_dy_20211206/model.th"
+                )
                 text_backbone = load(text_pretrained, map_location="cpu")
                 state_dict_new = OrderedDict()
                 for key, value in text_backbone.items():
@@ -236,19 +215,15 @@ class AuthenticMM(CruiseModule):
                         trimmed_key = key
                     if trimmed_key.split(".")[0] in ["encoder", "embedding"]:
                         state_dict_new[trimmed_key] = value
-                missing_keys, unexpected_keys = self.text.load_state_dict(
-                    state_dict_new, strict=False
-                )
-                print(
-                    "albert pretrained load! {} keys".format(
-                        len(state_dict_new.keys())
-                    )
-                )
+                missing_keys, unexpected_keys = self.text.load_state_dict(state_dict_new, strict=False)
+                print("albert pretrained load! {} keys".format(len(state_dict_new.keys())))
                 print("missing_keys: ", missing_keys)
                 print("unexpected_keys: ", unexpected_keys)
             if self.config_visual.name == "swin":
                 # load weights of vitual backbone
-                visual_pretrained = "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/videoclip_swin_dy_20211206/model.th"
+                visual_pretrained = (
+                    "hdfs://haruna/home/byte_search_nlp_lq/multimodal/modelhub/videoclip_swin_dy_20211206/model.th"
+                )
                 visual_backbone = load(visual_pretrained, map_location="cpu")
                 state_dict_new = OrderedDict()
                 for key, value in visual_backbone.items():
@@ -258,20 +233,12 @@ class AuthenticMM(CruiseModule):
                         trimmed_key = key
                     if trimmed_key[:6] == "visual" and trimmed_key:
                         state_dict_new[trimmed_key[7:]] = value
-                missing_keys, unexpected_keys = self.visual.load_state_dict(
-                    state_dict_new, strict=False
-                )
-                print(
-                    "swin pretrained load! {} keys".format(
-                        len(state_dict_new.keys())
-                    )
-                )
+                missing_keys, unexpected_keys = self.visual.load_state_dict(state_dict_new, strict=False)
+                print("swin pretrained load! {} keys".format(len(state_dict_new.keys())))
                 print("missing_keys: ", missing_keys)
                 print("unexpected_keys: ", unexpected_keys)
             elif self.config_visual.name == "convnext":
-                convnext_checkpoint = torch.load(
-                    self.config_visual.pretrained, map_location="cpu"
-                )
+                convnext_checkpoint = torch.load(self.config_visual.pretrained, map_location="cpu")
                 del convnext_checkpoint["model"]["head.weight"]
                 del convnext_checkpoint["model"]["head.bias"]
                 self.visual.load_state_dict(convnext_checkpoint["model"])
@@ -285,9 +252,7 @@ class AuthenticMM(CruiseModule):
         #             state_dict_new[key] = value
         #     print("load from pretrained model, {} key matched.".format(len(state_dict_new)))
 
-    def forward_text(
-        self, token_ids: torch.Tensor, attn_mask=None, segment_ids=None
-    ):
+    def forward_text(self, token_ids: torch.Tensor, attn_mask=None, segment_ids=None):
         # token_ids: [B, S, T]
         B, S, T = token_ids.shape
         token_ids = token_ids.view(-1, T)
@@ -338,11 +303,7 @@ class AuthenticMM(CruiseModule):
         if self.config_fusion.name == "transformer":
             batch_size = v_emb.shape[0] if v_emb is not None else t_emb.shape[0]
             device = v_emb.device if v_emb is not None else t_emb.device
-            cls_emb = self.cls_emb(
-                torch.zeros(batch_size, device=device).long()
-            ).unsqueeze(
-                1
-            )  # [B, 1, d_f]
+            cls_emb = self.cls_emb(torch.zeros(batch_size, device=device).long()).unsqueeze(1)  # [B, 1, d_f]
             if t_emb is not None and v_emb is not None:
                 fuse_emb = self.fuse_dropout(
                     torch.cat(
@@ -352,14 +313,10 @@ class AuthenticMM(CruiseModule):
                 )  # [B, 1 + S_v + S_t, d_f]
             elif t_emb is not None:
                 # 文本单模态
-                fuse_emb = self.fuse_dropout(
-                    torch.cat([cls_emb, self.ln_text(t_emb)], dim=1)
-                )  # [B, 1 + S_t, d_f]
+                fuse_emb = self.fuse_dropout(torch.cat([cls_emb, self.ln_text(t_emb)], dim=1))  # [B, 1 + S_t, d_f]
             else:
                 # 视觉单模态
-                fuse_emb = self.fuse_dropout(
-                    torch.cat([cls_emb, self.ln_visual(v_emb)], dim=1)
-                )  # [B, 1 + S_v, d_f]
+                fuse_emb = self.fuse_dropout(torch.cat([cls_emb, self.ln_visual(v_emb)], dim=1))  # [B, 1 + S_v, d_f]
             fuse_emb = self.fuse(fuse_emb)
             fuse_emb = fuse_emb[:, 0]
         elif self.config_fusion.name == "concat":
@@ -504,13 +461,7 @@ class AuthenticMM(CruiseModule):
         gt = torch.eq(rep_dict["label"], 2).int()
         pred_score = self.softmax(rep_dict["out_lvl1"])[:, 2]
         loss_dict.update({"acc": acc, "b_pred": pred_score, "b_gt": gt})
-        loss_dict.update(
-            {
-                "learning_rate": self.trainer.lr_scheduler_configs[
-                    0
-                ].scheduler.get_lr()[0]
-            }
-        )
+        loss_dict.update({"learning_rate": self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]})
 
         return loss_dict
 
@@ -530,9 +481,7 @@ class AuthenticMM(CruiseModule):
             labels.extend(out["b_gt"].detach().cpu().tolist())
             scores.extend(out["b_pred"].detach().cpu().tolist())
         auc = roc_auc_score(labels, scores)
-        precision, recall, thr = p_fix_r(
-            np.array(scores), np.array(labels), 0.3
-        )
+        precision, recall, thr = p_fix_r(np.array(scores), np.array(labels), 0.3)
         ###优质PR, auc
         self.log("total_val_prec", precision, console=True)
         self.log("total_val_rec", recall, console=True)
@@ -587,9 +536,7 @@ class AuthenticMM(CruiseModule):
             cycle_mult=1.0,
             max_lr=self.hparams.learning_rate,
             min_lr=0,
-            warmup_steps=int(
-                self.trainer.total_steps * self.hparams.lr_warmup_steps_weight
-            ),
+            warmup_steps=int(self.trainer.total_steps * self.hparams.lr_warmup_steps_weight),
         )
 
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}

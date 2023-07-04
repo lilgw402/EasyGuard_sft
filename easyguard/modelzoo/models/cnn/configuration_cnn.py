@@ -13,26 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import (
-    absolute_import,
-    division,
-    print_function,
-    unicode_literals,
-)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from transformers.configuration_utils import PretrainedConfig
 
 from ..bert import BertConfig
 
 CNN_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "alibaba-pai/textcnn-en": "https://atp-modelzoo-sh.oss-cn-shanghai.aliyuncs.com/release/easynlp_modelzoo/alibaba-pai/textcnn-en/config.json",
+    "alibaba-pai/textcnn-en": "https://atp-modelzoo-sh.oss-cn-shanghai.aliyuncs.com/release/"
+    "easynlp_modelzoo/alibaba-pai/textcnn-en/config.json",
 }
 
 
 # Currently not used, but will be used if we modify the from_pretrained method
 class TextCNNConfig(BertConfig):
     r"""
-    This is the configuration class to store the configuration of a :class:TextCNNClassify`. It is used to instantiate a
+    This is the configuration class to store the configuration of a :class:TextCNNClassify`.
+    It is used to instantiate a
     CNN model according to the specified arguments, defining the model architecture.
 
 
@@ -109,9 +106,7 @@ class TextCNNConfig(BertConfig):
         )
 
         if hasattr(config, "pruned_heads"):
-            config.pruned_heads = dict(
-                (int(key), value) for key, value in config.pruned_heads.items()
-            )
+            config.pruned_heads = dict((int(key), value) for key, value in config.pruned_heads.items())
 
         # Update config with kwargs if needed
         to_remove = []

@@ -132,7 +132,7 @@ dmypy.json
 CMake*
 cmake*
 *.so
-Makefile
+# Makefile
 
 dict
 sample

@@ -39,7 +39,7 @@ class FashionVTP(nn.Module):
         self.falbert_m = FrameALBert(config)
         self.t_projector_m, self.v_projector_m = self.init_projector()
 
-    '''
+    """
     def forward(
         self,
         images: torch.Tensor,
@@ -47,23 +47,23 @@ class FashionVTP(nn.Module):
         input_ids: torch.Tensor,
         input_mask: torch.Tensor,
         input_segment_ids: torch.Tensor = None,
-        *args, 
+        *args,
         **kwargs):
 
-        t_output = self.encode_text(input_ids=input_ids, 
-                                    input_segment_ids=input_segment_ids, 
+        t_output = self.encode_text(input_ids=input_ids,
+                                    input_segment_ids=input_segment_ids,
                                     input_mask=input_mask)
         t_emb = t_output['pooled_output']
         t_emb = self.t_projector(t_emb)
         t_tokens = t_output['encoded_layers'][-1]
-        
+
         v_output = self.encode_image(images=images, images_mask=images_mask)
         v_emb = v_output['pooled_output']
         v_emb = self.v_projector(v_emb)
         v_tokens = v_output['encoded_layers'][-1][:, 1:, :]
-        
+
         mmout =  self.fusemodel(
-                        input_embs=t_tokens, 
+                        input_embs=t_tokens,
                         input_segment_ids=input_segment_ids,
                         input_mask=input_mask,
                         frames_mask=images_mask,
@@ -71,7 +71,7 @@ class FashionVTP(nn.Module):
 
         mm_emb = mmout['pooled_output']
         return mm_emb, t_emb, v_emb
-    '''
+    """
 
     def encode_image(
         self,
@@ -83,9 +83,7 @@ class FashionVTP(nn.Module):
             images = images.unsqueeze(1)
         if images_mask is None:
             if visual_embeds is None:
-                images_mask = torch.ones(
-                    images.shape[0:2], device=images.device, dtype=torch.long
-                )
+                images_mask = torch.ones(images.shape[0:2], device=images.device, dtype=torch.long)
             else:
                 images_mask = torch.ones(
                     visual_embeds.shape[0:2],
@@ -107,9 +105,7 @@ class FashionVTP(nn.Module):
         input_segment_ids: torch.Tensor = None,
     ):
         if input_segment_ids is None:
-            input_segment_ids = torch.zeros_like(
-                input_ids, device=input_ids.device
-            )
+            input_segment_ids = torch.zeros_like(input_ids, device=input_ids.device)
         t_out = self.falbert(
             input_ids=input_ids,
             input_segment_ids=input_segment_ids,
@@ -117,7 +113,6 @@ class FashionVTP(nn.Module):
             mode="t",
         )
         return t_out
-
 
     def encode_image_m(
         self,
@@ -129,9 +124,7 @@ class FashionVTP(nn.Module):
             images = images.unsqueeze(1)
         if images_mask is None:
             if visual_embeds is None:
-                images_mask = torch.ones(
-                    images.shape[0:2], device=images.device, dtype=torch.long
-                )
+                images_mask = torch.ones(images.shape[0:2], device=images.device, dtype=torch.long)
             else:
                 images_mask = torch.ones(
                     visual_embeds.shape[0:2],
@@ -153,9 +146,7 @@ class FashionVTP(nn.Module):
         input_segment_ids: torch.Tensor = None,
     ):
         if input_segment_ids is None:
-            input_segment_ids = torch.zeros_like(
-                input_ids, device=input_ids.device
-            )
+            input_segment_ids = torch.zeros_like(input_ids, device=input_ids.device)
         t_out = self.falbert_m(
             input_ids=input_ids,
             input_segment_ids=input_segment_ids,

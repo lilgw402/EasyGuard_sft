@@ -11,9 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import yaml
-from torch.optim.lr_scheduler import _LRScheduler
-
 from ptx.model import Model
+from torch.optim.lr_scheduler import _LRScheduler
 
 try:
     import cruise
@@ -22,12 +21,12 @@ except ImportError:
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 
-from easyguard.modelzoo.models.falbert.albert import ALBert
-from easyguard.modelzoo.models.falbert.swin import SwinTransformer
-
 from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
 from cruise.utilities.hdfs_io import hexists, hopen
+
+from easyguard.modelzoo.models.falbert.albert import ALBert
+from easyguard.modelzoo.models.falbert.swin import SwinTransformer
 
 from ...core import AutoModel
 from ...modelzoo.modeling_utils import ModelBase
@@ -47,15 +46,15 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
     """
 
     def __init__(
-            self,
-            optimizer: torch.optim.Optimizer,
-            first_cycle_steps: int,
-            cycle_mult: float = 1.0,
-            max_lr: float = 0.1,
-            min_lr: float = 0.001,
-            warmup_steps: int = 0,
-            gamma: float = 1.0,
-            last_epoch: int = -1,
+        self,
+        optimizer: torch.optim.Optimizer,
+        first_cycle_steps: int,
+        cycle_mult: float = 1.0,
+        max_lr: float = 0.1,
+        min_lr: float = 0.001,
+        warmup_steps: int = 0,
+        gamma: float = 1.0,
+        last_epoch: int = -1,
     ):
         assert warmup_steps < first_cycle_steps
 
@@ -71,9 +70,7 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
         self.cycle = 0  # cycle count
         self.step_in_cycle = last_epoch  # step size of the current cycle
 
-        super(CosineAnnealingWarmupRestarts, self).__init__(
-            optimizer, last_epoch
-        )
+        super(CosineAnnealingWarmupRestarts, self).__init__(optimizer, last_epoch)
 
         # set learning rate min_lr
         self.init_lr()
@@ -89,21 +86,17 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
             return self.base_lrs
         elif self.step_in_cycle < self.warmup_steps:
             return [
-                (self.max_lr - base_lr) * self.step_in_cycle / self.warmup_steps
-                + base_lr
-                for base_lr in self.base_lrs
+                (self.max_lr - base_lr) * self.step_in_cycle / self.warmup_steps + base_lr for base_lr in self.base_lrs
             ]
         else:
             return [
                 base_lr
                 + (self.max_lr - base_lr)
                 * (
-                        1
-                        + math.cos(
-                    math.pi
-                    * (self.step_in_cycle - self.warmup_steps)
-                    / (self.cur_cycle_steps - self.warmup_steps)
-                )
+                    1
+                    + math.cos(
+                        math.pi * (self.step_in_cycle - self.warmup_steps) / (self.cur_cycle_steps - self.warmup_steps)
+                    )
                 )
                 / 2
                 for base_lr in self.base_lrs
@@ -117,11 +110,7 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
                 self.cycle += 1
                 self.step_in_cycle = self.step_in_cycle - self.cur_cycle_steps
                 self.cur_cycle_steps = (
-                        int(
-                            (self.cur_cycle_steps - self.warmup_steps)
-                            * self.cycle_mult
-                        )
-                        + self.warmup_steps
+                    int((self.cur_cycle_steps - self.warmup_steps) * self.cycle_mult) + self.warmup_steps
                 )
         else:
             if epoch >= self.first_cycle_steps:
@@ -131,29 +120,20 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
                 else:
                     n = int(
                         math.log(
-                            (
-                                    epoch
-                                    / self.first_cycle_steps
-                                    * (self.cycle_mult - 1)
-                                    + 1
-                            ),
+                            (epoch / self.first_cycle_steps * (self.cycle_mult - 1) + 1),
                             self.cycle_mult,
                         )
                     )
                     self.cycle = n
                     self.step_in_cycle = epoch - int(
-                        self.first_cycle_steps
-                        * (self.cycle_mult ** n - 1)
-                        / (self.cycle_mult - 1)
+                        self.first_cycle_steps * (self.cycle_mult**n - 1) / (self.cycle_mult - 1)
                     )
-                    self.cur_cycle_steps = (
-                            self.first_cycle_steps * self.cycle_mult ** (n)
-                    )
+                    self.cur_cycle_steps = self.first_cycle_steps * self.cycle_mult ** (n)
             else:
                 self.cur_cycle_steps = self.first_cycle_steps
                 self.step_in_cycle = epoch
 
-        self.max_lr = self.base_max_lr * (self.gamma ** self.cycle)
+        self.max_lr = self.base_max_lr * (self.gamma**self.cycle)
         self.last_epoch = math.floor(epoch)
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
             param_group["lr"] = lr
@@ -161,14 +141,14 @@ class CosineAnnealingWarmupRestarts(_LRScheduler):
 
 class FashionBertv2(CruiseModule):
     def __init__(
-            self,
-            config_text: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_text.yaml",
-            config_visual: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_visual.yaml",
-            config_fusion: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_fusion.yaml",
-            learning_rate: float = 1e-4,
-            betas: Tuple[float, float] = (0.9, 0.999),
-            eps: float = 1e-8,
-            weight_decay: float = 0.02,
+        self,
+        config_text: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_text.yaml",
+        config_visual: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_visual.yaml",
+        config_fusion: str = "hdfs://haruna/home/byte_ecom_govern/user/liuyuhang/pretrain/fashion_bert_v2/config_fusion.yaml",
+        learning_rate: float = 1e-4,
+        betas: Tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-8,
+        weight_decay: float = 0.02,
     ):
         super(FashionBertv2, self).__init__()
         self.save_hparams()
@@ -177,9 +157,9 @@ class FashionBertv2(CruiseModule):
         self.model = AutoModel.from_pretrained("fashionbert-base")
 
         assert (
-                hexists(self.hparams.config_text)
-                and hexists(self.hparams.config_visual)
-                and hexists(self.hparams.config_fusion)
+            hexists(self.hparams.config_text)
+            and hexists(self.hparams.config_visual)
+            and hexists(self.hparams.config_fusion)
         )
         with hopen(self.hparams.config_text) as fp:
             self.config_text = SimpleNamespace(**yaml.load(fp, yaml.Loader))
@@ -251,7 +231,7 @@ class FashionBertv2(CruiseModule):
         )
         rep_dict = self.model(token_ids, image)
         rep_dict.update(batch)
-        rep_dict['fuse_cat'] = self.fuse_category(rep_dict['fuse_emb'][:, 0])  # [B, num_categories]
+        rep_dict["fuse_cat"] = self.fuse_category(rep_dict["fuse_emb"][:, 0])  # [B, num_categories]
 
         loss_dict = self.cal_pt_loss(**rep_dict)
 
@@ -288,7 +268,7 @@ class AttentionPooler(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, input_dim // 2),
             nn.GELU(),
-            nn.Linear(input_dim // 2, 1)
+            nn.Linear(input_dim // 2, 1),
         )
 
     def forward(self, x):
@@ -314,7 +294,7 @@ class AttMaxPooling(nn.Module):
             nn.Linear(input_dim * 2, input_dim),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(input_dim, output_dim)
+            nn.Linear(input_dim, output_dim),
         )
 
     def forward(self, x):
@@ -330,13 +310,13 @@ class AttMaxPooling(nn.Module):
 
 class FashionProduct(CruiseModule):
     def __init__(
-            self,
-            config_visual: str = "./examples/fashionproduct/configs/config_visual.yaml",
-            config_fusion: str = "./examples/fashionproduct/configs/config_fusion.yaml",
-            learning_rate: float = 1e-4,
-            betas: Tuple[float, float] = (0.9, 0.999),
-            eps: float = 1e-8,
-            weight_decay: float = 0.02,
+        self,
+        config_visual: str = "./examples/fashionproduct/configs/config_visual.yaml",
+        config_fusion: str = "./examples/fashionproduct/configs/config_fusion.yaml",
+        learning_rate: float = 1e-4,
+        betas: Tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-8,
+        weight_decay: float = 0.02,
     ):
         super(FashionProduct, self).__init__()
         self.save_hparams()
@@ -344,10 +324,7 @@ class FashionProduct(CruiseModule):
     def setup(self, stage) -> None:
         self.model = AutoModel.from_pretrained("fashionproduct-base")
 
-        assert (
-                hexists(self.hparams.config_visual)
-                and hexists(self.hparams.config_fusion)
-        )
+        assert hexists(self.hparams.config_visual) and hexists(self.hparams.config_fusion)
         with hopen(self.hparams.config_visual) as fp:
             self.config_visual = SimpleNamespace(**yaml.load(fp, yaml.Loader))
         with hopen(self.hparams.config_fusion) as fp:
@@ -363,15 +340,21 @@ class FashionProduct(CruiseModule):
 
         # (2) 1 category-level loss
         self.category_logits = nn.Sequential(
-            nn.Linear(self.config_fusion.hidden_size, self.config_fusion.hidden_size * 2),
+            nn.Linear(
+                self.config_fusion.hidden_size,
+                self.config_fusion.hidden_size * 2,
+            ),
             nn.GELU(),
             nn.Dropout(self.config_fusion.embd_pdrop),
-            nn.Linear(self.config_fusion.hidden_size * 2, self.config_fusion.category_logits_level2 + 1)
+            nn.Linear(
+                self.config_fusion.hidden_size * 2,
+                self.config_fusion.category_logits_level2 + 1,
+            ),
         )  # 预测二级类目
         self.category_sce = SCELoss(
             alpha=1.0,
             beta=0.5,
-            num_classes=self.config_fusion.category_logits_level2 + 1
+            num_classes=self.config_fusion.category_logits_level2 + 1,
         )  # 二级类目预测损失
 
         # (3) 1 property prediction loss. Use following properties as targets.
@@ -387,24 +370,31 @@ class FashionProduct(CruiseModule):
                 self.ner_task_dict = json.load(fp)
             for task in ner_tasks:
                 assert task in self.ner_task_dict, "task {} is not supported in ner tasks.".format(task)
-            self.ner_heads = nn.ModuleList([
-                AttMaxPooling(self.config_fusion.hidden_size, len(self.ner_task_dict[task]["label2idx"]) + 1) for
-                task in ner_tasks])
+            self.ner_heads = nn.ModuleList(
+                [
+                    AttMaxPooling(
+                        self.config_fusion.hidden_size,
+                        len(self.ner_task_dict[task]["label2idx"]) + 1,
+                    )
+                    for task in ner_tasks
+                ]
+            )
 
     def allgather(self, x):
         return self.all_gather(x.contiguous()).flatten(0, 1)
 
-    def forward_pretrain(self,
-                         main_images,
-                         desc_images,
-                         sku_images,
-                         main_ocrs,
-                         desc_ocrs,
-                         sku_ocrs,
-                         product_name,
-                         other_text,
-                         **kwargs
-                         ):
+    def forward_pretrain(
+        self,
+        main_images,
+        desc_images,
+        sku_images,
+        main_ocrs,
+        desc_ocrs,
+        sku_ocrs,
+        product_name,
+        other_text,
+        **kwargs,
+    ):
         """
         :param main_images: [B, num_main_images, 3, 244, 244]
         :param desc_images: [B, num_desc_images, 3, 244, 244]
@@ -426,7 +416,7 @@ class FashionProduct(CruiseModule):
             sku_ocrs,
             product_name,
             other_text,
-            **kwargs
+            **kwargs,
         )
 
         fuse_image = rep_dict["fuse_image"]
@@ -445,7 +435,7 @@ class FashionProduct(CruiseModule):
         4. Property prediction loss.
         """
         # KLDiv Loss for ner
-        loss_ner = 0.
+        loss_ner = 0.0
         if len(self.ner_tasks) > 0:
             for i in range(len(self.ner_tasks)):
                 key = "ner_{}".format(i)
@@ -465,7 +455,7 @@ class FashionProduct(CruiseModule):
             "loss_sce": loss_sce,
             "loss_ner": loss_ner,
             "logits": logits_cat,
-            "label": kwargs["label"]
+            "label": kwargs["label"],
         }
 
     def training_step(self, batch, idx):

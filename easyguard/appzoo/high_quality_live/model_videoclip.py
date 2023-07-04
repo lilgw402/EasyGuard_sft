@@ -20,24 +20,16 @@ except ImportError:
         "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
     )
 
-from easyguard import AutoModel
-from easyguard.appzoo.authentic_modeling.utils import (
-    CosineAnnealingWarmupRestarts,
-    accuracy,
-)
-from sklearn.metrics import roc_auc_score
-
 from cruise import CruiseModule
 from cruise.utilities.cloud_io import load
 from cruise.utilities.distributed import DIST_ENV
 from cruise.utilities.hdfs_io import hexists, hopen
+from sklearn.metrics import roc_auc_score
 
-from ...utils.losses import (
-    LearnableNTXentLoss,
-    LearnablePCLLoss,
-    SCELoss,
-    cross_entropy,
-)
+from easyguard import AutoModel
+from easyguard.appzoo.authentic_modeling.utils import CosineAnnealingWarmupRestarts, accuracy
+
+from ...utils.losses import LearnableNTXentLoss, LearnablePCLLoss, SCELoss, cross_entropy
 from .optimization import *
 from .optimization import AdamW
 
@@ -49,9 +41,7 @@ def p_fix_r(output, labels, fix_r):
     recall_sort = np.cumsum(labels_sort) / float(num_pos)
     index = np.abs(recall_sort - fix_r).argmin()
     thr = output_sort[index]
-    precision = np.sum(((output >= thr) == labels) * labels) / np.sum(
-        output >= thr
-    )
+    precision = np.sum(((output >= thr) == labels) * labels) / np.sum(output >= thr)
     return precision, recall_sort[index], thr
 
 
@@ -95,9 +85,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             fuse_emb_size = self.config_fusion.out_dim * 2
         else:
             fuse_emb_size = 768
-        self.classifier = torch.nn.Linear(
-            fuse_emb_size, self.config_fusion.class_num
-        )
+        self.classifier = torch.nn.Linear(fuse_emb_size, self.config_fusion.class_num)
         self.softmax = nn.Softmax(dim=1)
         """
         Initialize some fixed parameters.
@@ -121,20 +109,13 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             state_dict_ori = self.state_dict()
             # load weights of pretrained model
             state_dict_new = OrderedDict()
-            pretrained_weights = load(
-                self.hparams.load_pretrained, map_location="cpu"
-            )
+            pretrained_weights = load(self.hparams.load_pretrained, map_location="cpu")
             if "state_dict" in pretrained_weights:
                 pretrained_weights = pretrained_weights["state_dict"]
             for key, value in pretrained_weights.items():
-                if (
-                    key in state_dict_ori
-                    and state_dict_ori[key].shape == value.shape
-                ):
+                if key in state_dict_ori and state_dict_ori[key].shape == value.shape:
                     state_dict_new[key] = value
-            missing_keys, unexpected_keys = self.load_state_dict(
-                state_dict_new, strict=False
-            )
+            missing_keys, unexpected_keys = self.load_state_dict(state_dict_new, strict=False)
             print("missing_keys: ", missing_keys)
             print("unexpected_keys: ", unexpected_keys)
         else:
@@ -149,14 +130,9 @@ class HighQualityLiveVideoCLIP(CruiseModule):
                     trimmed_key = key[len("falbert.") :]
                 else:
                     trimmed_key = key
-                if (
-                    trimmed_key in state_dict_ori
-                    and state_dict_ori[trimmed_key].shape == backbone[key].shape
-                ):
+                if trimmed_key in state_dict_ori and state_dict_ori[trimmed_key].shape == backbone[key].shape:
                     state_dict_new[trimmed_key] = value
-            missing_keys, unexpected_keys = self.falbert.load_state_dict(
-                state_dict_new, strict=False
-            )
+            missing_keys, unexpected_keys = self.falbert.load_state_dict(state_dict_new, strict=False)
             print("missing_keys: ", missing_keys)
             print("unexpected_keys: ", unexpected_keys)
 
@@ -182,9 +158,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
                 input_mask=input_mask,
             )["pooled_output"]
             t_emb = self.t_projector(t_emb)
-            v_emb = self.encode_image(images=frames, images_mask=frames_mask)[
-                "pooled_output"
-            ]
+            v_emb = self.encode_image(images=frames, images_mask=frames_mask)["pooled_output"]
             v_emb = self.v_projector(v_emb)
             cls_emb = torch.cat((t_emb, v_emb), dim=-1)
             logits = self.classifier(cls_emb)
@@ -212,9 +186,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             images = images.unsqueeze(1)
         if images_mask is None:
             if visual_embeds is None:
-                images_mask = torch.ones(
-                    images.shape[0:2], device=images.device, dtype=torch.long
-                )
+                images_mask = torch.ones(images.shape[0:2], device=images.device, dtype=torch.long)
             else:
                 images_mask = torch.ones(
                     visual_embeds.shape[0:2],
@@ -236,9 +208,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
         input_segment_ids: torch.Tensor = None,
     ):
         if input_segment_ids is None:
-            input_segment_ids = torch.zeros_like(
-                input_ids, device=input_ids.device
-            )
+            input_segment_ids = torch.zeros_like(input_ids, device=input_ids.device)
         t_out = self.falbert(
             input_ids=input_ids,
             input_segment_ids=input_segment_ids,
@@ -260,9 +230,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
     ):
         if images_mask is None:
             if visual_embeds is None:
-                images_mask = torch.ones(
-                    images.shape[0:2], device=images.device, dtype=torch.long
-                )
+                images_mask = torch.ones(images.shape[0:2], device=images.device, dtype=torch.long)
             else:
                 images_mask = torch.ones(
                     visual_embeds.shape[0:2],
@@ -323,13 +291,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
         gt = torch.eq(rep_dict["label"], 2).int()
         pred_score = self.softmax(rep_dict["out_lvl1"])[:, 2]
         loss_dict.update({"acc": acc, "b_pred": pred_score, "b_gt": gt})
-        loss_dict.update(
-            {
-                "learning_rate": self.trainer.lr_scheduler_configs[
-                    0
-                ].scheduler.get_last_lr()[0]
-            }
-        )
+        loss_dict.update({"learning_rate": self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]})
 
         return loss_dict
 
@@ -349,9 +311,7 @@ class HighQualityLiveVideoCLIP(CruiseModule):
             labels.extend(out["b_gt"].detach().cpu().tolist())
             scores.extend(out["b_pred"].detach().cpu().tolist())
         auc = roc_auc_score(labels, scores)
-        precision, recall, thr = p_fix_r(
-            np.array(scores), np.array(labels), 0.3
-        )
+        precision, recall, thr = p_fix_r(np.array(scores), np.array(labels), 0.3)
         ###优质PR, auc
         self.log("total_val_prec", precision, console=True)
         self.log("total_val_rec", recall, console=True)
@@ -424,15 +384,13 @@ class HighQualityLiveVideoCLIP(CruiseModule):
         if self.config_optim.lr_schedule == "linear":
             lr_scheduler = get_linear_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.config_optim.warmup_steps_factor
-                * self.trainer.steps_per_epoch,
+                num_warmup_steps=self.config_optim.warmup_steps_factor * self.trainer.steps_per_epoch,
                 num_training_steps=self.trainer.total_steps,
             )
         elif self.config_optim.lr_schedule == "cosine":
             lr_scheduler = get_cosine_schedule_with_warmup(
                 optimizer=optm,
-                num_warmup_steps=self.config_optim.warmup_steps_factor
-                * self.trainer.steps_per_epoch,
+                num_warmup_steps=self.config_optim.warmup_steps_factor * self.trainer.steps_per_epoch,
                 num_training_steps=self.trainer.total_steps,
             )
         elif self.config_optim.lr_schedule == "onecycle":

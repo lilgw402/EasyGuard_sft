@@ -28,15 +28,11 @@ class TemporalFusion(nn.Module):
         if x.dim() == 2:  # batch_size*num_segments, dim_feature
             input_shape = x.size()
             x = x.view(
-                torch.div(
-                    input_shape[0], self.num_segments, rounding_mode="trunc"
-                ),
+                torch.div(input_shape[0], self.num_segments, rounding_mode="trunc"),
                 self.num_segments,
                 -1,
             )
-        assert (
-            x.dim() == 3
-        ), f"Illegal input for temporal fusion with dim {x.dim()}"
+        assert x.dim() == 3, f"Illegal input for temporal fusion with dim {x.dim()}"
 
         if self.pooling_type == "avg":
             output = x.mean(dim=1, keepdim=False)
@@ -72,9 +68,7 @@ class FramewiseTemporalFusion(nn.Module):
 class NeXtVLAD(nn.Module):
     """NeXtVLAD layer implementation"""
 
-    def __init__(
-        self, dim=1024, num_clusters=64, lamb=2, groups=8, max_frames=300
-    ):
+    def __init__(self, dim=1024, num_clusters=64, lamb=2, groups=8, max_frames=300):
         super(NeXtVLAD, self).__init__()
         self.num_clusters = num_clusters
         self.dim = dim
@@ -88,9 +82,7 @@ class NeXtVLAD(nn.Module):
         self.fc_gk = nn.Linear(lamb * dim, self.G * self.K)
         # attention over groups FC
         self.fc_g = nn.Linear(lamb * dim, self.G)
-        self.cluster_weights2 = nn.Parameter(
-            torch.rand(1, self.group_size, self.K)
-        )
+        self.cluster_weights2 = nn.Parameter(torch.rand(1, self.group_size, self.K))
 
         self.bn0 = nn.BatchNorm1d(max_frames)
         self.bn1 = nn.BatchNorm1d(1)

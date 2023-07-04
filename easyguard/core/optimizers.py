@@ -7,10 +7,8 @@ from timm.scheduler.cosine_lr import CosineLRScheduler
 from timm.scheduler.scheduler import Scheduler
 from timm.scheduler.step_lr import StepLRScheduler
 from torch import optim as optim
-from torch.nn.utils import clip_grad_norm_
-from torch.optim import Adam, Optimizer
+from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
-from torch.optim.optimizer import required
 
 
 def build_optimizer(config, model):
@@ -88,18 +86,18 @@ def build_scheduler(config, optimizer, epochs, n_iter_per_epoch):
 
 class LinearLRScheduler(Scheduler):
     def __init__(
-            self,
-            optimizer: torch.optim.Optimizer,
-            t_initial: int,
-            lr_min_rate: float,
-            warmup_t=0,
-            warmup_lr_init=0.0,
-            t_in_epochs=True,
-            noise_range_t=None,
-            noise_pct=0.67,
-            noise_std=1.0,
-            noise_seed=42,
-            initialize=True,
+        self,
+        optimizer: torch.optim.Optimizer,
+        t_initial: int,
+        lr_min_rate: float,
+        warmup_t=0,
+        warmup_lr_init=0.0,
+        t_in_epochs=True,
+        noise_range_t=None,
+        noise_pct=0.67,
+        noise_std=1.0,
+        noise_seed=42,
+        initialize=True,
     ) -> None:
         super().__init__(
             optimizer,
@@ -117,9 +115,7 @@ class LinearLRScheduler(Scheduler):
         self.warmup_lr_init = warmup_lr_init
         self.t_in_epochs = t_in_epochs
         if self.warmup_t:
-            self.warmup_steps = [
-                (v - warmup_lr_init) / self.warmup_t for v in self.base_values
-            ]
+            self.warmup_steps = [(v - warmup_lr_init) / self.warmup_t for v in self.base_values]
             super().update_groups(self.warmup_lr_init)
         else:
             self.warmup_steps = [1 for _ in self.base_values]
@@ -130,10 +126,7 @@ class LinearLRScheduler(Scheduler):
         else:
             t = t - self.warmup_t
             total_t = self.t_initial - self.warmup_t
-            lrs = [
-                v - ((v - v * self.lr_min_rate) * (t / total_t))
-                for v in self.base_values
-            ]
+            lrs = [v - ((v - v * self.lr_min_rate) * (t / total_t)) for v in self.base_values]
         return lrs
 
     def get_epoch_values(self, epoch: int):
@@ -157,10 +150,10 @@ def set_weight_decay(model, skip_list=(), skip_keywords=()):
         if not param.requires_grad:
             continue  # frozen weights
         if (
-                len(param.shape) == 1
-                or name.endswith(".bias")
-                or (name in skip_list)
-                or check_keywords_in_name(name, skip_keywords)
+            len(param.shape) == 1
+            or name.endswith(".bias")
+            or (name in skip_list)
+            or check_keywords_in_name(name, skip_keywords)
         ):
             no_decay.append(param)
             # print(f"{name} has no weight decay")
@@ -191,9 +184,7 @@ def get_constant_schedule(optimizer: Optimizer, last_epoch: int = -1):
     return LambdaLR(optimizer, lambda _: 1, last_epoch=last_epoch)
 
 
-def get_constant_schedule_with_warmup(
-        optimizer: Optimizer, num_warmup_steps: int, last_epoch: int = -1
-):
+def get_constant_schedule_with_warmup(optimizer: Optimizer, num_warmup_steps: int, last_epoch: int = -1):
     """
     Create a schedule with a constant learning rate preceded by a warmup period during which the learning rate
     increases linearly between 0 and the initial lr set in the optimizer.
@@ -216,9 +207,7 @@ def get_constant_schedule_with_warmup(
     return LambdaLR(optimizer, lr_lambda, last_epoch=last_epoch)
 
 
-def get_linear_schedule_with_warmup(
-        optimizer, num_warmup_steps, num_training_steps, last_epoch=-1
-):
+def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, last_epoch=-1):
     """
     Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after
     a warmup period during which it increases linearly from 0 to the initial lr set in the optimizer.
@@ -240,19 +229,18 @@ def get_linear_schedule_with_warmup(
             return float(current_step) / float(max(1, num_warmup_steps))
         return max(
             0.0,
-            float(num_training_steps - current_step)
-            / float(max(1, num_training_steps - num_warmup_steps)),
+            float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps)),
         )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def get_cosine_schedule_with_warmup(
-        optimizer: Optimizer,
-        num_warmup_steps: int,
-        num_training_steps: int,
-        num_cycles: float = 0.5,
-        last_epoch: int = -1,
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    num_cycles: float = 0.5,
+    last_epoch: int = -1,
 ):
     """
     Create a schedule with a learning rate that decreases following the values of the cosine function between the
@@ -277,24 +265,21 @@ def get_cosine_schedule_with_warmup(
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
-        progress = float(current_step - num_warmup_steps) / float(
-            max(1, num_training_steps - num_warmup_steps)
-        )
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
         return max(
             0.0,
-            0.5
-            * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)),
+            0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)),
         )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def get_cosine_with_hard_restarts_schedule_with_warmup(
-        optimizer: Optimizer,
-        num_warmup_steps: int,
-        num_training_steps: int,
-        num_cycles: int = 1,
-        last_epoch: int = -1,
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    num_cycles: int = 1,
+    last_epoch: int = -1,
 ):
     """
     Create a schedule with a learning rate that decreases following the values of the cosine function between the
@@ -318,29 +303,24 @@ def get_cosine_with_hard_restarts_schedule_with_warmup(
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
-        progress = float(current_step - num_warmup_steps) / float(
-            max(1, num_training_steps - num_warmup_steps)
-        )
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
         if progress >= 1.0:
             return 0.0
         return max(
             0.0,
-            0.5
-            * (
-                    1.0 + math.cos(math.pi * ((float(num_cycles) * progress) % 1.0))
-            ),
+            0.5 * (1.0 + math.cos(math.pi * ((float(num_cycles) * progress) % 1.0))),
         )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def get_polynomial_decay_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps,
-        num_training_steps,
-        lr_end=1e-7,
-        power=1.0,
-        last_epoch=-1,
+    optimizer,
+    num_warmup_steps,
+    num_training_steps,
+    lr_end=1e-7,
+    power=1.0,
+    last_epoch=-1,
 ):
     """
     Create a schedule with a learning rate that decreases as a polynomial decay from the initial lr set in the
@@ -367,9 +347,7 @@ def get_polynomial_decay_schedule_with_warmup(
     """
 
     lr_init = optimizer.defaults["lr"]
-    assert (
-            lr_init > lr_end
-    ), f"lr_end ({lr_end}) must be be smaller than initial lr ({lr_init})"
+    assert lr_init > lr_end, f"lr_end ({lr_end}) must be be smaller than initial lr ({lr_init})"
 
     def lr_lambda(current_step: int):
         if current_step < num_warmup_steps:
@@ -380,7 +358,7 @@ def get_polynomial_decay_schedule_with_warmup(
             lr_range = lr_init - lr_end
             decay_steps = num_training_steps - num_warmup_steps
             pct_remaining = 1 - (current_step - num_warmup_steps) / decay_steps
-            decay = lr_range * pct_remaining ** power + lr_end
+            decay = lr_range * pct_remaining**power + lr_end
             return decay / lr_init  # as LambdaLR multiplies by lr_init
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
@@ -406,36 +384,22 @@ class AdamW(Optimizer):
     """
 
     def __init__(
-            self,
-            params: Iterable[torch.nn.parameter.Parameter],
-            lr: float = 1e-3,
-            betas: Tuple[float, float] = (0.9, 0.999),
-            eps: float = 1e-6,
-            weight_decay: float = 0.0,
-            correct_bias: bool = True,
+        self,
+        params: Iterable[torch.nn.parameter.Parameter],
+        lr: float = 1e-3,
+        betas: Tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-6,
+        weight_decay: float = 0.0,
+        correct_bias: bool = True,
     ):
         if lr < 0.0:
-            raise ValueError(
-                "Invalid learning rate: {} - should be >= 0.0".format(lr)
-            )
+            raise ValueError("Invalid learning rate: {} - should be >= 0.0".format(lr))
         if not 0.0 <= betas[0] < 1.0:
-            raise ValueError(
-                "Invalid beta parameter: {} - should be in [0.0, 1.0[".format(
-                    betas[0]
-                )
-            )
+            raise ValueError("Invalid beta parameter: {} - should be in [0.0, 1.0[".format(betas[0]))
         if not 0.0 <= betas[1] < 1.0:
-            raise ValueError(
-                "Invalid beta parameter: {} - should be in [0.0, 1.0[".format(
-                    betas[1]
-                )
-            )
-        if (
-                not 0.0 <= eps
-        ):  # pylint: disable=unneeded-not,misplaced-comparison-constant
-            raise ValueError(
-                "Invalid epsilon value: {} - should be >= 0.0".format(eps)
-            )
+            raise ValueError("Invalid beta parameter: {} - should be in [0.0, 1.0[".format(betas[1]))
+        if not 0.0 <= eps:  # pylint: disable=unneeded-not,misplaced-comparison-constant
+            raise ValueError("Invalid epsilon value: {} - should be >= 0.0".format(eps))
         defaults = dict(
             lr=lr,
             betas=betas,
@@ -461,9 +425,7 @@ class AdamW(Optimizer):
                     continue
                 grad = p.grad.data
                 if grad.is_sparse:
-                    raise RuntimeError(
-                        "Adam does not support sparse gradients, please consider SparseAdam instead"
-                    )
+                    raise RuntimeError("Adam does not support sparse gradients, please consider SparseAdam instead")
 
                 state = self.state[p]
 
@@ -490,11 +452,7 @@ class AdamW(Optimizer):
                 if group["correct_bias"]:  # No bias correction for Bert
                     bias_correction1 = 1.0 - beta1 ** state["step"]
                     bias_correction2 = 1.0 - beta2 ** state["step"]
-                    step_size = (
-                            step_size
-                            * math.sqrt(bias_correction2)
-                            / bias_correction1
-                    )
+                    step_size = step_size * math.sqrt(bias_correction2) / bias_correction1
 
                 p.data.addcdiv_(exp_avg, denom, value=-step_size)
 
@@ -508,9 +466,7 @@ class AdamW(Optimizer):
                 # Add weight decay at the end (fixed version)
                 # print(p, group["weight_decay"], 'wd')
                 if group["weight_decay"] > 0.0:
-                    p.data.add_(
-                        p.data, alpha=-group["lr"] * group["weight_decay"]
-                    )
+                    p.data.add_(p.data, alpha=-group["lr"] * group["weight_decay"])
 
         return loss
 
@@ -571,22 +527,20 @@ class Adafactor(Optimizer):
     """
 
     def __init__(
-            self,
-            params,
-            lr=None,
-            eps=(1e-30, 1e-3),
-            clip_threshold=1.0,
-            decay_rate=-0.8,
-            beta1=None,
-            weight_decay=0.0,
-            scale_parameter=True,
-            relative_step=True,
-            warmup_init=False,
+        self,
+        params,
+        lr=None,
+        eps=(1e-30, 1e-3),
+        clip_threshold=1.0,
+        decay_rate=-0.8,
+        beta1=None,
+        weight_decay=0.0,
+        scale_parameter=True,
+        relative_step=True,
+        warmup_init=False,
     ):
         if lr is not None and relative_step:
-            raise ValueError(
-                "Cannot combine manual lr and relative_step options"
-            )
+            raise ValueError("Cannot combine manual lr and relative_step options")
         if warmup_init and not relative_step:
             raise ValueError("warmup_init requires relative_step=True")
 
@@ -607,11 +561,7 @@ class Adafactor(Optimizer):
     def _get_lr(param_group, param_state):
         rel_step_sz = param_group["lr"]
         if param_group["relative_step"]:
-            min_step = (
-                1e-6 * param_state["step"]
-                if param_group["warmup_init"]
-                else 1e-2
-            )
+            min_step = 1e-6 * param_state["step"] if param_group["warmup_init"] else 1e-2
             rel_step_sz = min(min_step, 1.0 / math.sqrt(param_state["step"]))
         param_scale = 1.0
         if param_group["scale_parameter"]:
@@ -630,15 +580,11 @@ class Adafactor(Optimizer):
 
     @staticmethod
     def _approx_sq_grad(exp_avg_sq_row, exp_avg_sq_col):
-        r_factor = (
-                exp_avg_sq_row / exp_avg_sq_row.mean(dim=-1, keepdim=True)
-        ).rsqrt_()
+        r_factor = (exp_avg_sq_row / exp_avg_sq_row.mean(dim=-1, keepdim=True)).rsqrt_()
         c_factor = exp_avg_sq_col.rsqrt()
         return torch.mm(r_factor.unsqueeze(-1), c_factor.unsqueeze(0))
 
-    def step(
-            self, closure=None
-    ):  # pylint: disable=too-many-branches,too-many-statements
+    def step(self, closure=None):  # pylint: disable=too-many-branches,too-many-statements
         """
         Performs a single optimization step
         Arguments:
@@ -657,16 +603,12 @@ class Adafactor(Optimizer):
                 if grad.dtype in {torch.float16, torch.bfloat16}:
                     grad = grad.float()
                 if grad.is_sparse:
-                    raise RuntimeError(
-                        "Adafactor does not support sparse gradients."
-                    )
+                    raise RuntimeError("Adafactor does not support sparse gradients.")
 
                 state = self.state[p]
                 grad_shape = grad.shape
 
-                factored, use_first_moment = self._get_options(
-                    group, grad_shape
-                )
+                factored, use_first_moment = self._get_options(group, grad_shape)
                 # State Initialization
                 if len(state) == 0:
                     state["step"] = 0
@@ -675,12 +617,8 @@ class Adafactor(Optimizer):
                         # Exponential moving average of gradient values
                         state["exp_avg"] = torch.zeros_like(grad)
                     if factored:
-                        state["exp_avg_sq_row"] = torch.zeros(
-                            grad_shape[:-1]
-                        ).to(grad)
-                        state["exp_avg_sq_col"] = torch.zeros(
-                            grad_shape[:-2] + grad_shape[-1:]
-                        ).to(grad)
+                        state["exp_avg_sq_row"] = torch.zeros(grad_shape[:-1]).to(grad)
+                        state["exp_avg_sq_col"] = torch.zeros(grad_shape[:-2] + grad_shape[-1:]).to(grad)
                     else:
                         state["exp_avg_sq"] = torch.zeros_like(grad)
 
@@ -689,12 +627,8 @@ class Adafactor(Optimizer):
                     if use_first_moment:
                         state["exp_avg"] = state["exp_avg"].to(grad)
                     if factored:
-                        state["exp_avg_sq_row"] = state["exp_avg_sq_row"].to(
-                            grad
-                        )
-                        state["exp_avg_sq_col"] = state["exp_avg_sq_col"].to(
-                            grad
-                        )
+                        state["exp_avg_sq_row"] = state["exp_avg_sq_row"].to(grad)
+                        state["exp_avg_sq_col"] = state["exp_avg_sq_col"].to(grad)
                     else:
                         state["exp_avg_sq"] = state["exp_avg_sq"].to(grad)
 
@@ -707,22 +641,16 @@ class Adafactor(Optimizer):
                 group["lr"] = self._get_lr(group, state)
 
                 beta2t = 1.0 - math.pow(state["step"], group["decay_rate"])
-                update = (grad ** 2) + group["eps"][0]
+                update = (grad**2) + group["eps"][0]
                 if factored:
                     exp_avg_sq_row = state["exp_avg_sq_row"]
                     exp_avg_sq_col = state["exp_avg_sq_col"]
 
-                    exp_avg_sq_row.mul_(beta2t).add_(
-                        1.0 - beta2t, update.mean(dim=-1)
-                    )
-                    exp_avg_sq_col.mul_(beta2t).add_(
-                        1.0 - beta2t, update.mean(dim=-2)
-                    )
+                    exp_avg_sq_row.mul_(beta2t).add_(1.0 - beta2t, update.mean(dim=-1))
+                    exp_avg_sq_col.mul_(beta2t).add_(1.0 - beta2t, update.mean(dim=-2))
 
                     # Approximation of exponential moving average of square of gradient
-                    update = self._approx_sq_grad(
-                        exp_avg_sq_row, exp_avg_sq_col
-                    )
+                    update = self._approx_sq_grad(exp_avg_sq_row, exp_avg_sq_col)
                     update.mul_(grad)
                 else:
                     exp_avg_sq = state["exp_avg_sq"]
@@ -730,24 +658,16 @@ class Adafactor(Optimizer):
                     exp_avg_sq.mul_(beta2t).add_(1.0 - beta2t, update)
                     update = exp_avg_sq.rsqrt().mul_(grad)
 
-                update.div_(
-                    (self._rms(update) / group["clip_threshold"]).clamp_(
-                        min=1.0
-                    )
-                )
+                update.div_((self._rms(update) / group["clip_threshold"]).clamp_(min=1.0))
                 update.mul_(group["lr"])
 
                 if use_first_moment:
                     exp_avg = state["exp_avg"]
-                    exp_avg.mul_(group["beta1"]).add_(
-                        1 - group["beta1"], update
-                    )
+                    exp_avg.mul_(group["beta1"]).add_(1 - group["beta1"], update)
                     update = exp_avg
 
                 if group["weight_decay"] != 0:
-                    p_data_fp32.add_(
-                        -group["weight_decay"] * group["lr"], p_data_fp32
-                    )
+                    p_data_fp32.add_(-group["weight_decay"] * group["lr"], p_data_fp32)
 
                 p_data_fp32.add_(-update)
 

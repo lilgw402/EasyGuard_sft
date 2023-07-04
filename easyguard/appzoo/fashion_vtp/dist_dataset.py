@@ -1,22 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-'''
+"""
 Author: Huang Wenguan (huangwenguan@bytedance.com)
 Date: 2020-11-16 15:25:34
 LastEditTime: 2020-11-18 18:12:03
 LastEditors: Huang Wenguan
 Description: hdfs dataset
 LastModified: yangmin.priv
-'''
+"""
 
 import logging
-from typing import List, Any
-import warnings
 import random
-import torch
-from torch.utils.data import IterableDataset
+from typing import Any, List
 
-from cruise.utilities.hdfs_io import hopen, hlist_files
+import torch
+from cruise.utilities.hdfs_io import hlist_files, hopen
+from torch.utils.data import IterableDataset
 
 logger = logging.getLogger(__name__)
 
@@ -26,30 +25,32 @@ class DistLineReadingDataset(IterableDataset):  # pylint: disable=W0223
     iterate a set of folders.
     """
 
-    def __init__(self,
-                 data_path: str,
-                 rank: int = 0,
-                 world_size: int = 1,
-                 shuffle: bool = False,
-                 repeat: bool = False,
-                 verbose: bool = True):
+    def __init__(
+        self,
+        data_path: str,
+        rank: int = 0,
+        world_size: int = 1,
+        shuffle: bool = False,
+        repeat: bool = False,
+        verbose: bool = True,
+    ):
         super().__init__()
         self.shuffle = shuffle
         self.rank = rank
         self.world_size = world_size
 
-        self.files = hlist_files(data_path.split(','))
-        self.files = [f for f in self.files if f.find('_SUCCESS') < 0]
+        self.files = hlist_files(data_path.split(","))
+        self.files = [f for f in self.files if f.find("_SUCCESS") < 0]
         self.files.sort()
 
-        self.is_hdfs = data_path.startswith('hdfs')
+        self.is_hdfs = data_path.startswith("hdfs")
         self.repeat = repeat
-        logger.info(
-            '[DATA]--all dataset containing {} files.'.format(len(self.files)))
+        logger.info("[DATA]--all dataset containing {} files.".format(len(self.files)))
 
         if len(self.files) % self.world_size != 0:
-            logger.info('[DATA]--Whole dataset file num %s cannot split to worldsize %s ' %
-                     (len(self.files), self.world_size))
+            logger.info(
+                "[DATA]--Whole dataset file num %s cannot split to worldsize %s " % (len(self.files), self.world_size)
+            )
         self.verbose = verbose
 
     def generate(self, seed=42):
@@ -73,8 +74,7 @@ class DistLineReadingDataset(IterableDataset):  # pylint: disable=W0223
         if self.world_size == 1 or len(self.files) == 1:
             cur_dataloader_files = self.files
         else:
-            cur_dataloader_files = split_shard(
-                self.files, self.rank, self.world_size)
+            cur_dataloader_files = split_shard(self.files, self.rank, self.world_size)
 
         # 第二次 split：各个rank内部，将 cur_dataloader_files 按 num_workers 分。注意每个worker都会执行。
         # 每个rank的每个 worker 拿到的都是这个：cur_dataloader_files，是一样的
@@ -83,11 +83,20 @@ class DistLineReadingDataset(IterableDataset):  # pylint: disable=W0223
 
             if worker_info is not None:
                 if len(cur_dataloader_files) % worker_info.num_workers != 0 and self.verbose:
-                    logger.info('[DATA]--current dataloader [%s] file num %s cannot split to worker_num %s ' %
-                             (self.rank, len(cur_dataloader_files), worker_info.num_workers))
+                    logger.info(
+                        "[DATA]--current dataloader [%s] file num %s cannot split to worker_num %s "
+                        % (
+                            self.rank,
+                            len(cur_dataloader_files),
+                            worker_info.num_workers,
+                        )
+                    )
                 # 这里是真正做第二次split的地方， cur_worker_files 是每个worker 拿到的
                 cur_worker_files = split_shard(
-                    cur_dataloader_files, worker_info.id, worker_info.num_workers)
+                    cur_dataloader_files,
+                    worker_info.id,
+                    worker_info.num_workers,
+                )
             else:
                 # num_worker=0，只有主进程的情况
                 cur_worker_files = cur_dataloader_files
@@ -97,15 +106,16 @@ class DistLineReadingDataset(IterableDataset):  # pylint: disable=W0223
             # cur_worker_files 是每个worker拿到的结果
             if self.verbose:
                 logger.info(
-                    f"[DataLoader] --> Rank:[{self.rank}]  Workers:[{worker_info.id if worker_info else 0}] process file: {len(cur_worker_files)} :{self.get_surfix(cur_worker_files[:3])}  ..."
+                    f"[DataLoader] --> Rank:[{self.rank}]  Workers:[{worker_info.id if worker_info else 0}] "
+                    "process file: {len(cur_worker_files)} :{self.get_surfix(cur_worker_files[:3])}  ..."
                 )
             for filepath in cur_worker_files:
                 if self.is_hdfs:
-                    with hopen(filepath, 'r') as reader:
+                    with hopen(filepath, "r") as reader:
                         for line in reader:
                             yield line.decode()
                     continue
-                with open(filepath, 'r') as reader:
+                with open(filepath, "r") as reader:
                     for line in reader:
                         yield line
 
@@ -124,7 +134,7 @@ class DistLineReadingDataset(IterableDataset):  # pylint: disable=W0223
         return data
 
     def get_surfix(self, name_list):
-        return [n.split('/')[-1] for n in name_list]
+        return [n.split("/")[-1] for n in name_list]
 
 
 def split_shard(data: List[Any], shard_idx: int, shard_size: int):
@@ -133,4 +143,4 @@ def split_shard(data: List[Any], shard_idx: int, shard_size: int):
         raise RuntimeError("num:{} < shard size:{}".format(num, shard_size))
     start_idx = (num * shard_idx) // shard_size
     end_idx = (num * (shard_idx + 1)) // shard_size
-    return data[start_idx: end_idx]
+    return data[start_idx:end_idx]

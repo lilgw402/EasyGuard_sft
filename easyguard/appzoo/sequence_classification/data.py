@@ -3,8 +3,9 @@
 from typing import Any, List, Union
 
 import torch
-from easyguard import AutoTokenizer
 from torch.utils.data._utils.collate import default_collate
+
+from easyguard import AutoTokenizer
 
 try:
     import cruise
@@ -47,9 +48,9 @@ class TextPreProcessor:
             text_token[-1] = self.tokenizer.sep_token
             text_token_ids = self.tokenizer.convert_tokens_to_ids(text_token)
             text_token["input_ids"] = text_token_ids
-            text_token["attention_mask"] = [1] * len(
-                text_token_ids[: self.max_len]
-            ) + [0] * (self.max_len - len(text_token_ids))
+            text_token["attention_mask"] = [1] * len(text_token_ids[: self.max_len]) + [0] * (
+                self.max_len - len(text_token_ids)
+            )
             text_token["token_type_ids"] = [0] * self.max_len
 
         language = data_dict[self.region_key]
@@ -134,9 +135,7 @@ class SequenceClassificationData(CruiseDataModule):
                 self.hparams.max_len,
                 self.tokenizer,
             ),
-            predefined_steps=self.hparams.data_size
-            // self.hparams.train_batch_size
-            // self.trainer.world_size,
+            predefined_steps=self.hparams.data_size // self.hparams.train_batch_size // self.trainer.world_size,
             source_types=["jsonl"],
             shuffle=True,
         )

@@ -16,7 +16,6 @@
 import importlib
 import json
 import os
-from collections import OrderedDict
 from typing import Dict, Optional, Union
 
 # Build the list of all image processors
@@ -24,28 +23,17 @@ from transformers.configuration_utils import PretrainedConfig
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
 from transformers.image_processing_utils import ImageProcessingMixin
 
-from ...utils import (
-    CONFIG_NAME,
-    IMAGE_PROCESSOR_NAME,
-    get_file_from_repo,
-    logging,
-)
+from ...utils import CONFIG_NAME, IMAGE_PROCESSOR_NAME, get_file_from_repo, logging
 from . import HF_PATH
 from .auto_factory import _LazyAutoMapping
-from .configuration_auto_hf import (
-    CONFIG_MAPPING_NAMES,
-    HFAutoConfig,
-    model_type_to_module_name,
-)
+from .configuration_auto_hf import CONFIG_MAPPING_NAMES, HFAutoConfig, model_type_to_module_name
 from .image_processing_auto import IMAGE_PROCESSOR_MAPPING_NAMES
 
 logger = logging.get_logger(__name__)
 
 IMAGE_PROCESSOR_MAPPING_NAMES = IMAGE_PROCESSOR_MAPPING_NAMES
 
-IMAGE_PROCESSOR_MAPPING = _LazyAutoMapping(
-    CONFIG_MAPPING_NAMES, IMAGE_PROCESSOR_MAPPING_NAMES
-)
+IMAGE_PROCESSOR_MAPPING = _LazyAutoMapping(CONFIG_MAPPING_NAMES, IMAGE_PROCESSOR_MAPPING_NAMES)
 
 
 def image_processor_class_from_name(class_name: str):
@@ -246,44 +234,34 @@ class HFAutoImageProcessor:
         >>> # Download image processor from huggingface.co and cache.
         >>> image_processor = AutoImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
 
-        >>> # If image processor files are in a directory (e.g. image processor was saved using *save_pretrained('./test/saved_model/')*)
+        >>> # If image processor files are in a directory
+        >>> # (e.g. image processor was saved using *save_pretrained('./test/saved_model/')*)
         >>> image_processor = AutoImageProcessor.from_pretrained("./test/saved_model/")
         ```"""
         config = kwargs.pop("config", None)
         trust_remote_code = kwargs.pop("trust_remote_code", False)
         kwargs["_from_auto"] = True
 
-        config_dict, _ = ImageProcessingMixin.get_image_processor_dict(
-            pretrained_model_name_or_path, **kwargs
-        )
+        config_dict, _ = ImageProcessingMixin.get_image_processor_dict(pretrained_model_name_or_path, **kwargs)
         image_processor_class = config_dict.get("image_processor_type", None)
         image_processor_auto_map = None
         if "AutoImageProcessor" in config_dict.get("auto_map", {}):
-            image_processor_auto_map = config_dict["auto_map"][
-                "AutoImageProcessor"
-            ]
+            image_processor_auto_map = config_dict["auto_map"]["AutoImageProcessor"]
 
-        # If we still don't have the image processor class, check if we're loading from a previous feature extractor config
+        # If we still don't have the image processor class,
+        # check if we're loading from a previous feature extractor config
         # and if so, infer the image processor class from there.
         if image_processor_class is None and image_processor_auto_map is None:
-            feature_extractor_class = config_dict.pop(
-                "feature_extractor_type", None
-            )
+            feature_extractor_class = config_dict.pop("feature_extractor_type", None)
             if feature_extractor_class is not None:
                 logger.warning(
                     "Could not find image processor class in the image processor config or the model config. Loading"
                     " based on pattern matching with the model's feature extractor configuration."
                 )
-                image_processor_class = feature_extractor_class.replace(
-                    "FeatureExtractor", "ImageProcessor"
-                )
+                image_processor_class = feature_extractor_class.replace("FeatureExtractor", "ImageProcessor")
             if "AutoFeatureExtractor" in config_dict.get("auto_map", {}):
-                feature_extractor_auto_map = config_dict["auto_map"][
-                    "AutoFeatureExtractor"
-                ]
-                image_processor_auto_map = feature_extractor_auto_map.replace(
-                    "FeatureExtractor", "ImageProcessor"
-                )
+                feature_extractor_auto_map = config_dict["auto_map"]["AutoFeatureExtractor"]
+                image_processor_auto_map = feature_extractor_auto_map.replace("FeatureExtractor", "ImageProcessor")
                 logger.warning(
                     "Could not find image processor auto map in the image processor config or the model config."
                     " Loading based on pattern matching with the model's feature extractor configuration."
@@ -292,17 +270,10 @@ class HFAutoImageProcessor:
         # If we don't find the image processor class in the image processor config, let's try the model config.
         if image_processor_class is None and image_processor_auto_map is None:
             if not isinstance(config, PretrainedConfig):
-                config = HFAutoConfig.from_pretrained(
-                    pretrained_model_name_or_path, **kwargs
-                )
+                config = HFAutoConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
             # It could be in `config.image_processor_type``
-            image_processor_class = getattr(
-                config, "image_processor_type", None
-            )
-            if (
-                hasattr(config, "auto_map")
-                and "AutoImageProcessor" in config.auto_map
-            ):
+            image_processor_class = getattr(config, "image_processor_type", None)
+            if hasattr(config, "auto_map") and "AutoImageProcessor" in config.auto_map:
                 image_processor_auto_map = config.auto_map["AutoImageProcessor"]
 
         if image_processor_class is not None:
@@ -328,9 +299,7 @@ class HFAutoImageProcessor:
                     **kwargs,
                 )
             else:
-                image_processor_class = image_processor_class_from_name(
-                    image_processor_class
-                )
+                image_processor_class = image_processor_class_from_name(image_processor_class)
 
             return image_processor_class.from_dict(config_dict, **kwargs)
         # Last try: we use the IMAGE_PROCESSOR_MAPPING.

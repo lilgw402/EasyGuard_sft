@@ -1,50 +1,68 @@
-import os
-import math
 import json
+import math
+import os
 import pickle
 import random
-import requests
 import warnings
-import torch.multiprocessing as mp
+
+import requests
 import torch.distributed as dist
+import torch.multiprocessing as mp
 from torch.distributed.distributed_c10d import all_gather_object, barrier, broadcast_object_list
 from torch.utils.data import _utils
+
 try:
     from torch.utils.data.dataloader import BytedDataLoader as DataLoader
 except ImportError:
-    warnings.warn('Unable to import BytedDataLoader from byted-torch, '
-                  'some dataloading acceleration option is disabled')
+    warnings.warn(
+        "Unable to import BytedDataLoader from byted-torch, " "some dataloading acceleration option is disabled"
+    )
     from torch.utils.data import DataLoader
-from typing import Callable, List, Optional, Union, Dict
+
+from typing import Callable, Dict, List, Optional, Union
+
 from cruise.data_module import hdfs_utils
-from cruise.data_module.utils import LazyLoader, tf_hdfs_init
-from .hybrid_dataset import HybridDataset
-# from cruise.data_module.hybrid_dataset import HybridDataset
-from cruise.data_module.gpu_wrapper import GPULoader
-from cruise.data_module.cruise_parquet_dataset import get_hdfs_host, get_hdfs_block_size, pf, get_parquet_length as get_parquet_length_single
+from cruise.data_module.cruise_kv_dataset import download_kv_index_file
+from cruise.data_module.cruise_kv_dataset import get_kv_keys as get_kv_keys_base
+from cruise.data_module.cruise_parquet_dataset import get_hdfs_block_size, get_hdfs_host
+from cruise.data_module.cruise_parquet_dataset import get_parquet_length as get_parquet_length_single
+from cruise.data_module.cruise_parquet_dataset import pf
 from cruise.data_module.cruise_tfidx_dataset import get_tfrecord_length as get_tfrecord_length_by_idx
 from cruise.data_module.cruise_tfrecord_dataset import get_tfrecord_length
-from cruise.data_module.cruise_kv_dataset import get_kv_keys as get_kv_keys_base
-from cruise.data_module.cruise_kv_dataset import download_kv_index_file
-from cruise.data_module.utils import get_dataset_size, get_free_disk_space, download_hdfs_data, tf_sample_sharding_is_enabled
-from cruise.data_module.utils import use_native_hdfs, set_native_hdfs_security_permission
-from cruise.data_module.utils import query_files_length_from_rh2, update_file_lengths_to_rh2
-from cruise.utilities.report_usage import report_usage
+
+# from cruise.data_module.hybrid_dataset import HybridDataset
+from cruise.data_module.gpu_wrapper import GPULoader
+from cruise.data_module.utils import (
+    LazyLoader,
+    download_hdfs_data,
+    get_dataset_size,
+    get_free_disk_space,
+    query_files_length_from_rh2,
+    set_native_hdfs_security_permission,
+    tf_hdfs_init,
+    tf_sample_sharding_is_enabled,
+    update_file_lengths_to_rh2,
+    use_native_hdfs,
+)
 from cruise.utilities.rank_zero import once_only
-tf = LazyLoader('tf', globals(), 'tensorflow')
-pq = LazyLoader('pq', globals(), 'pyarrow.parquet')
-byted_dataloader = LazyLoader('dataloader', globals(), 'dataloader')
+from cruise.utilities.report_usage import report_usage
+
+from .hybrid_dataset import HybridDataset
+
+tf = LazyLoader("tf", globals(), "tensorflow")
+pq = LazyLoader("pq", globals(), "pyarrow.parquet")
+byted_dataloader = LazyLoader("dataloader", globals(), "dataloader")
 
 parquet_ds_length_info = dict()
 kv_ds_length_info = dict()
 
 
-__all__ = ['DistributedCruiseDataLoader']
+__all__ = ["DistributedCruiseDataLoader"]
 
 
 @once_only
 def report_data_module():
-    report_usage('data_module')
+    report_usage("data_module")
 
 
 def get_rank():
@@ -98,38 +116,38 @@ def get_pickle_length(urls):
 # This is an easy way for detecting source type
 def detect_source_type(data_source):
     file_example = data_source[0]
-    if 'parquet' in file_example:
-        return 'parquet'
-    if 'tfrecord' in file_example:
-        return 'tfrecord'
+    if "parquet" in file_example:
+        return "parquet"
+    if "tfrecord" in file_example:
+        return "tfrecord"
     key = get_kv_keys(file_example)
     if key:
-        return 'kv'
+        return "kv"
     else:
-        return 'jsonl'
+        return "jsonl"
 
 
 def get_files_length(urls, file_type):
     rst = []
-    if file_type == 'parquet':
+    if file_type == "parquet":
         return get_parquet_length(urls)
-    elif file_type == 'tfrecord':
+    elif file_type == "tfrecord":
         rst = get_tfrecord_length(urls)
-    elif file_type == 'kv':
+    elif file_type == "kv":
         for url in urls:
             rst.append(get_kv_length(url))
-    elif file_type == 'jsonl':
+    elif file_type == "jsonl":
         for url in urls:
             length = 0
             with hdfs_utils.hdfs_open(url) as f:
                 for _ in f:
                     length += 1
             rst.append(length)
-    elif file_type == 'tfidx':
+    elif file_type == "tfidx":
         for url in urls:
             rst.append(get_tfrecord_length_by_idx(url))
     else:
-        raise RuntimeError(f'not supported type: {file_type}')
+        raise RuntimeError(f"not supported type: {file_type}")
 
     return rst
 
@@ -152,7 +170,7 @@ def get_parquet_length(urls):
         post_len_list = []
         for url, length in zip(need_length, new_res):
             parquet_ds_length_info[url] = length
-            post_len_list.append({'hdfs_file': url, 'samples': length})
+            post_len_list.append({"hdfs_file": url, "samples": length})
         update_file_lengths_to_rh2(post_len_list)
     res = [parquet_ds_length_info[i] for i in urls]
     return res
@@ -182,7 +200,7 @@ def get_length_from_sources(data_source, data_type, dist_flag=True):
     for url, length in zip(no_cache_files, new_res):
         files_name.append(url)
         files_len.append(length)
-        post_len_list.append({'hdfs_file': url, 'samples': length})
+        post_len_list.append({"hdfs_file": url, "samples": length})
 
     if post_len_list:
         update_file_lengths_to_rh2(post_len_list)
@@ -207,12 +225,26 @@ def get_length_from_sources(data_source, data_type, dist_flag=True):
     return sum(total_lens), meta
 
 
-def shard_source(source, rank, world, num_workers, source_type, source_meta, drop_last=True, length=-1, batch_size=-1):
+def shard_source(
+    source,
+    rank,
+    world,
+    num_workers,
+    source_type,
+    source_meta,
+    drop_last=True,
+    length=-1,
+    batch_size=-1,
+):
     if num_workers == 0:
         num_workers = 1
-    if source_type == 'kv':
+    if source_type == "kv":
         # since kv dataset would handle the sharding between num workers by itself, here we set num_worker = 1
-        return shard_source_by_sample(source, rank, world, 1, source_meta, source_type, drop_last), 0, 1
+        return (
+            shard_source_by_sample(source, rank, world, 1, source_meta, source_type, drop_last),
+            0,
+            1,
+        )
     # use sample sharding for all parquet dataset
     elif source_type == "parquet" or (source_type == "tfrecord" and tf_sample_sharding_is_enabled()):
         res = []
@@ -231,13 +263,28 @@ def shard_source(source, rank, world, num_workers, source_type, source_meta, dro
             # each gpu's dataloading processes would see data from different data sources
             # while if we choose method 2, each gpu's dataloading processes would see
             # data from single or conjunctive datasets
-            res.append(shard_source_by_sample(source, rank + i * world, world, num_workers, source_meta,
-                                              source_type, drop_last, batch_size, length))
+            res.append(
+                shard_source_by_sample(
+                    source,
+                    rank + i * world,
+                    world,
+                    num_workers,
+                    source_meta,
+                    source_type,
+                    drop_last,
+                    batch_size,
+                    length,
+                )
+            )
         return res, 0, 1
     elif source_type == "tfidx":
         if not source_meta:
             source_meta = [get_tfrecord_length_by_idx(url) for url in source]
-        return shard_source_by_sample(source, rank, world, 1, source_meta, source_type, drop_last), 0, 1
+        return (
+            shard_source_by_sample(source, rank, world, 1, source_meta, source_type, drop_last),
+            0,
+            1,
+        )
     # length=-1 means reading over all the data only once, thus we need to
     # apply the sample sharding here to make the data evenly sharded
     elif source_type == "tfrecord" and length == -1:
@@ -251,8 +298,17 @@ def shard_source(source, rank, world, num_workers, source_type, source_meta, dro
         return source[rank::world], 0, 1
 
 
-def shard_source_by_sample(source, rank, world, num_workers, source_lens, src_type="kv",
-                           drop_last=True, batch_size=-1, target_step=-1):
+def shard_source_by_sample(
+    source,
+    rank,
+    world,
+    num_workers,
+    source_lens,
+    src_type="kv",
+    drop_last=True,
+    batch_size=-1,
+    target_step=-1,
+):
     if not source_lens:
         source_lens = []
         if src_type == "kv":
@@ -352,54 +408,55 @@ class DistributedCruiseDataLoader:
                 i.e Parquet Dataset or TFRecord Dataset, these Datasets will open a sample buffer to shuffle data,
                 the size of that sample buffer is equal to `shuffle_buffer_size`.
             dyn_bsz(bool, default=False): whether to use dynamic batchsize to fully utilize mem.
-            dyn_bsz_margin (float, default=0.0): determine when the collection of batch is done. Larger dyn_bsz_margin, the more mem is consumed and more data is sampled into the batch. 
+            dyn_bsz_margin (float, default=0.0): determine when the collection of batch is done. Larger dyn_bsz_margin, the more mem is consumed and more data is sampled into the batch.
 
     """
 
-    def __init__(self,
-                 data_sources: List[List],
-                 keys_or_columns: List[List[str]],
-                 batch_sizes: List,
-                 num_workers: int,
-                 num_readers: Optional[Union[int, List[int]]],
-                 decode_fn_list: List[Callable],
-                 processor,
-                 predefined_steps: Union[int, str] = None,
-                 source_types: Optional[List[str]] = None,
-                 seed=0,
-                 last_step: int = 0,
-                 kv_loader_state: Dict = {},
-                 shuffle: bool = False,
-                 task_id_list: List = [],
-                 use_gpu: bool = False,
-                 enable_borrower: bool = False,
-                 multiplex_weights: list = [],
-                 use_all_gather: bool = False,
-                 remain_sample_idx: bool = False,
-                 transform_output_many: bool = False,
-                 drop_last: bool = True,
-                 key_mapping: List[Dict] = None,
-                 local_fetch_path: str = None,
-                 pin_memory: bool = True,
-                 parquet_cache_on: bool = True,
-                 use_arnold: bool = True,
-                 no_sharding: bool = False,
-                 shuffle_buffer_size: int = 100,
-                 synthetic_sample: bool = False,
-                 synthetic_batch: bool = False,
-                 fast_resume: bool = False,
-                 dyn_bsz: bool = False,
-                 dyn_bsz_margin: float = 0.0,
-                 num_warmup_steps: int = -1,
-                 **kwargs):
-
+    def __init__(
+        self,
+        data_sources: List[List],
+        keys_or_columns: List[List[str]],
+        batch_sizes: List,
+        num_workers: int,
+        num_readers: Optional[Union[int, List[int]]],
+        decode_fn_list: List[Callable],
+        processor,
+        predefined_steps: Union[int, str] = None,
+        source_types: Optional[List[str]] = None,
+        seed=0,
+        last_step: int = 0,
+        kv_loader_state: Dict = {},
+        shuffle: bool = False,
+        task_id_list: List = [],
+        use_gpu: bool = False,
+        enable_borrower: bool = False,
+        multiplex_weights: list = [],
+        use_all_gather: bool = False,
+        remain_sample_idx: bool = False,
+        transform_output_many: bool = False,
+        drop_last: bool = True,
+        key_mapping: List[Dict] = None,
+        local_fetch_path: str = None,
+        pin_memory: bool = True,
+        parquet_cache_on: bool = True,
+        use_arnold: bool = True,
+        no_sharding: bool = False,
+        shuffle_buffer_size: int = 100,
+        synthetic_sample: bool = False,
+        synthetic_batch: bool = False,
+        fast_resume: bool = False,
+        dyn_bsz: bool = False,
+        dyn_bsz_margin: float = 0.0,
+        num_warmup_steps: int = -1,
+        **kwargs,
+    ):
         report_data_module()
 
         self.data_sources = data_sources
         if not task_id_list:
             self.task_id_list = [None for _ in data_sources]
         else:
-            assert len(task_id_list) == len(data_sources), 'task_id_list should have equal length as data_sources'
+            assert len(task_id_list) == len(data_sources), "task_id_list should have equal length as data_sources"
             self.task_id_list = task_id_list
         self.batch_sizes = batch_sizes
         self.num_workers = num_workers
@@ -448,7 +505,7 @@ class DistributedCruiseDataLoader:
         self.use_gpu = use_gpu
         self.transform_fn = processor.transform
         self.batch_transform_fn = processor.batch_transform
-        self.post_process = getattr(processor, 'post_transform', None)
+        self.post_process = getattr(processor, "post_transform", None)
         self.processor = processor
         self.decode_fn = decode_fn_list
         # only used for arnold dataset
@@ -465,8 +522,8 @@ class DistributedCruiseDataLoader:
                 if not each:
                     self.key_mapping.append({})
                     continue
-                num_keys = len(each['previous'])
-                mappings = {each['previous'][i]: each['current'][i] for i in range(num_keys)}
+                num_keys = len(each["previous"])
+                mappings = {each["previous"][i]: each["current"][i] for i in range(num_keys)}
                 self.key_mapping.append(mappings)
         else:
             self.key_mapping = [None] * len(self.data_sources)
@@ -481,8 +538,8 @@ class DistributedCruiseDataLoader:
             for i, data_source in enumerate(data_sources):
                 for dataset in data_source:
                     ds_total_size += get_dataset_size(dataset, self.source_types[i])
-            available = get_free_disk_space('/opt/tiger')
-            if available * 0.5 > ds_total_size / 1024 ** 3:
+            available = get_free_disk_space("/opt/tiger")
+            if available * 0.5 > ds_total_size / 1024**3:
                 dataset_mappings = download_hdfs_data(data_sources, source_types, local_fetch_path)
                 barrier()
                 local_fetch_success = True
@@ -494,8 +551,9 @@ class DistributedCruiseDataLoader:
         if int(os.getenv("CRUISE_LOADER_USE_ARNOLD_DATASET", "1")) and not local_fetch_success and use_arnold:
             self.kv_source_idx = [i for i in range(len(self.data_sources)) if self.source_types[i] == "kv"]
             self.iter_source_idx = [i for i in range(len(self.data_sources)) if self.source_types[i] != "kv"]
-            self.key_mapping = [self.key_mapping[i]
-                                for i in range(len(self.data_sources)) if self.source_types[i] != "kv"]
+            self.key_mapping = [
+                self.key_mapping[i] for i in range(len(self.data_sources)) if self.source_types[i] != "kv"
+            ]
         else:
             self.kv_source_idx = []
             self.iter_source_idx = list(range(len(self.data_sources)))
@@ -542,16 +600,40 @@ class DistributedCruiseDataLoader:
         triplet_p = self.kwargs.get("triplet_p", 1)
         triplet_k = self.kwargs.get("triplet_k", 1)
         from .arnold_dataset import ArnoldDataset
+
         size_guarantee = not self.shuffle
         self.kv_loader = ArnoldDataset(
-            kv_sources, kv_batch_sizes, kv_task_id_list, self.num_workers, kv_num_readers,
-            world_size=self.world, rank=self.rank, shuffle=self.shuffle, return_keys=kv_return_keys,
-            decode_fn=kv_decode_fn, trans_fn=(self.transform_fn, self.batch_transform_fn, self.post_process),
-            dataset_split_num=kv_ds_split_num, pin_memory=self.pin_memory, epochs_for_reader=kv_epochs_for_reader,
-            remain_sample_idx=self.remain_sample_idx, resume_state=self.kv_loader_state,
+            kv_sources,
+            kv_batch_sizes,
+            kv_task_id_list,
+            self.num_workers,
+            kv_num_readers,
+            world_size=self.world,
+            rank=self.rank,
+            shuffle=self.shuffle,
+            return_keys=kv_return_keys,
+            decode_fn=kv_decode_fn,
+            trans_fn=(
+                self.transform_fn,
+                self.batch_transform_fn,
+                self.post_process,
+            ),
+            dataset_split_num=kv_ds_split_num,
+            pin_memory=self.pin_memory,
+            epochs_for_reader=kv_epochs_for_reader,
+            remain_sample_idx=self.remain_sample_idx,
+            resume_state=self.kv_loader_state,
             transform_replace_all=self.transform_replace_all,
-            triplet_info=(triplet_sampling, triplet_meta_dict_path, triplet_meta_dict_format, triplet_p, triplet_k),
-            size_guarantee=size_guarantee, synthetic_sample=self.synthetic_sample, transform_many=self.transform_output_many
+            triplet_info=(
+                triplet_sampling,
+                triplet_meta_dict_path,
+                triplet_meta_dict_format,
+                triplet_p,
+                triplet_k,
+            ),
+            size_guarantee=size_guarantee,
+            synthetic_sample=self.synthetic_sample,
+            transform_many=self.transform_output_many,
         )
 
     def _create_iter_loader(self):
@@ -564,24 +646,49 @@ class DistributedCruiseDataLoader:
         iter_task_id_list = [self.task_id_list[i] for i in self.iter_source_idx]
         iter_return_keys = None if not self.return_keys else [self.return_keys[i] for i in self.iter_source_idx]
         iter_decode_fn = None if not self.decode_fn else [self.decode_fn[i] for i in self.iter_source_idx]
-        iter_multiplex_weights = [] if not self.multiplex_weights else [self.multiplex_weights[i] for i in self.iter_source_idx]
+        iter_multiplex_weights = (
+            [] if not self.multiplex_weights else [self.multiplex_weights[i] for i in self.iter_source_idx]
+        )
         if iter_multiplex_weights:  # normalize the probability to make them sum to 1
             weight_sum = sum(iter_multiplex_weights)
             iter_multiplex_weights = [i / weight_sum for i in iter_multiplex_weights]
         batch_shuffle = self.kwargs.get("batch_shuffle", False)
-        iter_dataset = HybridDataset(iter_sources, iter_source_types, iter_batch_sizes, iter_num_readers,
-                                     iter_return_keys, iter_decode_fn,
-                                     (self.transform_fn, self.batch_transform_fn, self.post_process),
-                                     self.shuffle, self.seed, self.step,
-                                     shard_rank_info=iter_shard_rank_info, task_id_list=iter_task_id_list,
-                                     multiplex_weights=iter_multiplex_weights, remain_sample_idx=self.remain_sample_idx,
-                                     repeat=self.repeat, stop_queue=self.stop_queue, key_mapping_list=self.key_mapping,
-                                     drop_last=self.drop_last, batch_shuffle=batch_shuffle,
-                                     parquet_cache_on=self.parquet_cache_on, shuffle_buffer_size=self.shuffle_buffer_size,
-                                     fast_resume=self.fast_resume, synthetic_sample=self.synthetic_sample,
-                                     transform_many=self.transform_output_many, dyn_bsz=self.dyn_bsz, dyn_bsz_margin=self.dyn_bsz_margin, num_warmup_steps=self.num_warmup_steps)
-        torch_loader = DataLoader(iter_dataset, num_workers=self.num_workers, collate_fn=simple_collate,
-                                  batch_size=None, pin_memory=self.pin_memory)
+        iter_dataset = HybridDataset(
+            iter_sources,
+            iter_source_types,
+            iter_batch_sizes,
+            iter_num_readers,
+            iter_return_keys,
+            iter_decode_fn,
+            (self.transform_fn, self.batch_transform_fn, self.post_process),
+            self.shuffle,
+            self.seed,
+            self.step,
+            shard_rank_info=iter_shard_rank_info,
+            task_id_list=iter_task_id_list,
+            multiplex_weights=iter_multiplex_weights,
+            remain_sample_idx=self.remain_sample_idx,
+            repeat=self.repeat,
+            stop_queue=self.stop_queue,
+            key_mapping_list=self.key_mapping,
+            drop_last=self.drop_last,
+            batch_shuffle=batch_shuffle,
+            parquet_cache_on=self.parquet_cache_on,
+            shuffle_buffer_size=self.shuffle_buffer_size,
+            fast_resume=self.fast_resume,
+            synthetic_sample=self.synthetic_sample,
+            transform_many=self.transform_output_many,
+            dyn_bsz=self.dyn_bsz,
+            dyn_bsz_margin=self.dyn_bsz_margin,
+            num_warmup_steps=self.num_warmup_steps,
+        )
+        torch_loader = DataLoader(
+            iter_dataset,
+            num_workers=self.num_workers,
+            collate_fn=simple_collate,
+            batch_size=None,
+            pin_memory=self.pin_memory,
+        )
         if self.enable_borrower and hasattr(torch_loader, "_enable_borrower"):
             torch_loader.enable_borrower()
         return torch_loader
@@ -670,8 +777,8 @@ class DistributedCruiseDataLoader:
         # otherwise, the recorded step count might be larger than the actual iterated step
         try:
             if self.synthetic_batch and hasattr(self, "_first_batch"):
-            # get the first batch of data only, data will not be processed/transformed
-                    data = self._first_batch
+                # get the first batch of data only, data will not be processed/transformed
+                data = self._first_batch
             else:
                 data = self._get_data_from_loaders()
                 if not hasattr(self, "_first_batch"):
@@ -693,14 +800,24 @@ class DistributedCruiseDataLoader:
         shard_data = []
         shard_rank_info = []
         for i, data_source in enumerate(self.data_sources):
-            if self.source_types[i] == "kv" and self.kv_source_idx:  # kv type data would use arnold dataset to loader data
+            if (
+                self.source_types[i] == "kv" and self.kv_source_idx
+            ):  # kv type data would use arnold dataset to loader data
                 shard_data.append(None)
                 shard_rank_info.append((0, 0))
             else:
                 source_meta = self.source_meta[i] if self.source_meta else None
                 source_data, shard_rank, shard_world = shard_source(
-                    data_source, self.rank, self.world, self.num_workers, self.source_types[i],
-                    source_meta, self.drop_last, self.length, self.batch_sizes[i])
+                    data_source,
+                    self.rank,
+                    self.world,
+                    self.num_workers,
+                    self.source_types[i],
+                    source_meta,
+                    self.drop_last,
+                    self.length,
+                    self.batch_sizes[i],
+                )
                 shard_data.append(source_data)
                 shard_rank_info.append((shard_rank, shard_world))
         return shard_data, shard_rank_info
@@ -732,8 +849,7 @@ class DistributedCruiseDataLoader:
                     batch_per_procs = [(i + self.batch_sizes[k] - 1) // self.batch_sizes[k] for i in data_per_procs]
                     num_steps.append(sum(batch_per_procs))
 
-
-            if predefined_steps == 'min':
+            if predefined_steps == "min":
                 return min(num_steps)
             else:
                 return max(num_steps)
@@ -748,16 +864,21 @@ class DistributedCruiseDataLoader:
         if isinstance(meta_dict_path, str):
             meta_dict_path = [meta_dict_path]
         category_num = 0
-        if meta_dict_format == 'kv':
+        if meta_dict_format == "kv":
             for path in meta_dict_path:
                 keys = get_kv_keys(path)
                 category_num += len(keys)
-        elif meta_dict_format == 'pickle':
+        elif meta_dict_format == "pickle":
             ctx = mp.get_context("spawn")
             with ctx.Pool(1) as p:
-                category_num = p.map(get_pickle_length, [meta_dict_path, ])[0]
+                category_num = p.map(
+                    get_pickle_length,
+                    [
+                        meta_dict_path,
+                    ],
+                )[0]
         else:
-            raise RuntimeError('triplet dataset format must be kv or pickle, please check the input')
+            raise RuntimeError("triplet dataset format must be kv or pickle, please check the input")
 
         if self.drop_last:
             return category_num // (batch_category * self.world)
@@ -811,7 +932,7 @@ class DistributedCruiseDataLoader:
         self.torch_loader = None
         self.transform_fn = self.processor.transform
         self.batch_transform_fn = self.processor.batch_transform
-        self.post_process = getattr(self.processor, 'post_transform', None)
+        self.post_process = getattr(self.processor, "post_transform", None)
         if self.kv_source_idx:
             self._create_kv_loader()
         self.resume = True
@@ -847,7 +968,7 @@ class DistributedCruiseDataLoader:
         if not self.torch_iter._shutdown:
             self.torch_iter._shutdown = True
             try:
-                if hasattr(self.torch_iter, '_pin_memory_thread'):
+                if hasattr(self.torch_iter, "_pin_memory_thread"):
                     self.torch_iter._pin_memory_thread_done_event.set()
                     self.torch_iter._worker_result_queue.put((None, None))
                     self.torch_iter._pin_memory_thread.join()

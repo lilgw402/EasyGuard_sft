@@ -16,9 +16,7 @@ from .logging import get_logger
 
 logger = get_logger(__name__)
 
-HADOOP_BIN = (
-    "HADOOP_ROOT_LOGGER=ERROR,console /opt/tiger/yarn_deploy/hadoop/bin/hdfs"
-)
+HADOOP_BIN = "HADOOP_ROOT_LOGGER=ERROR,console /opt/tiger/yarn_deploy/hadoop/bin/hdfs"
 
 __all__ = [
     "hlist_files",
@@ -113,9 +111,7 @@ def hlist_files(folders: List[str]) -> List[str]:
             pipe.wait()
         else:
             if os.path.isdir(folder):
-                files.extend(
-                    [os.path.join(folder, d) for d in os.listdir(folder)]
-                )
+                files.extend([os.path.join(folder, d) for d in os.listdir(folder)])
             elif os.path.isfile(folder):
                 files.append(folder)
             else:
@@ -127,21 +123,15 @@ def hlist_files(folders: List[str]) -> List[str]:
 def hexists(file_path: str) -> bool:
     """hdfs capable to check whether a file_path is exists"""
     if file_path.startswith("hdfs"):
-        return (
-            os.system("{} dfs -test -e {}".format(HADOOP_BIN, file_path)) == 0
-        )
+        return os.system("{} dfs -test -e {}".format(HADOOP_BIN, file_path)) == 0
     return os.path.exists(file_path)
 
 
 def hisdir(file_path: str) -> bool:
     """hdfs capable to check whether a file_path is a dir"""
     if file_path.startswith("hdfs"):
-        flag1 = os.system(
-            "{} dfs -test -e {}".format(HADOOP_BIN, file_path)
-        )  # 0:路径存在
-        flag2 = os.system(
-            "{} dfs -test -f {}".format(HADOOP_BIN, file_path)
-        )  # 0:是文件 1:不是文件
+        flag1 = os.system("{} dfs -test -e {}".format(HADOOP_BIN, file_path))  # 0:路径存在
+        flag2 = os.system("{} dfs -test -f {}".format(HADOOP_BIN, file_path))  # 0:是文件 1:不是文件
         flag = (flag1 == 0) and (flag2 == 1)
         return flag
     return os.path.isdir(file_path)
@@ -160,20 +150,12 @@ def hcopy(from_path: str, to_path: str) -> bool:
     """hdfs copy"""
     if to_path.startswith("hdfs"):
         if from_path.startswith("hdfs"):
-            os.system(
-                "{} dfs -cp -f {} {}".format(HADOOP_BIN, from_path, to_path)
-            )
+            os.system("{} dfs -cp -f {} {}".format(HADOOP_BIN, from_path, to_path))
         else:
-            os.system(
-                "{} dfs -copyFromLocal -f {} {}".format(
-                    HADOOP_BIN, from_path, to_path
-                )
-            )
+            os.system("{} dfs -copyFromLocal -f {} {}".format(HADOOP_BIN, from_path, to_path))
     else:
         if from_path.startswith("hdfs"):
-            os.system(
-                "{} dfs -text {} > {}".format(HADOOP_BIN, from_path, to_path)
-            )
+            os.system("{} dfs -text {} > {}".format(HADOOP_BIN, from_path, to_path))
         else:
             shutil.copy(from_path, to_path)
     return True
@@ -265,9 +247,7 @@ def fetch_file_from_hdfs(file_path, dir_path="/tmp"):
     """
 
     def random_string(length):
-        salt = "".join(
-            random.sample(string.ascii_letters + string.digits, length)
-        )
+        salt = "".join(random.sample(string.ascii_letters + string.digits, length))
         return salt
 
     if file_path.startswith("hdfs"):

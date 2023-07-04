@@ -1,24 +1,37 @@
 import logging
-import torch
-from typing import Dict, Any
+
 import cruise as crs
+import torch
 
 try:
     import deepspeed
 except ImportError:
     deepspeed = None
 
+
 class TokenCheckpointHook:
+    def on_load_checkpoint(
+        self,
+        trainer: "crs.CruiseTrainer",
+        model: "crs.CruiseModule",
+        *args,
+        **kwargs,
+    ) -> None:
+        checkpoint = kwargs["checkpoint"]
+        model.average_token_rate = checkpoint.get("average_token_rate", 0.95)
+        model.consume_tokens = checkpoint.get("consume_tokens", 0)
 
-    def on_load_checkpoint(self, trainer: "crs.CruiseTrainer", model: "crs.CruiseModule", *args, **kwargs) -> None:
-        checkpoint = kwargs['checkpoint']
-        model.average_token_rate = checkpoint.get('average_token_rate', 0.95)
-        model.consume_tokens = checkpoint.get('consume_tokens', 0)
+    def on_save_checkpoint(
+        self,
+        trainer: "crs.CruiseTrainer",
+        model: "crs.CruiseModule",
+        *args,
+        **kwargs,
+    ) -> None:
+        checkpoint = kwargs["checkpoint"]
+        checkpoint["average_token_rate"] = model.average_token_rate
+        checkpoint["consume_tokens"] = model.consume_tokens
 
-    def on_save_checkpoint(self, trainer: "crs.CruiseTrainer", model: "crs.CruiseModule", *args, **kwargs) -> None:
-        checkpoint = kwargs['checkpoint']
-        checkpoint['average_token_rate'] = model.average_token_rate
-        checkpoint['consume_tokens'] = model.consume_tokens
 
 def load_zero3_state_dict(state_dict, module, metadata, error_msgs, prefix="", verbose=False):
     if deepspeed is None:
@@ -34,13 +47,22 @@ def load_zero3_state_dict(state_dict, module, metadata, error_msgs, prefix="", v
     for name, child in module._modules.items():
         if child is not None:
             if verbose:
-                logging.info(f'Loading {prefix + name + "."}, param count: {sum(param.numel() for param in child.parameters())}')
-            load_zero3_state_dict(state_dict, child, metadata, error_msgs, prefix=prefix + name + ".", verbose=verbose)
+                logging.info(
+                    f'Loading {prefix + name + "."}, param count: {sum(param.numel() for param in child.parameters())}'
+                )
+            load_zero3_state_dict(
+                state_dict,
+                child,
+                metadata,
+                error_msgs,
+                prefix=prefix + name + ".",
+                verbose=verbose,
+            )
 
 
 def is_zero3(cfg):
     try:
-        level = cfg['trainer']['accelerator_kwargs']['ds_config']['zero_optimization']['stage']
+        level = cfg["trainer"]["accelerator_kwargs"]["ds_config"]["zero_optimization"]["stage"]
         return level == 3
     except Exception:
         return False

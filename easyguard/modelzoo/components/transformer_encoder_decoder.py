@@ -232,9 +232,7 @@ class TransformerConfig:
         if self.p_drop_hidden2 is None:
             self.p_drop_hidden2 = self.p_drop_hidden
         self.head_dim = self.dim // self.n_heads
-        assert (
-            self.dim % self.n_heads == 0
-        ), f"`dim` must be divisible by `n_heads` (got {self.dim}/{self.n_heads})."
+        assert self.dim % self.n_heads == 0, f"`dim` must be divisible by `n_heads` (got {self.dim}/{self.n_heads})."
 
         if self.use_ft_preset != "":
             raise NotImplementedError("use_ft_preset is not supported in titan")
@@ -252,9 +250,7 @@ Config = TransformerConfig
 
 
 @torch.jit.script
-def hack_torch_trace(
-    a: torch.Tensor, b: Optional[torch.Tensor] = None
-) -> torch.Tensor:
+def hack_torch_trace(a: torch.Tensor, b: Optional[torch.Tensor] = None) -> torch.Tensor:
     if b is None:
         return a
     return a + b
@@ -274,9 +270,7 @@ def _expand_mask(
     bsz, src_len = mask.size()
     tgt_len = tgt_len if tgt_len is not None else src_len
 
-    expanded_mask = (
-        mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
-    )
+    expanded_mask = mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
     inverted_mask = 1.0 - expanded_mask
     if mask_value is None:
         mask_value = torch.finfo(dtype).min
@@ -303,9 +297,7 @@ def _fx_multi_head_attention_mask_score(mask, scores):
 
 
 class BareMultiHeadAttention(nn.Module):
-    def __init__(
-        self, config: TransformerConfig, is_decoder: bool = False, **kwargs
-    ):
+    def __init__(self, config: TransformerConfig, is_decoder: bool = False, **kwargs):
         super().__init__()
         if isinstance(config, dict):
             config = TransformerConfig(**config)
@@ -398,9 +390,7 @@ class BareTransformerEncoderLayer(nn.Module):
 
         self.attn = self.attention_class(config)
         self.proj = nn.Linear(config.dim, config.dim)
-        self.norm1 = LayerNormTypes[config.layernorm_type](
-            config.dim, config.layer_norm_eps
-        )
+        self.norm1 = LayerNormTypes[config.layernorm_type](config.dim, config.layer_norm_eps)
         self.pwff = PositionWiseFeedForward(config)
         if (
             config.use_moe
@@ -426,9 +416,7 @@ class BareTransformerEncoderLayer(nn.Module):
             )
         else:
             self._use_moe = False
-        self.norm2 = LayerNormTypes[config.layernorm_type](
-            config.dim, config.layer_norm_eps
-        )
+        self.norm2 = LayerNormTypes[config.layernorm_type](config.dim, config.layer_norm_eps)
         self.dropout1 = nn.Dropout(config.p_drop_hidden)
         self.dropout2 = nn.Dropout(config.p_drop_hidden2)
 
@@ -444,9 +432,7 @@ class BareTransformerEncoderLayer(nn.Module):
     ) -> torch.Tensor:
         # Multi-Head Self-Attention
         residual = hidden_states if q_state is None else q_state
-        self_attn_output = self.attn(
-            hidden_states, attn_mask=attn_mask, q_state=q_state
-        )
+        self_attn_output = self.attn(hidden_states, attn_mask=attn_mask, q_state=q_state)
         hidden_states = self.proj(self_attn_output)
         hidden_states = self.dropout1(hidden_states)
         hidden_states = residual + hidden_states
@@ -479,24 +465,16 @@ class BareTransformerEncoder(nn.Module):
             config = TransformerConfig(**config)
         self.config = config
         self.dim = self.config.dim
-        self.blocks = nn.ModuleList(
-            [self.layer_class(config, order=i) for i in range(config.n_layers)]
-        )
+        self.blocks = nn.ModuleList([self.layer_class(config, order=i) for i in range(config.n_layers)])
         self.l_aux = list()
 
-    def forward(
-        self, hidden_states, attn_mask=None, use_namedtuple_output=False
-    ) -> List[torch.Tensor]:
+    def forward(self, hidden_states, attn_mask=None, use_namedtuple_output=False) -> List[torch.Tensor]:
         """
         Args:
             hidden_states: shape (bsz, seq_len, dim); embeddings
             attn_mask: shape (bsz, seq_len); Mask to avoid performing attention on padding token indices;
         """
-        attn_mask_expanded = (
-            _expand_mask(attn_mask, hidden_states.dtype)
-            if attn_mask.dim() != 4
-            else attn_mask
-        )
+        attn_mask_expanded = _expand_mask(attn_mask, hidden_states.dtype) if attn_mask.dim() != 4 else attn_mask
 
         all_hidden_states = [hidden_states]
 
@@ -546,16 +524,8 @@ class PositionWiseFeedForward(nn.Module):
                 fc1_kwargs["use_ft"] = True
                 fc2_kwargs["use_ft"] = True
             if self.config.use_ft_ffn_linear_fusion:
-                fc1_dropout = (
-                    0.0
-                    if not self.config.dropout_in_ffn
-                    else config.p_drop_hidden
-                )
-                fc2_dropout = (
-                    0.0
-                    if not self.config.use_ffn_output_dropout
-                    else config.p_drop_hidden
-                )
+                fc1_dropout = 0.0 if not self.config.dropout_in_ffn else config.p_drop_hidden
+                fc2_dropout = 0.0 if not self.config.use_ffn_output_dropout else config.p_drop_hidden
                 fc1_kwargs["act_gelu"] = True
                 fc1_kwargs["dropout_rate"] = fc1_dropout
                 fc2_kwargs["dropout_rate"] = fc2_dropout
@@ -573,9 +543,7 @@ class PositionWiseFeedForward(nn.Module):
             self.fc1 = nn.Linear(config.dim, config.dim_ff)
             self.fc2 = nn.Linear(config.dim_ff, config.dim)
         self.act = Activation(config.act)
-        self.dropout = nn.Dropout(
-            config.p_drop_hidden
-        )  # TODO: Is this dropout redundant?
+        self.dropout = nn.Dropout(config.p_drop_hidden)  # TODO: Is this dropout redundant?
 
     def forward(self, x) -> torch.Tensor:
         # (bsz, seq_len, dim) -> (bsz, seq_len, dim_ff / model_parallel_size) -> (bsz, seq_len, dim)
@@ -623,9 +591,7 @@ class MultiHeadAttention(nn.Module):
     https://arxiv.org/abs/1706.03762
     """
 
-    def __init__(
-        self, config: Config, is_decoder: bool = False, order: int = -1
-    ):
+    def __init__(self, config: Config, is_decoder: bool = False, order: int = -1):
         super().__init__()
         if isinstance(config, dict):
             config = Config(**config)
@@ -636,20 +602,13 @@ class MultiHeadAttention(nn.Module):
         self.model_parallel_size = 1
         if self.config.use_mp_linear_in_attn:
             assert veGiantModel is not None, "Unable to import veGiantModel"
-            self.model_parallel_size = (
-                veGiantModel.distributed.get_model_parallel_world_size()
-            )
+            self.model_parallel_size = veGiantModel.distributed.get_model_parallel_world_size()
         self._use_ft_linear_transpose_fusion = (
-            self.config.use_ft_linear_transpose_fusion_in_attn
-            and not self.config.use_ft_fused_attn
+            self.config.use_ft_linear_transpose_fusion_in_attn and not self.config.use_ft_fused_attn
         )
         if self._use_ft_linear_transpose_fusion:
-            assert (
-                not self.config.fuse_qkv_projs
-            ), "FasterLinearTranspose does not support `fuse_qkv_projs`"
-            assert (
-                not self.config.remove_padding
-            ), "FasterLinearTranspose does not support `remove_padding`"
+            assert not self.config.fuse_qkv_projs, "FasterLinearTranspose does not support `fuse_qkv_projs`"
+            assert not self.config.remove_padding, "FasterLinearTranspose does not support `remove_padding`"
             assert FTLinearTranspose is not None
             LinearCls = FTLinearTranspose
             if self.config.use_mp_linear_in_attn:
@@ -681,37 +640,24 @@ class MultiHeadAttention(nn.Module):
         if not config.fuse_qkv_projs:
             if self._use_ft_linear_transpose_fusion:
                 if LinearCls is ColumnParallelLinearTranspose:
-                    self.proj_k = LinearCls(
-                        config.dim, config.dim, config.n_heads, use_ft=True
-                    )
-                    self.proj_v = LinearCls(
-                        config.dim, config.dim, config.n_heads, use_ft=True
-                    )
-                    self.proj_q = LinearCls(
-                        config.dim, config.dim, config.n_heads, use_ft=True
-                    )
+                    self.proj_k = LinearCls(config.dim, config.dim, config.n_heads, use_ft=True)
+                    self.proj_v = LinearCls(config.dim, config.dim, config.n_heads, use_ft=True)
+                    self.proj_q = LinearCls(config.dim, config.dim, config.n_heads, use_ft=True)
                 else:
-                    if self.config.use_moe_attn and str(
-                        order
-                    ) in self.config.use_moe_transformer_layer_attn.split(","):
+                    if self.config.use_moe_attn and str(order) in self.config.use_moe_transformer_layer_attn.split(
+                        ","
+                    ):
                         import janus.groups
                         import janus.layer
 
-                        if (
-                            janus.groups.is_initialized()
-                            and janus.groups.get_ep_size() > 1
-                        ):
+                        if janus.groups.is_initialized() and janus.groups.get_ep_size() > 1:
                             assert (
-                                config.moe_experts_attn
-                                % janus.groups.get_ep_size()
-                                == 0
+                                config.moe_experts_attn % janus.groups.get_ep_size() == 0
                             ), "num_expert must divide moe_ep_size"
                         self.use_moe = True
                         self.proj_moe = janus.layer.MoE(
                             hidden_size=config.moe_dim_attn,
-                            expert=AttentionExpertFTLinearTranspose(
-                                config.dim, config.dim, config.n_heads
-                            ),
+                            expert=AttentionExpertFTLinearTranspose(config.dim, config.dim, config.n_heads),
                             num_experts=config.moe_experts_attn,
                             k=config.moe_k_attn,
                             noisy_gate_policy="None",
@@ -720,36 +666,22 @@ class MultiHeadAttention(nn.Module):
                             expert_shape=config.moe_attn_expert_shape,
                         )
                     else:
-                        self.proj_k = LinearCls(
-                            config.dim, config.dim, config.n_heads
-                        )
-                        self.proj_v = LinearCls(
-                            config.dim, config.dim, config.n_heads
-                        )
-                    self.proj_q = LinearCls(
-                        config.dim, config.dim, config.n_heads
-                    )
+                        self.proj_k = LinearCls(config.dim, config.dim, config.n_heads)
+                        self.proj_v = LinearCls(config.dim, config.dim, config.n_heads)
+                    self.proj_q = LinearCls(config.dim, config.dim, config.n_heads)
             else:
-                if self.config.use_moe_attn and str(
-                    order
-                ) in self.config.use_moe_transformer_layer_attn.split(","):
+                if self.config.use_moe_attn and str(order) in self.config.use_moe_transformer_layer_attn.split(","):
                     import janus.groups
                     import janus.layer
 
-                    if (
-                        janus.groups.is_initialized()
-                        and janus.groups.get_ep_size() > 1
-                    ):
+                    if janus.groups.is_initialized() and janus.groups.get_ep_size() > 1:
                         assert (
-                            config.moe_experts_attn % janus.groups.get_ep_size()
-                            == 0
+                            config.moe_experts_attn % janus.groups.get_ep_size() == 0
                         ), "num_expert must divide moe_ep_size"
                     self.use_moe = True
                     self.proj_moe = janus.layer.MoE(
                         hidden_size=config.moe_dim_attn,
-                        expert=AttentionExpert(
-                            config.dim, config.dim, LinearCls
-                        ),
+                        expert=AttentionExpert(config.dim, config.dim, LinearCls),
                         num_experts=config.moe_experts_attn,
                         k=config.moe_k_attn,
                         noisy_gate_policy="None",
@@ -763,75 +695,44 @@ class MultiHeadAttention(nn.Module):
                 self.proj_q = LinearCls(config.dim, config.dim)
             self.proj_qkv = None
         else:
-            assert (
-                not self.config.use_mp_linear_in_attn
-            ), "ColumnParallelLinear does not support `fuse_qkv_projs`"
+            assert not self.config.use_mp_linear_in_attn, "ColumnParallelLinear does not support `fuse_qkv_projs`"
             self.proj_qkv = LinearCls(config.dim, config.dim * 3)
             self.proj_k, self.proj_v, self.proj_q = None, None, None
         # in mp_linear mode, the num of heads & dim require adjustments
-        self._use_mp_linear = (
-            self.config.use_mp_linear_in_attn
-            and not issubclass(ColumnParallelLinear, MockModule)
-        )
+        self._use_mp_linear = self.config.use_mp_linear_in_attn and not issubclass(ColumnParallelLinear, MockModule)
         self.dropout = nn.Dropout(config.p_drop_attn)
         self.score_scale = config.head_dim**-0.5
 
         if self.config.use_ft_softmax:
-            assert (
-                not self.config.use_realformer
-            ), "FasterSoftmax does not support `use_realformer`"
+            assert not self.config.use_realformer, "FasterSoftmax does not support `use_realformer`"
             # assert not self.config.clamp_inf_nan, 'FasterSoftmax does not support `clamp_inf_nan`'
             if self.config.omit_other_attn_output:
                 logger.warning("FasterSoftmax does not return `attn_weights`")
             assert FTSoftmax is not None
             self.faster_softmax = FTSoftmax()
 
-        self._use_ft_fused_attn = (
-            self.config.use_ft_fused_attn and not self.is_decoder
-        )  # TODO
+        self._use_ft_fused_attn = self.config.use_ft_fused_attn and not self.is_decoder  # TODO
         if self._use_ft_fused_attn:
-            assert (
-                not self.config.use_realformer
-            ), "FasterFusedAttention does not support `use_realformer`"
-            assert (
-                not self.config.fuse_qkv_projs
-            ), "FasterFusedAttention does not support `fuse_qkv_projs`"
-            assert (
-                not self.config.remove_padding
-            ), "FasterFusedAttention does not support `remove_padding`"
-            assert (
-                not self.config.mha_acts_unite_d01
-            ), "FasterFusedAttention does not support `mha_acts_unite_d01`"
-            assert (
-                not self.config.use_mp_linear_in_attn
-            ), "ColumnParallelLinear does not support `use_ft_fused_attn`"
+            assert not self.config.use_realformer, "FasterFusedAttention does not support `use_realformer`"
+            assert not self.config.fuse_qkv_projs, "FasterFusedAttention does not support `fuse_qkv_projs`"
+            assert not self.config.remove_padding, "FasterFusedAttention does not support `remove_padding`"
+            assert not self.config.mha_acts_unite_d01, "FasterFusedAttention does not support `mha_acts_unite_d01`"
+            assert not self.config.use_mp_linear_in_attn, "ColumnParallelLinear does not support `use_ft_fused_attn`"
             if self.config.omit_other_attn_output:
-                logger.warning(
-                    "FasterFusedAttention does not return `attn_weights`"
-                )
-            self.faster_attn = FTFusedAttention(
-                config.n_heads, dropout_rate=config.p_drop_attn
-            )
+                logger.warning("FasterFusedAttention does not return `attn_weights`")
+            self.faster_attn = FTFusedAttention(config.n_heads, dropout_rate=config.p_drop_attn)
         else:
             self.faster_attn = None
 
         if self.config.pos_emb_type == "roformer":
             position_enc = np.array(
                 [
-                    [
-                        pos
-                        / np.power(10000, 2 * (j // 2) / self.config.head_dim)
-                        for j in range(self.config.head_dim)
-                    ]
+                    [pos / np.power(10000, 2 * (j // 2) / self.config.head_dim) for j in range(self.config.head_dim)]
                     for pos in range(1024)
                 ]
             )
-            sin_pos = torch.repeat_interleave(
-                torch.FloatTensor(np.sin(position_enc[:, 0::2])), 2, dim=-1
-            )
-            cos_pos = torch.repeat_interleave(
-                torch.FloatTensor(np.cos(position_enc[:, 1::2])), 2, dim=-1
-            )
+            sin_pos = torch.repeat_interleave(torch.FloatTensor(np.sin(position_enc[:, 0::2])), 2, dim=-1)
+            cos_pos = torch.repeat_interleave(torch.FloatTensor(np.cos(position_enc[:, 1::2])), 2, dim=-1)
             self.register_buffer("sin_pos", sin_pos[None, None, :, :])
             self.register_buffer("cos_pos", cos_pos[None, None, :, :])
 
@@ -871,9 +772,7 @@ class MultiHeadAttention(nn.Module):
         gathered_mask_index: Optional[torch.Tensor] = None,
         gathered_hidden_states: Optional[torch.Tensor] = None,
         q_state: Optional[torch.Tensor] = None,  # Only for Deberta so far
-        attn_bias: Optional[
-            torch.Tensor
-        ] = None,  # e.g. T5-style rel pos attn bias
+        attn_bias: Optional[torch.Tensor] = None,  # e.g. T5-style rel pos attn bias
     ) -> MHAOutput:
         """
         Args:
@@ -890,9 +789,7 @@ class MultiHeadAttention(nn.Module):
         original_hidden_states = hidden_states
         remove_padding = gathered_hidden_states is not None
         if remove_padding:
-            assert (
-                q_state is None
-            ), "Remove padding must not accept special query states"
+            assert q_state is None, "Remove padding must not accept special query states"
             hidden_states = gathered_hidden_states
 
         is_cross_attention = key_value_states is not None
@@ -903,25 +800,13 @@ class MultiHeadAttention(nn.Module):
             None,
         )
         if self.config.fuse_qkv_projs:
-            assert (
-                q_state is None
-            ), "Fused QKV must not accept special query states"
-            assert (
-                not is_cross_attention
-            ), "Fused QKV must not be used with cross attention"
-            assert (
-                not self.config.remove_padding
-            ), "Fused QKV can not be used with `remove_padding` now"
-            assert (
-                not self.config.use_mp_linear_in_attn
-            ), "Fused QKV with model parallelism is not implemented yet"
-            projected_qkv = self.proj_qkv(
-                hidden_states
-            )  # (bsz, seq_len, dim * 3)
+            assert q_state is None, "Fused QKV must not accept special query states"
+            assert not is_cross_attention, "Fused QKV must not be used with cross attention"
+            assert not self.config.remove_padding, "Fused QKV can not be used with `remove_padding` now"
+            assert not self.config.use_mp_linear_in_attn, "Fused QKV with model parallelism is not implemented yet"
+            projected_qkv = self.proj_qkv(hidden_states)  # (bsz, seq_len, dim * 3)
             shaped_projected_qkv = (
-                projected_qkv.view(
-                    bsz, -1, self.config.n_heads * 3, self.config.head_dim
-                )
+                projected_qkv.view(bsz, -1, self.config.n_heads * 3, self.config.head_dim)
                 .view(bsz, -1, 3, self.config.n_heads, self.config.head_dim)
                 .permute(2, 0, 3, 1, 4)
                 .contiguous()
@@ -935,31 +820,19 @@ class MultiHeadAttention(nn.Module):
                 3, dim=0
             )  # (bsz * n_heads, seq_len, head_dim)
             if not self.config.mha_acts_unite_d01:
-                shaped_projected_q = shaped_projected_q.view(
-                    bsz, self.config.n_heads, -1, self.config.head_dim
-                )
-                shaped_projected_k = shaped_projected_k.view(
-                    bsz, self.config.n_heads, -1, self.config.head_dim
-                )
-                shaped_projected_v = shaped_projected_v.view(
-                    bsz, self.config.n_heads, -1, self.config.head_dim
-                )
+                shaped_projected_q = shaped_projected_q.view(bsz, self.config.n_heads, -1, self.config.head_dim)
+                shaped_projected_k = shaped_projected_k.view(bsz, self.config.n_heads, -1, self.config.head_dim)
+                shaped_projected_v = shaped_projected_v.view(bsz, self.config.n_heads, -1, self.config.head_dim)
 
         if not remove_padding:
             if self._use_ft_linear_transpose_fusion:
-                q_states = self.proj_q(
-                    hidden_states if q_state is None else q_state
-                )
+                q_states = self.proj_q(hidden_states if q_state is None else q_state)
             elif self._use_ft_fused_attn:
-                q_states = self.proj_q(
-                    hidden_states if q_state is None else q_state
-                )
+                q_states = self.proj_q(hidden_states if q_state is None else q_state)
             else:
                 q_states = (
                     self._shape(
-                        self.proj_q(
-                            hidden_states if q_state is None else q_state
-                        ),
+                        self.proj_q(hidden_states if q_state is None else q_state),
                         bsz,
                     )
                     if shaped_projected_q is None
@@ -967,19 +840,13 @@ class MultiHeadAttention(nn.Module):
                 )  # (bsz, n_heads, seq_len, head_dim)
         else:
             q_states = torch.zeros_like(original_hidden_states)
-            q_states.view(-1, dim)[gathered_mask_index] = self.proj_q(
-                hidden_states
-            )
-            q_states = self._shape(
-                q_states, bsz
-            )  # (bsz, n_heads, seq_len, head_dim)
+            q_states.view(-1, dim)[gathered_mask_index] = self.proj_q(hidden_states)
+            q_states = self._shape(q_states, bsz)  # (bsz, n_heads, seq_len, head_dim)
 
         # Get key, value proj
         if is_cross_attention:
             if remove_padding:
-                raise NotImplementedError(
-                    "Cross attention has not supported `remove_padding` yet"
-                )
+                raise NotImplementedError("Cross attention has not supported `remove_padding` yet")
             # Cross attention
             if past_key_value is not None:
                 # Reuse k v
@@ -993,12 +860,8 @@ class MultiHeadAttention(nn.Module):
                     k_states = self.proj_k(key_value_states)
                     v_states = self.proj_v(key_value_states)
                 else:
-                    k_states = self._shape(
-                        self.proj_k(key_value_states), bsz
-                    )  # (bsz, n_heads, seq_len, head_dim)
-                    v_states = self._shape(
-                        self.proj_v(key_value_states), bsz
-                    )  # (bsz, n_heads, seq_len, head_dim)
+                    k_states = self._shape(self.proj_k(key_value_states), bsz)  # (bsz, n_heads, seq_len, head_dim)
+                    v_states = self._shape(self.proj_v(key_value_states), bsz)  # (bsz, n_heads, seq_len, head_dim)
         else:
             # Self attention
             if not remove_padding:
@@ -1035,47 +898,25 @@ class MultiHeadAttention(nn.Module):
                         v_states = self._shape(v_states_tmp, bsz)
             else:
                 k_states = torch.zeros_like(original_hidden_states)
-                k_states.view(-1, dim)[gathered_mask_index] = self.proj_k(
-                    hidden_states
-                )
-                k_states = self._shape(
-                    k_states, bsz
-                )  # (bsz, n_heads, seq_len, head_dim)
+                k_states.view(-1, dim)[gathered_mask_index] = self.proj_k(hidden_states)
+                k_states = self._shape(k_states, bsz)  # (bsz, n_heads, seq_len, head_dim)
                 v_states = torch.zeros_like(original_hidden_states)
-                v_states.view(-1, dim)[gathered_mask_index] = self.proj_v(
-                    hidden_states
-                )
-                v_states = self._shape(
-                    v_states, bsz
-                )  # (bsz, n_heads, seq_len, head_dim)
+                v_states.view(-1, dim)[gathered_mask_index] = self.proj_v(hidden_states)
+                v_states = self._shape(v_states, bsz)  # (bsz, n_heads, seq_len, head_dim)
             if past_key_value is not None:
                 if remove_padding:
-                    raise NotImplementedError(
-                        "`past_key_value` has not supported `remove_padding` yet"
-                    )
+                    raise NotImplementedError("`past_key_value` has not supported `remove_padding` yet")
                 if self._use_ft_fused_attn:
-                    raise NotImplementedError(
-                        "`past_key_value` has not supported `use_ft_fused_attn` yet"
-                    )
+                    raise NotImplementedError("`past_key_value` has not supported `use_ft_fused_attn` yet")
                 # Reuse k v
                 k_states = torch.cat([past_key_value[0], k_states], dim=2)
                 v_states = torch.cat([past_key_value[1], v_states], dim=2)
 
         if self.config.pos_emb_type == "roformer":
-            ro_q = torch.stack(
-                [-q_states[..., 1::2], q_states[..., ::2]], dim=-1
-            ).reshape_as(q_states)
-            ro_k = torch.stack(
-                [-k_states[..., 1::2], k_states[..., ::2]], dim=-1
-            ).reshape_as(k_states)
-            q_states = (
-                q_states * self.cos_pos[:, :, :tgt_len]
-                + ro_q * self.sin_pos[:, :, :tgt_len]
-            )
-            k_states = (
-                k_states * self.cos_pos[:, :, :tgt_len]
-                + ro_k * self.sin_pos[:, :, :tgt_len]
-            )
+            ro_q = torch.stack([-q_states[..., 1::2], q_states[..., ::2]], dim=-1).reshape_as(q_states)
+            ro_k = torch.stack([-k_states[..., 1::2], k_states[..., ::2]], dim=-1).reshape_as(k_states)
+            q_states = q_states * self.cos_pos[:, :, :tgt_len] + ro_q * self.sin_pos[:, :, :tgt_len]
+            k_states = k_states * self.cos_pos[:, :, :tgt_len] + ro_k * self.sin_pos[:, :, :tgt_len]
 
         if self._use_ft_fused_attn:
             assert attn_bias is None, "FT FusedAttn does not support attn_bias"
@@ -1084,16 +925,12 @@ class MultiHeadAttention(nn.Module):
                 attn_mask = attn_mask.squeeze(1)  # (bsz, seqlen, seqlen), fp16
             assert attn_mask.dim() == 3
             attn_mask = attn_mask.contiguous().eq(0).to(dtype=q_states.dtype)
-            attn_outputs = self.faster_attn(
-                q_states, k_states, v_states, attn_mask
-            )
+            attn_outputs = self.faster_attn(q_states, k_states, v_states, attn_mask)
             return MHAOutput(
                 attn_outputs=attn_outputs,
                 attn_probs=None,
                 attn_weights=None,
-                q_states=None
-                if self.config.omit_other_attn_output
-                else q_states,  # (bsz, n_heads, seq_len, head_dim)
+                q_states=None if self.config.omit_other_attn_output else q_states,  # (bsz, n_heads, seq_len, head_dim)
                 k_states=None
                 if (self.config.omit_other_attn_output and not self.is_decoder)
                 else k_states,  # (bsz, n_heads, seq_len, head_dim)
@@ -1116,17 +953,16 @@ class MultiHeadAttention(nn.Module):
         ):  # TODO: fix when tgt_len != src_len, which means decoder cross_attention
             # (B, H, S, W) @ (B, H, W, S) -> (B, H, S, S)
             if self.config.use_ft_mm_in_attn_wo_scale:
-                attn_weights = self.faster_matmul(
-                    q_states * self.score_scale, k_states, transpose_b=True
-                )
+                attn_weights = self.faster_matmul(q_states * self.score_scale, k_states, transpose_b=True)
             else:
                 attn_weights = self.faster_matmul(
-                    q_states, k_states, transpose_b=True, scale=self.score_scale
+                    q_states,
+                    k_states,
+                    transpose_b=True,
+                    scale=self.score_scale,
                 )
             if unite_d01:
-                attn_weights = attn_weights.view(
-                    bsz * n_heads, tgt_len, src_len
-                )
+                attn_weights = attn_weights.view(bsz * n_heads, tgt_len, src_len)
         else:
             if unite_d01:
                 attn_weights = torch.bmm(
@@ -1138,9 +974,7 @@ class MultiHeadAttention(nn.Module):
                     q_states * self.score_scale, k_states.transpose(-1, -2)
                 )  # (bsz, n_heads, seq_len, seq_len)
 
-        if self.config.use_ft_softmax and (
-            attn_mask is not None
-        ):  # TODO: fix what if attn_mask none
+        if self.config.use_ft_softmax and (attn_mask is not None):  # TODO: fix what if attn_mask none
             raise NotImplementedError("FT not supported in titan.")
             # attn_weights_for_ft_softmax = attn_weights.view(bsz, n_heads, tgt_len, src_len) if unite_d01 else attn_weights
             # if attn_bias is not None:
@@ -1171,10 +1005,7 @@ class MultiHeadAttention(nn.Module):
         else:
             if attn_bias is not None:
                 if unite_d01:
-                    attn_weights = (
-                        attn_weights.view(bsz, n_heads, tgt_len, src_len)
-                        + attn_bias
-                    )
+                    attn_weights = attn_weights.view(bsz, n_heads, tgt_len, src_len) + attn_bias
                     attn_weights = attn_weights.view(
                         bsz * n_heads, tgt_len, src_len
                     )  # (bsz * n_heads, seq_len, seq_len)
@@ -1187,10 +1018,7 @@ class MultiHeadAttention(nn.Module):
                         )  # HACK: walk-around for torch.jit.trace bug
             if attn_mask is not None:
                 if unite_d01:
-                    attn_weights = (
-                        attn_weights.view(bsz, n_heads, tgt_len, src_len)
-                        + attn_mask
-                    )
+                    attn_weights = attn_weights.view(bsz, n_heads, tgt_len, src_len) + attn_mask
                     attn_weights = attn_weights.view(
                         bsz * n_heads, tgt_len, src_len
                     )  # (bsz * n_heads, seq_len, seq_len)
@@ -1213,19 +1041,13 @@ class MultiHeadAttention(nn.Module):
             # if self.config.clamp_inf_nan:
             #     attn_weights = rescue_inf_nan(attn_weights)
 
-            attn_probs = F.softmax(
-                attn_weights, dim=-1
-            )  # (bsz * n_heads, seq_len, seq_len)
-            attn_probs = self.dropout(
-                attn_probs
-            )  # (bsz * n_heads, seq_len, seq_len)
+            attn_probs = F.softmax(attn_weights, dim=-1)  # (bsz * n_heads, seq_len, seq_len)
+            attn_probs = self.dropout(attn_probs)  # (bsz * n_heads, seq_len, seq_len)
 
         if self.config.use_ft_mm_in_attn:
             # (B, H, S, S) @ (B, H, S, W) -> (B, H, S, W)
             if unite_d01:
-                attn_outputs = self.faster_matmul(
-                    attn_probs.view(bsz, n_heads, tgt_len, src_len), v_states
-                )
+                attn_outputs = self.faster_matmul(attn_probs.view(bsz, n_heads, tgt_len, src_len), v_states)
                 attn_outputs = attn_outputs.view(proj_shape)
             else:
                 attn_outputs = self.faster_matmul(attn_probs, v_states)
@@ -1243,22 +1065,14 @@ class MultiHeadAttention(nn.Module):
             attn_probs=None
             if self.config.omit_other_attn_output
             else (
-                attn_probs
-                if not unite_d01
-                else attn_probs.view(bsz, n_heads, tgt_len, src_len)
+                attn_probs if not unite_d01 else attn_probs.view(bsz, n_heads, tgt_len, src_len)
             ),  # (bsz, n_heads, seq_len, seq_len)
             attn_weights=None
-            if (
-                self.config.omit_other_attn_output or self.config.use_ft_softmax
-            )
+            if (self.config.omit_other_attn_output or self.config.use_ft_softmax)
             else (
-                attn_weights
-                if not unite_d01
-                else attn_weights.view(bsz, n_heads, tgt_len, src_len)
+                attn_weights if not unite_d01 else attn_weights.view(bsz, n_heads, tgt_len, src_len)
             ),  # (bsz, n_heads, seq_len, seq_len)
-            q_states=None
-            if self.config.omit_other_attn_output
-            else q_states,  # (bsz, n_heads, seq_len, head_dim)
+            q_states=None if self.config.omit_other_attn_output else q_states,  # (bsz, n_heads, seq_len, head_dim)
             k_states=None
             if (self.config.omit_other_attn_output and not self.is_decoder)
             else k_states,  # (bsz, n_heads, seq_len, head_dim)
@@ -1293,11 +1107,7 @@ class TransformerEncoderLayer(nn.Module):
         if self.config.use_ft_linear_in_attn_out:
             assert FTLinear is not None
             proj_cls = FTLinear
-            dropout_rate = (
-                0.0
-                if not self.config.use_ft_attn_out_proj_dropout_fusion
-                else config.p_drop_hidden
-            )
+            dropout_rate = 0.0 if not self.config.use_ft_attn_out_proj_dropout_fusion else config.p_drop_hidden
             proj_kwargs = {"dropout_rate": dropout_rate}
             if self.config.use_mp_linear_in_attn_out:
                 proj_cls = RowParallelLinear
@@ -1315,29 +1125,19 @@ class TransformerEncoderLayer(nn.Module):
         if self.config.use_ft_layernorm:
             self.norm1 = FTLayerNorm(config.dim)
         else:
-            self.norm1 = LayerNormTypes[config.layernorm_type](
-                config.dim, config.layer_norm_eps
-            )
+            self.norm1 = LayerNormTypes[config.layernorm_type](config.dim, config.layer_norm_eps)
 
         self.pwff = PositionWiseFeedForward(config)
-        if self.config.use_moe and str(
-            order
-        ) in self.config.use_moe_transformer_layer.split(","):
+        if self.config.use_moe and str(order) in self.config.use_moe_transformer_layer.split(","):
             import janus.groups
             import janus.layer
 
             if janus.groups.is_initialized() and janus.groups.get_ep_size() > 1:
-                assert (
-                    config.moe_experts % janus.groups.get_ep_size() == 0
-                ), "num_expert must divide moe_ep_size"
+                assert config.moe_experts % janus.groups.get_ep_size() == 0, "num_expert must divide moe_ep_size"
             self._use_moe = True
             if config.moe_warmup_stage:
-                self.moe_warmup_k = list(
-                    map(int, config.moe_warmup_stage.split(","))
-                )
-                self.moe_warmup_steps = list(
-                    map(int, config.moe_warmup_steps.split(","))
-                )
+                self.moe_warmup_k = list(map(int, config.moe_warmup_stage.split(",")))
+                self.moe_warmup_steps = list(map(int, config.moe_warmup_steps.split(",")))
             else:
                 self.moe_warmup_k = None
             self._use_moe_lego = config.use_moe_lego
@@ -1370,9 +1170,7 @@ class TransformerEncoderLayer(nn.Module):
         if self.config.use_ft_layernorm:
             self.norm2 = FTLayerNorm(config.dim)
         else:
-            self.norm2 = LayerNormTypes[config.layernorm_type](
-                config.dim, config.layer_norm_eps
-            )
+            self.norm2 = LayerNormTypes[config.layernorm_type](config.dim, config.layer_norm_eps)
         self.dropout1 = nn.Dropout(config.p_drop_hidden)
         self.dropout2 = nn.Dropout(config.p_drop_hidden2)
 
@@ -1429,9 +1227,7 @@ class TransformerEncoderLayer(nn.Module):
             if seq_len % 2 == 1:
                 seq_len_padded_even = True
                 # (bsz, seqlen, dim) -> (bsz, seqlen+1, dim)
-                hidden_states = F.pad(
-                    hidden_states, (0, 0, 0, 1), "constant", 0
-                )
+                hidden_states = F.pad(hidden_states, (0, 0, 0, 1), "constant", 0)
                 # (bsz, 1, seqlen, seqlen) -> (bsz, 1, seqlen+1, seqlen+1)
                 attn_mask = F.pad(
                     attn_mask,
@@ -1528,9 +1324,7 @@ class TransformerEncoderLayer(nn.Module):
                         dtype=hidden_states.dtype,
                     )
         else:
-            if (ffn_type_ids is None) or not getattr(
-                self, "_use_n_ffn_types", False
-            ):  # TODO
+            if (ffn_type_ids is None) or not getattr(self, "_use_n_ffn_types", False):  # TODO
                 hidden_states = self.pwff(hidden_states)
             else:
                 ffn_type_dim = ffn_type_ids.dim()
@@ -1560,9 +1354,7 @@ class TransformerEncoderLayer(nn.Module):
                     ffn_type_idx = int(ffn_type_ids)
                     hidden_states = self.pwff[ffn_type_idx](hidden_states)
                 else:
-                    raise Exception(
-                        f"Unsupported dim of ffn_type_ids: {ffn_type_dim}"
-                    )
+                    raise Exception(f"Unsupported dim of ffn_type_ids: {ffn_type_dim}")
 
         if not self.config.use_ffn_output_dropout:
             hidden_states = self.dropout2(hidden_states)

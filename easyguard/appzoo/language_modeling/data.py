@@ -3,19 +3,11 @@
 from typing import List, Union
 
 import torch
-from torch.utils.data._utils.collate import default_collate
-from transformers import AutoTokenizer
-
-try:
-    import cruise
-except ImportError:
-    print(
-        "[ERROR] cruise is not installed! Please refer this doc: https://bytedance.feishu.cn/wiki/wikcnGP7yzZAuKpPfL6jRJKl2ag"
-    )
-
 from cruise.data_module import CruiseDataModule
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
 from cruise.utilities.hdfs_io import hlist_files
+from torch.utils.data._utils.collate import default_collate
+from transformers import AutoTokenizer
 
 
 class TextPreProcessor:
@@ -61,9 +53,9 @@ class TextPreProcessor:
             text_token[-1] = self._tokenizer.sep_token
             text_token_ids = self._tokenizer.convert_tokens_to_ids(text_token)
             text_token["input_ids"] = text_token_ids
-            text_token["attention_mask"] = [1] * len(
-                text_token_ids[: self._max_len]
-            ) + [0] * (self._max_len - len(text_token_ids))
+            text_token["attention_mask"] = [1] * len(text_token_ids[: self._max_len]) + [0] * (
+                self._max_len - len(text_token_ids)
+            )
             text_token["token_type_ids"] = [0] * self._max_len
 
         language = data_dict[self._region_key]
@@ -102,9 +94,7 @@ class TextPreProcessor:
             if self._cl_enable:
                 out_batch[k] = torch.cat((out_batch[k], out_batch[k]), 0)
 
-        out_batch["input_ids"], out_batch["labels"] = self.torch_mask_tokens(
-            out_batch["input_ids"]
-        )
+        out_batch["input_ids"], out_batch["labels"] = self.torch_mask_tokens(out_batch["input_ids"])
 
         return out_batch
 
@@ -118,14 +108,10 @@ class TextPreProcessor:
         probability_matrix = torch.full(labels.shape, self._mlm_probability)
         if special_tokens_mask is None:
             special_tokens_mask = [
-                self._tokenizer.get_special_tokens_mask(
-                    val, already_has_special_tokens=True
-                )
+                self._tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True)
                 for val in labels.tolist()
             ]
-            special_tokens_mask = torch.tensor(
-                special_tokens_mask, dtype=torch.bool
-            )
+            special_tokens_mask = torch.tensor(special_tokens_mask, dtype=torch.bool)
         else:
             special_tokens_mask = special_tokens_mask.bool()
 
@@ -134,23 +120,12 @@ class TextPreProcessor:
         labels[~masked_indices] = -100  # We only compute loss on masked tokens
 
         # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
-        indices_replaced = (
-            torch.bernoulli(torch.full(labels.shape, 0.8)).bool()
-            & masked_indices
-        )
-        inputs[indices_replaced] = self._tokenizer.convert_tokens_to_ids(
-            self._tokenizer.mask_token
-        )
+        indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
+        inputs[indices_replaced] = self._tokenizer.convert_tokens_to_ids(self._tokenizer.mask_token)
 
         # 10% of the time, we replace masked input tokens with random word
-        indices_random = (
-            torch.bernoulli(torch.full(labels.shape, 0.5)).bool()
-            & masked_indices
-            & ~indices_replaced
-        )
-        random_words = torch.randint(
-            len(self._tokenizer), labels.shape, dtype=torch.long
-        )
+        indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
+        random_words = torch.randint(len(self._tokenizer), labels.shape, dtype=torch.long)
         inputs[indices_random] = random_words[indices_random]
 
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
@@ -193,9 +168,7 @@ class LMDataModule(CruiseDataModule):
         # split train/val
         files = hlist_files(paths)
         if not files:
-            raise RuntimeError(
-                f"No valid files can be found matching `paths`: {paths}"
-            )
+            raise RuntimeError(f"No valid files can be found matching `paths`: {paths}")
         files = sorted(files)
         # use the last file as validation
         self.train_files = files
@@ -223,9 +196,7 @@ class LMDataModule(CruiseDataModule):
                 self.hparams.max_len,
                 self.tokenizer,
             ),
-            predefined_steps=self.hparams.data_size
-            // self.hparams.train_batch_size
-            // self.trainer.world_size,
+            predefined_steps=self.hparams.data_size // self.hparams.train_batch_size // self.trainer.world_size,
             source_types=["jsonl"],
             shuffle=True,
         )

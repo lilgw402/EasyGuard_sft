@@ -2,12 +2,13 @@
 # Email:    jiangxubin@bytedance.com
 # Created:  2023-02-27 20:04:42
 # Modified: 2023-02-27 20:04:42
+import logging
 import os
 import sys
-import logging
 import warnings
-import numpy as np
 from functools import wraps
+
+import numpy as np
 from sklearn.exceptions import UndefinedMetricWarning
 
 logging.basicConfig(
@@ -23,17 +24,17 @@ def reset_logger(custom_logger):
     global _logger
     _logger = custom_logger
 
+
 def get_logger():
     return _logger
+
 
 def init_env(hdfs_jdk_heap_max_size="2g"):
     """envs setup"""
 
     # limit hdfs jvm mem & disable hdfs verbose logging
     os.environ["LIBHDFS_OPTS"] = (
-            os.getenv("LIBHDFS_OPTS", "")
-            + " -Dhadoop.root.logger=ERROR"
-            + f" -Xms128m -Xmx{hdfs_jdk_heap_max_size}"
+        os.getenv("LIBHDFS_OPTS", "") + " -Dhadoop.root.logger=ERROR" + f" -Xms128m -Xmx{hdfs_jdk_heap_max_size}"
     )
     os.environ["KRB5CCNAME"] = "/tmp/krb5cc"
 
@@ -44,16 +45,10 @@ def init_env(hdfs_jdk_heap_max_size="2g"):
 
     def _shell_source(script):
         """run the command in a subshell and use the results to update the current environment."""
-        pipe = subprocess.Popen(
-            ". %s; env" % script, stdout=subprocess.PIPE, shell=True
-        )
+        pipe = subprocess.Popen(". %s; env" % script, stdout=subprocess.PIPE, shell=True)
         output = pipe.communicate()[0]
         env = dict(
-            (
-                line.split("=", 1)
-                for line in output.decode("UTF-8").splitlines()
-                if len(line.split("=", 1)) == 2
-            )
+            (line.split("=", 1) for line in output.decode("UTF-8").splitlines() if len(line.split("=", 1)) == 2)
         )
         os.environ.update(env)
 
@@ -63,20 +58,17 @@ def init_env(hdfs_jdk_heap_max_size="2g"):
     hadoop_env_sh_path = "{}/conf/hadoop-env.sh".format(HADOOP_HOME)
     _shell_source(hadoop_env_sh_path)
     os.environ["HADOOP_CONF_DIR"] = "{}/conf".format(HADOOP_HOME)
-    os.environ[
-        "LD_LIBRARY_PATH"
-    ] = "{}/jre/lib/amd64/server:{}/lib/native:{}/lib/native/ufs:{}".format(
+    os.environ["LD_LIBRARY_PATH"] = "{}/jre/lib/amd64/server:{}/lib/native:{}/lib/native/ufs:{}".format(
         os.environ["JAVA_HOME"],
         os.environ["HADOOP_HDFS_HOME"],
         os.environ["HADOOP_HDFS_HOME"],
         os.environ["LD_LIBRARY_PATH"],
     )
     os.environ["CLASSPATH"] = "$(${HADOOP_HOME}/bin/hadoop classpath --glob)"
-    output = subprocess.check_output(
-        ["bash", "-c", "echo $(${HADOOP_HOME}/bin/hadoop classpath --glob)"]
-    )
+    output = subprocess.check_output(["bash", "-c", "echo $(${HADOOP_HOME}/bin/hadoop classpath --glob)"])
     os.environ["CLASSPATH"] = output.decode("UTF-8")
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 
 def init_device(local_rank=-1):
     """
@@ -92,8 +84,9 @@ def init_device(local_rank=-1):
     import torch.distributed as dist
 
     if not IN_ARNOLD:
-        assert os.getenv("CUDA_VISIBLE_DEVICES", "") != "", \
-            "please set CUDA_VISIBLE_DEVICES, like: CUDA_VISIBLE_DEVICES=0 python main.py --conf xxx --enable_train"
+        assert (
+            os.getenv("CUDA_VISIBLE_DEVICES", "") != ""
+        ), "please set CUDA_VISIBLE_DEVICES, like: CUDA_VISIBLE_DEVICES=0 python main.py --conf xxx --enable_train"
 
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
@@ -121,6 +114,7 @@ def init_device(local_rank=-1):
     # set context
     DIST_CONTEXT.n_gpu = n_gpu
     DIST_CONTEXT.device = device
+
 
 class DistContext:
     # common
@@ -231,6 +225,7 @@ class DistContext:
 
     def barrier(self):
         from torch import distributed
+
         if self._world_size < 1:
             return
         if not distributed.is_available() or not distributed.is_initialized():
@@ -245,12 +240,10 @@ class DistContext:
 PROJECT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TRIAL_ID = os.environ.get("ARNOLD_TRIAL_ID", "")
 WORKSPACE_ID = os.environ.get("ARNOLD_WORKSPACE_ID", "")
-IN_ARNOLD = (TRIAL_ID != "" or WORKSPACE_ID != "")
+IN_ARNOLD = TRIAL_ID != "" or WORKSPACE_ID != ""
 DIST_CONTEXT = DistContext()
 HADOOP_DIR = "/opt/tiger/yarn_deploy/hadoop"
 HADOOP_BIN = HADOOP_DIR + "/bin/hadoop"
 
-warnings.filterwarnings(action='ignore',category=UndefinedMetricWarning,module=r'sklearn')
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
-
-
+warnings.filterwarnings(action="ignore", category=UndefinedMetricWarning, module=r"sklearn")
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)

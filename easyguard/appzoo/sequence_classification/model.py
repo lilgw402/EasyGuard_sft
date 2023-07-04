@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+
 from easyguard import AutoModel
 
 try:
@@ -67,19 +68,14 @@ class SequenceClassificationModel(CruiseModule):
         language_key_save_model_names = ["fashionxlm_moe"]
         # classification task
         # remove the language key if model_type not in `language_key_save_model_names`
-        if (
-            self.model.extra_args["model_type"]
-            not in language_key_save_model_names
-        ):
+        if self.model.extra_args["model_type"] not in language_key_save_model_names:
             kwargs.pop("language")
         mmout = self.model(**kwargs)
 
         output_dict["loss"] = mmout.loss
         output_dict["predict"] = mmout.logits
         output_dict["lables"] = labels
-        output_dict["diff"] = (
-            labels.long() == torch.argmax(mmout.logits, 1).long()
-        ).float()
+        output_dict["diff"] = (labels.long() == torch.argmax(mmout.logits, 1).long()).float()
 
         return output_dict
 
@@ -118,20 +114,14 @@ class SequenceClassificationModel(CruiseModule):
             self.hparams,
             optimizer,
             self.trainer.max_epochs,
-            self.trainer.steps_per_epoch
-            // self.trainer._accumulate_grad_batches,
+            self.trainer.steps_per_epoch // self.trainer._accumulate_grad_batches,
         )
         return [optimizer], [lr_scheduler]
 
     def lr_scheduler_step(self, schedulers, **kwargs):
         # timm lr scheduler is called every step
         for scheduler in schedulers:
-            scheduler.step_update(
-                self.trainer.global_step
-                // self.trainer._accumulate_grad_batches
-            )
+            scheduler.step_update(self.trainer.global_step // self.trainer._accumulate_grad_batches)
 
     def on_fit_start(self) -> None:
-        self.rank_zero_print(
-            "===========My custom fit start function is called!============"
-        )
+        self.rank_zero_print("===========My custom fit start function is called!============")

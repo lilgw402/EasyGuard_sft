@@ -34,14 +34,7 @@ from ...utils import (
     logging,
     pretrained_model_archive_parse,
 )
-from . import (
-    BACKENDS,
-    HF_PATH,
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_CONFIG_NAMES,
-    MODEL_SAVE_NAMES,
-    MODELZOO_CONFIG,
-)
+from . import BACKENDS, HF_PATH, MODEL_ARCHIVE_CONFIG, MODEL_CONFIG_NAMES, MODEL_SAVE_NAMES, MODELZOO_CONFIG
 from .configuration_auto import CONFIG_MAPPING_NAMES, AutoConfig
 from .configuration_auto_hf import HFAutoConfig, model_type_to_module_name
 
@@ -98,9 +91,7 @@ class HFBaseAutoModelClass:
                 )
             class_ref = config.auto_map[cls.__name__]
             module_file, class_name = class_ref.split(".")
-            model_class = get_class_from_dynamic_module(
-                config.name_or_path, module_file + ".py", class_name, **kwargs
-            )
+            model_class = get_class_from_dynamic_module(config.name_or_path, module_file + ".py", class_name, **kwargs)
             return model_class._from_config(config, **kwargs)
         elif type(config) in cls._model_mapping.keys():
             model_class = _get_model_class(config, cls._model_mapping)
@@ -112,9 +103,7 @@ class HFBaseAutoModelClass:
         )
 
     @classmethod
-    def from_pretrained(
-        cls, pretrained_model_name_or_path, *model_args, **kwargs
-    ):
+    def from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
         config = kwargs.pop("config", None)
         trust_remote_code = kwargs.pop("trust_remote_code", False)
         kwargs["_from_auto"] = True
@@ -128,11 +117,7 @@ class HFBaseAutoModelClass:
             "subfolder",
             "use_auth_token",
         ]
-        hub_kwargs = {
-            name: kwargs.pop(name)
-            for name in hub_kwargs_names
-            if name in kwargs
-        }
+        hub_kwargs = {name: kwargs.pop(name) for name in hub_kwargs_names if name in kwargs}
         if not isinstance(config, PretrainedConfig):
             config, kwargs = AutoConfig.from_pretrained(
                 pretrained_model_name_or_path,
@@ -194,10 +179,7 @@ class HFBaseAutoModelClass:
             model_class ([`PreTrainedModel`]):
                 The model to register.
         """
-        if (
-            hasattr(model_class, "config_class")
-            and model_class.config_class != config_class
-        ):
+        if hasattr(model_class, "config_class") and model_class.config_class != config_class:
             raise ValueError(
                 "The model class you are passing has a `config_class` attribute that is not consistent with the "
                 f"config class you passed (model has {model_class.config_class} and you passed {config_class}. Fix "
@@ -336,9 +318,7 @@ class _BaseAutoModelClass:
         # which is used to find the category of the target model for default models
         cls._model_key = model_cls
         # a model mapping for hf models, which is merely used to find the category of the target model
-        cls._model_mapping = _LazyAutoMapping(
-            CONFIG_MAPPING_NAMES, MODELZOO_CONFIG.get_mapping(model_cls)
-        )
+        cls._model_mapping = _LazyAutoMapping(CONFIG_MAPPING_NAMES, MODELZOO_CONFIG.get_mapping(model_cls))
 
         """ >> get model infomation <<"""
 
@@ -357,9 +337,7 @@ class _BaseAutoModelClass:
         elif os.path.isdir(pretrained_model_name_or_path):
             #  if user not set the argument `model_config_path`, will find the config file from local dir
             if not model_config_path:
-                model_config_path = file_exist(
-                    pretrained_model_name_or_path, MODEL_CONFIG_NAMES
-                )
+                model_config_path = file_exist(pretrained_model_name_or_path, MODEL_CONFIG_NAMES)
             assert (
                 model_config_path is not None
             ), f"please make sure the config file exist in f{pretrained_model_name_or_path}"
@@ -370,9 +348,7 @@ class _BaseAutoModelClass:
 
             # if user not set the argument `model_weight_file_path`, will load model from the local dir
             if not model_weight_file_path:
-                model_weight_file_path = file_exist(
-                    pretrained_model_name_or_path, MODEL_SAVE_NAMES
-                )
+                model_weight_file_path = file_exist(pretrained_model_name_or_path, MODEL_SAVE_NAMES)
 
             is_local = True
         elif os.path.isfile(pretrained_model_name_or_path):
@@ -389,7 +365,8 @@ class _BaseAutoModelClass:
             )
         # else:
         #     raise ValueError(
-        #         f"`{pretrained_model_name_or_path}` should be a name from archive.yaml or a directory which contains some files about your model"
+        #         f"`{pretrained_model_name_or_path}` should be a name from archive.yaml or a directory which
+        #         contains some files about your model"
         #     )
 
         """ >> preprocessing: download files << """
@@ -424,12 +401,8 @@ class _BaseAutoModelClass:
                     model_weight_file_path = None
         else:
             # if local, check the model weight file path, if not exist, raise a error
-            if model_weight_file_path is not None and not os.path.exists(
-                model_weight_file_path
-            ):
-                raise FileExistsError(
-                    f"{model_weight_file_path} does not exist, please check the local path"
-                )
+            if model_weight_file_path is not None and not os.path.exists(model_weight_file_path):
+                raise FileExistsError(f"{model_weight_file_path} does not exist, please check the local path")
 
         """ >> load model config class and model class <<"""
 
@@ -445,9 +418,7 @@ class _BaseAutoModelClass:
             }
         )
 
-        config_dict.update(
-            {"is_local": is_local, "config_path": model_config_path}
-        )
+        config_dict.update({"is_local": is_local, "config_path": model_config_path})
 
         model_config = MODELZOO_CONFIG.get(model_type, None)
         # assert (
@@ -455,16 +426,12 @@ class _BaseAutoModelClass:
         # ), f"the target model `{model_type}` does not exist, please check the modelzoo or the config yaml~"
 
         if not model_config:
-            logger.info(
-                f"the target model `{model_type}` does not exist, try to use transformers to load model~"
-            )
+            logger.info(f"the target model `{model_type}` does not exist, try to use transformers to load model~")
             try:
                 from transformers import AutoModel
 
-                model = AutoModel.from_pretrained(
-                    pretrained_model_name_or_path, **kwargs
-                )
-            except:
+                model = AutoModel.from_pretrained(pretrained_model_name_or_path, **kwargs)
+            except:  # noqa: E722
                 raise KeyError(pretrained_model_name_or_path)
         else:
             backend = model_config.get("backend", None)
@@ -508,16 +475,14 @@ class _BaseAutoModelClass:
                 model_class = cls._get_model_class(model_type)
 
                 AutoHubClass.kwargs = extra_dict
-                # if user add the configuration class, load the related class, otherwise, will load the config file directly
+                # if user add the configuration class, load the related class, otherwise, will load the config file directly   # noqa: E501
                 if "config" in MODELZOO_CONFIG.get(model_type):
-                    model_config_class_: ConfigBase = (
-                        AutoConfig.from_pretrained(
-                            pretrained_model_name_or_path,
-                            if_cache=if_cache,
-                            **extra_dict,
-                            **config_dict,
-                            **kwargs,
-                        )
+                    model_config_class_: ConfigBase = AutoConfig.from_pretrained(
+                        pretrained_model_name_or_path,
+                        if_cache=if_cache,
+                        **extra_dict,
+                        **config_dict,
+                        **kwargs,
                     )
                     model_config_class_.config_update_for_pretrained(**kwargs)
                     model_config_class_.update(kwargs)
@@ -584,9 +549,7 @@ def getattribute_from_module(module, attr):
         try:
             return getattribute_from_module(transformers_module, attr)
         except ValueError:
-            raise ValueError(
-                f"Could not find {attr} neither in {module} nor in {transformers_module}!"
-            )
+            raise ValueError(f"Could not find {attr} neither in {module} nor in {transformers_module}!")
     else:
         raise ValueError(f"Could not find {attr} in {transformers_module}!")
 
@@ -616,9 +579,7 @@ class _LazyAutoMapping(OrderedDict):
             return self._load_attr_from_module(model_type, model_name)
 
         # Maybe there was several model types associated with this config.
-        model_types = [
-            k for k, v in self._config_mapping.items() if v == key.__name__
-        ]
+        model_types = [k for k, v in self._config_mapping.items() if v == key.__name__]
         for mtype in model_types:
             if mtype in self._model_mapping:
                 model_name = self._model_mapping[mtype]
@@ -631,9 +592,7 @@ class _LazyAutoMapping(OrderedDict):
 
         module_name = model_type_to_module_name(model_type)
         if module_name not in self._modules:
-            self._modules[module_name] = importlib.import_module(
-                f".{module_name}", HF_PATH
-            )
+            self._modules[module_name] = importlib.import_module(f".{module_name}", HF_PATH)
         return getattribute_from_module(self._modules[module_name], attr)
 
         # except:
@@ -681,10 +640,7 @@ class _LazyAutoMapping(OrderedDict):
     def __contains__(self, item):
         if item in self._extra_content:
             return True
-        if (
-            not hasattr(item, "__name__")
-            or item.__name__ not in self._reverse_config_mapping
-        ):
+        if not hasattr(item, "__name__") or item.__name__ not in self._reverse_config_mapping:
             return False
         model_type = self._reverse_config_mapping[item.__name__]
         return model_type in self._model_mapping
@@ -693,14 +649,9 @@ class _LazyAutoMapping(OrderedDict):
         """
         Register a new model in this mapping.
         """
-        if (
-            hasattr(key, "__name__")
-            and key.__name__ in self._reverse_config_mapping
-        ):
+        if hasattr(key, "__name__") and key.__name__ in self._reverse_config_mapping:
             model_type = self._reverse_config_mapping[key.__name__]
             if model_type in self._model_mapping.keys():
-                raise ValueError(
-                    f"'{key}' is already used by a Transformers model."
-                )
+                raise ValueError(f"'{key}' is already used by a Transformers model.")
 
         self._extra_content[key] = value

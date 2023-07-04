@@ -1,6 +1,6 @@
 import os
 from collections import OrderedDict
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 from ...modelzoo.hub import AutoHubClass
 from ...utils import (
@@ -12,14 +12,7 @@ from ...utils import (
     pretrained_model_archive_parse,
 )
 from ...utils.auxiliary_utils import cache_file
-from . import (
-    BACKENDS,
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_CONFIG_NAMES,
-    MODELZOO_CONFIG,
-    PROCESSOR_CONFIG_NAMES,
-    VOCAB_NAME,
-)
+from . import BACKENDS, MODEL_ARCHIVE_CONFIG, MODEL_CONFIG_NAMES, MODELZOO_CONFIG, PROCESSOR_CONFIG_NAMES, VOCAB_NAME
 
 logger = logging.get_logger(__name__)
 
@@ -87,9 +80,7 @@ class AutoProcessor:
 
             is_local = False
         elif os.path.isdir(pretrained_model_name_or_path):
-            model_config_path = file_exist(
-                pretrained_model_name_or_path, MODEL_CONFIG_NAMES
-            )
+            model_config_path = file_exist(pretrained_model_name_or_path, MODEL_CONFIG_NAMES)
             assert (
                 model_config_path is not None
             ), f"please make sure the config file exist in f{pretrained_model_name_or_path}"
@@ -98,17 +89,13 @@ class AutoProcessor:
 
             model_type = config_dict_.get("model_type", None)
 
-            processor_config_path = file_exist(
-                pretrained_model_name_or_path, PROCESSOR_CONFIG_NAMES
-            )
+            processor_config_path = file_exist(pretrained_model_name_or_path, PROCESSOR_CONFIG_NAMES)
 
             vocab_path = file_exist(pretrained_model_name_or_path, VOCAB_NAME)
 
             is_local = True
         else:
-            logger.warning(
-                "can not found model location, load from huggingface..."
-            )
+            logger.warning("can not found model location, load from huggingface...")
 
         """ >> preprocessing: download files << """
         if server_name:
@@ -149,14 +136,12 @@ class AutoProcessor:
         )
 
         if not model_type:
-            logger.info(f"try to use transformers to load processor~")
+            logger.info("try to use transformers to load processor~")
             try:
                 from transformers import AutoProcessor
 
-                processor = AutoProcessor.from_pretrained(
-                    pretrained_model_name_or_path, **kwargs
-                )
-            except:
+                processor = AutoProcessor.from_pretrained(pretrained_model_name_or_path, **kwargs)
+            except:  # noqa: E722
                 raise KeyError(pretrained_model_name_or_path)
         else:
             model_config = MODELZOO_CONFIG.get(model_type, None)
@@ -172,15 +157,11 @@ class AutoProcessor:
                 from .processing_auto_hf import HFAutoProcessor
 
                 pretrained_model_name_or_path_ = (
-                    hf_name_or_path_check(
-                        pretrained_model_name_or_path, remote_url, model_type
-                    )
+                    hf_name_or_path_check(pretrained_model_name_or_path, remote_url, model_type)
                     if not is_local
                     else pretrained_model_name_or_path
                 )
-                processor = HFAutoProcessor.from_pretrained(
-                    pretrained_model_name_or_path_, *inputs, **kwargs
-                )
+                processor = HFAutoProcessor.from_pretrained(pretrained_model_name_or_path_, *inputs, **kwargs)
             elif backend == "titan":
                 # TODO (junwei.Dong): 支持特殊的titan模型
                 raise NotImplementedError(backend)
@@ -196,16 +177,12 @@ class AutoProcessor:
                     processor_module_package,
                     processor_module_name,
                 ) = MODELZOO_CONFIG.to_module(processor_name_tuple)
-                processor_class = lazy_model_import(
-                    processor_module_package, processor_module_name
-                )
+                processor_class = lazy_model_import(processor_module_package, processor_module_name)
                 AutoHubClass.kwargs = extra_dict
 
                 processor_config = file_read(processor_config_path)
                 processor_config.update(kwargs)
-                processor = processor_class(
-                    **processor_config, **processor_dict, **extra_dict
-                )
+                processor = processor_class(**processor_config, **processor_dict, **extra_dict)
         """ >> processor post processing <<"""
 
         if processor:

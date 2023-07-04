@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
-import os, sys
+from cruise import CruiseCLI, CruiseTrainer
 
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
-from easyguard.appzoo.multimodal_modeling.model import FashionBertv2
 from easyguard.appzoo.multimodal_modeling.data import MMDataModule
+from easyguard.appzoo.multimodal_modeling.model import FashionBertv2
 from easyguard.utils.arguments import print_cfg
-
-from cruise import CruiseTrainer, CruiseCLI
 
 if __name__ == "__main__":
     cli = CruiseCLI(

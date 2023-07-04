@@ -2,31 +2,40 @@
 # Author: aipinghua
 # Create: 2022/6/14 18:38
 
-import torch
-from torch import nn
-import torch.nn.functional as F
-from torch.nn import Parameter
 import math
 
+import torch
+import torch.nn.functional as F
+from torch import nn
+from torch.nn import Parameter
+
 # Code adapted from the fairseq repo. support by zhangzetan
+
 
 class MultiheadAttention(nn.Module):
     """Multi-headed attention.
     See "Attention Is All You Need" for more details.
     """
 
-    def __init__(self, embed_dim, num_heads, attn_dropout=0.,
-                 bias=True, add_bias_kv=False, add_zero_attn=False):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads,
+        attn_dropout=0.0,
+        bias=True,
+        add_bias_kv=False,
+        add_zero_attn=False,
+    ):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.attn_dropout = attn_dropout
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
-        self.scaling = self.head_dim ** -0.5
+        self.scaling = self.head_dim**-0.5
 
         self.in_proj_weight = Parameter(torch.Tensor(3 * embed_dim, embed_dim))
-        self.register_parameter('in_proj_bias', None)
+        self.register_parameter("in_proj_bias", None)
         if bias:
             self.in_proj_bias = Parameter(torch.Tensor(3 * embed_dim))
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
@@ -45,8 +54,8 @@ class MultiheadAttention(nn.Module):
         nn.init.xavier_uniform_(self.in_proj_weight)
         nn.init.xavier_uniform_(self.out_proj.weight)
         if self.in_proj_bias is not None:
-            nn.init.constant_(self.in_proj_bias, 0.)
-            nn.init.constant_(self.out_proj.bias, 0.)
+            nn.init.constant_(self.in_proj_bias, 0.0)
+            nn.init.constant_(self.out_proj.bias, 0.0)
         if self.bias_k is not None:
             nn.init.xavier_normal_(self.bias_k)
         if self.bias_v is not None:
@@ -68,7 +77,7 @@ class MultiheadAttention(nn.Module):
         assert list(query.size()) == [tgt_len, bsz, embed_dim]
         assert key.size() == value.size()
 
-        aved_state = None
+        # aved_state = None
 
         if qkv_same:
             # self-attention
@@ -93,7 +102,10 @@ class MultiheadAttention(nn.Module):
             k = torch.cat([k, self.bias_k.repeat(1, bsz, 1)])
             v = torch.cat([v, self.bias_v.repeat(1, bsz, 1)])
             if attn_mask is not None:
-                attn_mask = torch.cat([attn_mask, attn_mask.new_zeros(attn_mask.size(0), 1)], dim=1)
+                attn_mask = torch.cat(
+                    [attn_mask, attn_mask.new_zeros(attn_mask.size(0), 1)],
+                    dim=1,
+                )
 
         q = q.contiguous().reshape(tgt_len, bsz * self.num_heads, self.head_dim).transpose(0, 1)
         if k is not None:
@@ -108,15 +120,22 @@ class MultiheadAttention(nn.Module):
             k = torch.cat([k, k.new_zeros((k.size(0), 1) + k.size()[2:])], dim=1)
             v = torch.cat([v, v.new_zeros((v.size(0), 1) + v.size()[2:])], dim=1)
             if attn_mask is not None:
-                attn_mask = torch.cat([attn_mask, attn_mask.new_zeros(attn_mask.size(0), 1)], dim=1)
+                attn_mask = torch.cat(
+                    [attn_mask, attn_mask.new_zeros(attn_mask.size(0), 1)],
+                    dim=1,
+                )
 
         attn_weights = torch.bmm(q, k.transpose(1, 2))
-        assert list(attn_weights.size()) == [bsz * self.num_heads, tgt_len, src_len]
+        assert list(attn_weights.size()) == [
+            bsz * self.num_heads,
+            tgt_len,
+            src_len,
+        ]
 
         if attn_mask is not None:
             try:
                 attn_weights += attn_mask.unsqueeze(0)
-            except:
+            except:  # noqa: E722
                 print(attn_weights.shape)
                 print(attn_mask.unsqueeze(0).shape)
                 assert False
@@ -127,7 +146,11 @@ class MultiheadAttention(nn.Module):
         attn_weights = F.dropout(attn_weights, p=self.attn_dropout, training=self.training)
 
         attn = torch.bmm(attn_weights, v)
-        assert list(attn.size()) == [bsz * self.num_heads, tgt_len, self.head_dim]
+        assert list(attn.size()) == [
+            bsz * self.num_heads,
+            tgt_len,
+            self.head_dim,
+        ]
 
         attn = attn.transpose(0, 1).contiguous().reshape(tgt_len, bsz, embed_dim)
         attn = self.out_proj(attn)
@@ -153,13 +176,16 @@ class MultiheadAttention(nn.Module):
         return self._in_proj(value, start=2 * self.embed_dim)
 
     def _in_proj(self, input, start=0, end=None, **kwargs):
-        weight = kwargs.get('weight', self.in_proj_weight)
-        bias = kwargs.get('bias', self.in_proj_bias)
+        weight = kwargs.get("weight", self.in_proj_weight)
+        bias = kwargs.get("bias", self.in_proj_bias)
         weight = weight[start:end, :]
         if bias is not None:
             bias = bias[start:end]
         return F.linear(input, weight, bias)
+
+
 # Code adapted from the fairseq repo.
+
 
 def make_positions(tensor, padding_idx, left_pad):
     """Replace non-padding symbols with their position numbers.
@@ -169,14 +195,18 @@ def make_positions(tensor, padding_idx, left_pad):
     """
     max_pos = padding_idx + 1 + tensor.size(1)
     device = tensor.get_device()
-    buf_name = f'range_buf_{device}'
+    buf_name = f"range_buf_{device}"
     if not hasattr(make_positions, buf_name):
         setattr(make_positions, buf_name, tensor.new())
-    setattr(make_positions, buf_name, getattr(make_positions, buf_name).type_as(tensor))
+    setattr(
+        make_positions,
+        buf_name,
+        getattr(make_positions, buf_name).type_as(tensor),
+    )
     if getattr(make_positions, buf_name).numel() < max_pos:
         torch.arange(padding_idx + 1, max_pos, out=getattr(make_positions, buf_name))
     mask = tensor.ne(padding_idx)
-    positions = getattr(make_positions, buf_name)[:tensor.size(1)].expand_as(tensor)
+    positions = getattr(make_positions, buf_name)[: tensor.size(1)].expand_as(tensor)
     if left_pad:
         positions = positions - mask.size(1) + mask.long().sum(dim=1).unsqueeze(1)
     new_tensor = tensor.clone()
@@ -194,8 +224,8 @@ class SinusoidalPositionalEmbedding(nn.Module):
         self.embedding_dim = embedding_dim
         self.padding_idx = padding_idx
         self.left_pad = left_pad
-        self.weights = dict()   # device --> actual weight; due to nn.DataParallel :-(
-        self.register_buffer('_float_tensor', torch.FloatTensor(1))
+        self.weights = dict()  # device --> actual weight; due to nn.DataParallel :-(
+        self.register_buffer("_float_tensor", torch.FloatTensor(1))
 
     @staticmethod
     def get_embedding(num_embeddings, embedding_dim, padding_idx=None):
@@ -235,6 +265,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
         """Maximum number of supported positions."""
         return int(1e5)  # an arbitrary large number
 
+
 class TransformerEncoderv2(nn.Module):
     """
     Transformer encoder consisting of *args.encoder_layers* layers. Each layer
@@ -249,8 +280,18 @@ class TransformerEncoderv2(nn.Module):
         attn_mask (bool): whether to apply mask on the attention weights
     """
 
-    def __init__(self, embed_dim, num_heads, layers, attn_dropout=0.0, relu_dropout=0.0, res_dropout=0.0,
-                 embed_dropout=0.0, attn_mask=False, return_attn_score=False):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads,
+        layers,
+        attn_dropout=0.0,
+        relu_dropout=0.0,
+        res_dropout=0.0,
+        embed_dropout=0.0,
+        attn_mask=False,
+        return_attn_score=False,
+    ):
         super().__init__()
         self.dropout = embed_dropout  # Embedding dropout
         self.attn_dropout = attn_dropout
@@ -263,16 +304,18 @@ class TransformerEncoderv2(nn.Module):
 
         self.layers = nn.ModuleList([])
         for layer in range(layers):
-            new_layer = TransformerEncoderLayer(embed_dim,
-                                                num_heads=num_heads,
-                                                attn_dropout=attn_dropout,
-                                                relu_dropout=relu_dropout,
-                                                res_dropout=res_dropout,
-                                                attn_mask=attn_mask,
-                                                return_attn_score=self._return_attn_score)
+            new_layer = TransformerEncoderLayer(
+                embed_dim,
+                num_heads=num_heads,
+                attn_dropout=attn_dropout,
+                relu_dropout=relu_dropout,
+                res_dropout=res_dropout,
+                attn_mask=attn_mask,
+                return_attn_score=self._return_attn_score,
+            )
             self.layers.append(new_layer)
 
-        self.register_buffer('version', torch.Tensor([2]))
+        self.register_buffer("version", torch.Tensor([2]))
         self.normalize = True
         if self.normalize:
             self.layer_norm = LayerNorm(embed_dim)
@@ -301,8 +344,12 @@ class TransformerEncoderv2(nn.Module):
             x_k = self.embed_scale * x_in_k
             x_v = self.embed_scale * x_in_v
             if self.embed_positions is not None:
-                x_k += self.embed_positions(x_in_k.transpose(0, 1)[:, :, 0]).transpose(0, 1)  # Add positional embedding
-                x_v += self.embed_positions(x_in_v.transpose(0, 1)[:, :, 0]).transpose(0, 1)  # Add positional embedding
+                x_k += self.embed_positions(x_in_k.transpose(0, 1)[:, :, 0]).transpose(
+                    0, 1
+                )  # Add positional embedding
+                x_v += self.embed_positions(x_in_v.transpose(0, 1)[:, :, 0]).transpose(
+                    0, 1
+                )  # Add positional embedding
             x_k = F.dropout(x_k, p=self.dropout, training=self.training)
             x_v = F.dropout(x_v, p=self.dropout, training=self.training)
 
@@ -351,8 +398,16 @@ class TransformerEncoderLayer(nn.Module):
         embed_dim: Embedding dimension
     """
 
-    def __init__(self, embed_dim, num_heads=4, attn_dropout=0.1, relu_dropout=0.1, res_dropout=0.1,
-                 attn_mask=False, return_attn_score=False):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads=4,
+        attn_dropout=0.1,
+        relu_dropout=0.1,
+        res_dropout=0.1,
+        attn_mask=False,
+        return_attn_score=False,
+    ):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -361,7 +416,7 @@ class TransformerEncoderLayer(nn.Module):
         self.self_attn = MultiheadAttention(
             embed_dim=self.embed_dim,
             num_heads=self.num_heads,
-            attn_dropout=attn_dropout
+            attn_dropout=attn_dropout,
         )
         self.attn_mask = attn_mask
 
@@ -419,7 +474,7 @@ class TransformerEncoderLayer(nn.Module):
 
 def fill_with_neg_inf(t):
     """FP16-compatible function that fills a tensor with -inf."""
-    return t.float().fill_(float('-inf')).type_as(t)
+    return t.float().fill_(float("-inf")).type_as(t)
 
 
 def buffered_future_mask(tensor, tensor2=None):
@@ -436,7 +491,7 @@ def Linear(in_features, out_features, bias=True):
     m = nn.Linear(in_features, out_features, bias)
     nn.init.xavier_uniform_(m.weight)
     if bias:
-        nn.init.constant_(m.bias, 0.)
+        nn.init.constant_(m.bias, 0.0)
     return m
 
 
@@ -444,13 +499,15 @@ def LayerNorm(embedding_dim):
     m = nn.LayerNorm(embedding_dim)
     return m
 
-def accu_attention_torch(attn_weights_tensor, num_layers): # （num_layers, num_samples, num_tokens, num_tokens）
+
+def accu_attention_torch(attn_weights_tensor, num_layers):  # （num_layers, num_samples, num_tokens, num_tokens）
     curr_attn = attn_weights_tensor[-1, :, 0, :].unsqueeze(1)
     for i in range(num_layers - 2, -1, -1):
         curr_attn = torch.bmm(curr_attn, attn_weights_tensor[i])
     return curr_attn.squeeze(dim=1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     encoder = TransformerEncoderv2(300, 4, 6, return_attn_score=True)
     x = torch.tensor(torch.rand(20, 2, 300))
     print(encoder(x)[1].shape)

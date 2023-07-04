@@ -2,19 +2,19 @@
 # Email:    jiangxubin@bytedance.com
 # Created:  2023-02-27 20:03:19
 # Modified: 2023-02-27 20:03:19
-import os
-import re
 import json
-import time
-import yaml
-import torch
-import random
 import logging
-import requests
+import random
+import re
+import time
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from typing import Dict, List, Tuple
+
 import numpy as np
-from typing import Dict,List,Tuple
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from utils.driver import get_logger, HADOOP_BIN, DIST_CONTEXT, PROJECT_PATH
+import requests
+import torch
+import yaml
+from utils.driver import get_logger
 
 
 def async_run(func, inputs, pool_size=16, use_thread=True, multi_args=False):
@@ -30,6 +30,7 @@ def async_run(func, inputs, pool_size=16, use_thread=True, multi_args=False):
                 result.append(res)
     return result
 
+
 def count_params(model):
     num_params = 0
     trainable_params = 0
@@ -39,9 +40,10 @@ def count_params(model):
             trainable_params += np.prod(param.shape)
     get_logger().info(
         "Number of parameters: {:.2f}M, trainable parameters: {:.2f}M".format(
-            num_params / 10 ** 6, trainable_params / 10 ** 6
+            num_params / 10**6, trainable_params / 10**6
         )
     )
+
 
 def merge_into_target_dict_backup(src_dict, sub_dict, prefix, is_loss_item=False):
     for key, val in sub_dict.items():
@@ -59,6 +61,7 @@ def merge_into_target_dict_backup(src_dict, sub_dict, prefix, is_loss_item=False
             if isinstance(val, float):
                 src_dict[f"{prefix}_{key}"] = val
 
+
 def merge_into_target_dict(src_dict, sub_dict, is_loss_item=False):
     for key, val in sub_dict.items():
         if is_loss_item:
@@ -74,11 +77,13 @@ def merge_into_target_dict(src_dict, sub_dict, is_loss_item=False):
                     src_dict[f"{key}"] = val.item()  # diff
             if isinstance(val, float):
                 src_dict[f"{key}"] = val
-                
+
+
 def load_conf(json_path):
     with open(json_path) as f:
         config = json.load(f)
     return config
+
 
 def load_from_yaml(yaml_path):
     with open(yaml_path, "r") as stream:
@@ -89,6 +94,7 @@ def load_from_yaml(yaml_path):
             config = {}
         return config
 
+
 def load_from_tcc(tcc_key, tcc_psm="ecom.govern.live_gandalf"):
     import bytedtcc
 
@@ -96,14 +102,14 @@ def load_from_tcc(tcc_key, tcc_psm="ecom.govern.live_gandalf"):
     conf_str = tcc_client.get(tcc_key)
     return json.loads(conf_str)
 
+
 def load_from_bbc(bbc_key, bbc_psm="ecom.govern.algo"):
     bbc_client = BbcClient(bbc_psm)
     conf_str = bbc_client.read_config(bbc_key)["content"]
     return json.loads(conf_str)
 
-def check_config(
-        config: Dict, enable_train: bool, enable_test: bool, trace_model: bool
-):
+
+def check_config(config: Dict, enable_train: bool, enable_test: bool, trace_model: bool):
     if enable_train:
         # '--enable_train --enable_test' means test from the
         # best checkpoint produced during train phase
@@ -116,13 +122,11 @@ def check_config(
     else:
         if enable_test and not config.tester.resume_checkpoint:
             get_logger().warning(
-                "Have NOT specified resume checkpoint for test phase, "
-                "will automatically search best checkpoint"
+                "Have NOT specified resume checkpoint for test phase, " "will automatically search best checkpoint"
             )
 
-def update_config(
-        config: Dict, config_override: List[str], delimiter: str = "="
-) -> None:
+
+def update_config(config: Dict, config_override: List[str], delimiter: str = "=") -> None:
     """update config using extra args in format like 'a.b.c=1'"""
 
     def _key_has_index(sub_key):
@@ -144,9 +148,7 @@ def update_config(
             if split_sub_key is not None:
                 real_sub_key, list_index = split_sub_key
                 if not isinstance(cfg, Dict) or real_sub_key not in cfg:
-                    raise ValueError(
-                        f'undefined key "{real_sub_key}" detected for "{conf_repr}"'
-                    )
+                    raise ValueError(f'undefined key "{real_sub_key}" detected for "{conf_repr}"')
                 list_cfg = cfg.get(real_sub_key)
                 if not isinstance(list_cfg, List) or list_index >= len(list_cfg):
                     raise ValueError(
@@ -157,9 +159,7 @@ def update_config(
                     conf_repr += f".{sub_key}"
             else:
                 if not isinstance(cfg, Dict) or sub_key not in cfg:
-                    raise ValueError(
-                        f'undefined key "{sub_key}" detected for "{conf_repr}"'
-                    )
+                    raise ValueError(f'undefined key "{sub_key}" detected for "{conf_repr}"')
                 if idx < len(keys) - 1:
                     cfg = cfg.get(sub_key)
                     conf_repr += f".{sub_key}"
@@ -174,15 +174,16 @@ def update_config(
             obj[leaf] = eval(value)
         else:
             if obj[leaf] is not None and (
-                    isinstance(obj[leaf], int)
-                    or isinstance(obj[leaf], str)
-                    or isinstance(obj[leaf], float)
-                    or isinstance(obj[leaf], bool)
+                isinstance(obj[leaf], int)
+                or isinstance(obj[leaf], str)
+                or isinstance(obj[leaf], float)
+                or isinstance(obj[leaf], bool)
             ):
                 obj[leaf] = type(obj[leaf])(value)
             else:
                 obj[leaf] = eval(value)
         get_logger().info(f"Update config key [{leaf}] with value: {obj[leaf]}")
+
 
 def init_seeds(seed=42, cuda_deterministic=True):
     random.seed(seed)
@@ -194,6 +195,7 @@ def init_seeds(seed=42, cuda_deterministic=True):
 
     else:  # faster but no reproducible
         torch.backends.cudnn.deterministic = False
+
 
 class BbcClient(object):
     BBC_CREDENTIAL = {
@@ -226,9 +228,7 @@ class BbcClient(object):
                 time.sleep(5)
             else:
                 return rsp.json()["access_token"]
-        raise Exception(
-            "访问 Horizon Open API 失败，错误[%d]为：%s" % (rsp.status_code, rsp.text)
-        )
+        raise Exception("访问 Horizon Open API 失败，错误[%d]为：%s" % (rsp.status_code, rsp.text))
 
     def push_online(self, value, key):
         # 额外构造bbc content

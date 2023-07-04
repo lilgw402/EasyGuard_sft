@@ -24,17 +24,13 @@ def cross_entropy(
         ignore_index: ignore index
         reduction: default 'mean' reduction
     """
-    return F.cross_entropy(
-        input, target, weight, size_average, ignore_index, reduce, reduction
-    )
+    return F.cross_entropy(input, target, weight, size_average, ignore_index, reduce, reduction)
 
 
 class LearnableNTXentLoss(torch.nn.Module):
     def __init__(self, init_tau=0.07, clamp=4.6051):
         super().__init__()
-        self.tau = torch.nn.Parameter(
-            torch.tensor([np.log(1.0 / init_tau)], dtype=torch.float32)
-        )
+        self.tau = torch.nn.Parameter(torch.tensor([np.log(1.0 / init_tau)], dtype=torch.float32))
         self.calc_ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
         self.clamp = clamp  # 4.6051 等价于CLAMP 100, 初始值是2.6593，
 
@@ -87,28 +83,20 @@ class LearnablePCLLoss(LearnableNTXentLoss):
             source=f_emb,
         )  # [num_labels, d_f]
         proto_cum = torch.index_add(
-            input=torch.zeros(
-                (self.num_labels, 1), dtype=f_emb.dtype, device=f_emb.device
-            ),
+            input=torch.zeros((self.num_labels, 1), dtype=f_emb.dtype, device=f_emb.device),
             dim=0,
             index=label,
-            source=torch.ones(
-                (f_emb.shape[0], 1), dtype=f_emb.dtype, device=f_emb.device
-            ),
+            source=torch.ones((f_emb.shape[0], 1), dtype=f_emb.dtype, device=f_emb.device),
         )  # [num_labels, 1]
 
-        proto_emb = (proto_emb / (proto_cum + 1e-6)).masked_fill(
-            proto_cum < 0.5, 0.0
-        )  # [num_labels, d_f]
+        proto_emb = (proto_emb / (proto_cum + 1e-6)).masked_fill(proto_cum < 0.5, 0.0)  # [num_labels, d_f]
 
         """
         2. 计算logits；
         """
         f_emb = F.normalize(f_emb, dim=1, eps=1e-6)
         proto_emb = F.normalize(proto_emb, dim=1, eps=1e-6)
-        logits = (
-            torch.mm(f_emb, proto_emb.t()) * self.tau.exp()
-        )  # [B, num_labels]
+        logits = torch.mm(f_emb, proto_emb.t()) * self.tau.exp()  # [B, num_labels]
 
         """
         3. 计算交叉熵损失；
@@ -133,9 +121,7 @@ class SCELoss(nn.Module):
         # RCE
         pred = F.softmax(pred, dim=1)
         pred = torch.clamp(pred, min=1e-7, max=1.0)
-        label_one_hot = torch.nn.functional.one_hot(
-            labels, self.num_classes
-        ).to(pred.dtype)
+        label_one_hot = torch.nn.functional.one_hot(labels, self.num_classes).to(pred.dtype)
         label_one_hot = torch.clamp(label_one_hot, min=1e-4, max=1.0)
         rce = -1 * torch.sum(pred * torch.log(label_one_hot), dim=1)
 

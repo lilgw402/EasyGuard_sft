@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import torch
 from timm.scheduler.cosine_lr import CosineLRScheduler
-from timm.scheduler.step_lr import StepLRScheduler
 from timm.scheduler.scheduler import Scheduler
+from timm.scheduler.step_lr import StepLRScheduler
 
 
 def build_scheduler(config, optimizer, epochs, n_iter_per_epoch):
@@ -11,7 +11,7 @@ def build_scheduler(config, optimizer, epochs, n_iter_per_epoch):
     decay_steps = int(config.lr_scheduler_decay_epochs * n_iter_per_epoch)
 
     lr_scheduler = None
-    if config.lr_scheduler == 'cosine':
+    if config.lr_scheduler == "cosine":
         lr_scheduler = CosineLRScheduler(
             optimizer,
             t_initial=num_steps,
@@ -22,7 +22,7 @@ def build_scheduler(config, optimizer, epochs, n_iter_per_epoch):
             cycle_limit=1,
             t_in_epochs=False,
         )
-    elif config.lr_scheduler == 'linear':
+    elif config.lr_scheduler == "linear":
         lr_scheduler = LinearLRScheduler(
             optimizer,
             t_initial=num_steps,
@@ -31,7 +31,7 @@ def build_scheduler(config, optimizer, epochs, n_iter_per_epoch):
             warmup_t=warmup_steps,
             t_in_epochs=False,
         )
-    elif config.lr_scheduler == 'step':
+    elif config.lr_scheduler == "step":
         lr_scheduler = StepLRScheduler(
             optimizer,
             decay_t=decay_steps,
@@ -45,23 +45,29 @@ def build_scheduler(config, optimizer, epochs, n_iter_per_epoch):
 
 
 class LinearLRScheduler(Scheduler):
-    def __init__(self,
-                 optimizer: torch.optim.Optimizer,
-                 t_initial: int,
-                 lr_min_rate: float,
-                 warmup_t=0,
-                 warmup_lr_init=0.,
-                 t_in_epochs=True,
-                 noise_range_t=None,
-                 noise_pct=0.67,
-                 noise_std=1.0,
-                 noise_seed=42,
-                 initialize=True,
-                 ) -> None:
+    def __init__(
+        self,
+        optimizer: torch.optim.Optimizer,
+        t_initial: int,
+        lr_min_rate: float,
+        warmup_t=0,
+        warmup_lr_init=0.0,
+        t_in_epochs=True,
+        noise_range_t=None,
+        noise_pct=0.67,
+        noise_std=1.0,
+        noise_seed=42,
+        initialize=True,
+    ) -> None:
         super().__init__(
-            optimizer, param_group_field="lr",
-            noise_range_t=noise_range_t, noise_pct=noise_pct, noise_std=noise_std, noise_seed=noise_seed,
-            initialize=initialize)
+            optimizer,
+            param_group_field="lr",
+            noise_range_t=noise_range_t,
+            noise_pct=noise_pct,
+            noise_std=noise_std,
+            noise_seed=noise_seed,
+            initialize=initialize,
+        )
 
         self.t_initial = t_initial
         self.lr_min_rate = lr_min_rate

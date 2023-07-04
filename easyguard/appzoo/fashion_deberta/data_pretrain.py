@@ -1,34 +1,43 @@
 """An customizable fashion_deberta example"""
 import json
 import math
-import numpy as np
 import os
 import random
 import sys
+from typing import List, Union
+
+import numpy as np
 import torch
-from typing import Union, List
 
 try:
     import easyguard
 except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from cruise.data_module import CruiseDataModule
-from cruise.utilities.hdfs_io import hlist_files, hopen
 from cruise.data_module.cruise_loader import DistributedCruiseDataLoader
-from easyguard.utils.data_helpers import build_vocab
+from cruise.utilities.hdfs_io import hlist_files, hopen
+
 from easyguard.core import AutoTokenizer
+from easyguard.utils.data_helpers import build_vocab
 
 
 class TextProcessor:
-    def __init__(self, text_label_field, text_field, tokenizer, context_length, vocab,
-                 classification_task_enable,
-                 cl_enable,
-                 span_set,
-                 max_forward_search_step,
-                 multi_label_enable,
-                 multi_label_map,
-                 multi_label_split_token,
-                 mlm_probability):
+    def __init__(
+        self,
+        text_label_field,
+        text_field,
+        tokenizer,
+        context_length,
+        vocab,
+        classification_task_enable,
+        cl_enable,
+        span_set,
+        max_forward_search_step,
+        multi_label_enable,
+        multi_label_map,
+        multi_label_split_token,
+        mlm_probability,
+    ):
         self._text_label_field = text_label_field
         self._text_field = text_field
         self._tokenizer = tokenizer
@@ -41,10 +50,10 @@ class TextProcessor:
         self._multi_label_enable = multi_label_enable
         self._multi_label_map = multi_label_map
         self._multi_label_split_token = multi_label_split_token
-        self.PAD_IDX = self._vocab['[PAD]']
-        self.SEP_IDX = self._vocab['[SEP]']
-        self.CLS_IDX = self._vocab['[CLS]']
-        self.MASK_IDX = self._vocab['[MASK]']
+        self.PAD_IDX = self._vocab["[PAD]"]
+        self.SEP_IDX = self._vocab["[SEP]"]
+        self.CLS_IDX = self._vocab["[CLS]"]
+        self.MASK_IDX = self._vocab["[MASK]"]
         # 遍历tokens列表，每个位置向前看3个token，去trie树检索，最后取最长的span进行mask
         self._max_forward_search_step = max_forward_search_step
         self.cnt = 0
@@ -56,7 +65,7 @@ class TextProcessor:
         text = data_dict.get(self._text_field, "")
         text_token = self._tokenizer.tokenize(text)
         # 对最后的tokenizer结果进行处理，避免分词策略影响效果和处理逻辑
-        text_token = text_token[:self._context_length - 2]
+        text_token = text_token[: self._context_length - 2]
         input_ids, mlm_input_ids, mlm_labels = self.mlm_span_mask(text_token)
         if self.cnt < 1:
             print(f"input_ids: {input_ids}")
@@ -65,11 +74,16 @@ class TextProcessor:
             print(f"mlm_input_tokens: {mlm_input_tokens}")
             print(f"mlm_labels: {mlm_labels}")
             self.cnt += 1
-        return_dict = {'input_ids': input_ids, 'mlm_input_ids': mlm_input_ids, 'mlm_labels': mlm_labels}
+        return_dict = {
+            "input_ids": input_ids,
+            "mlm_input_ids": mlm_input_ids,
+            "mlm_labels": mlm_labels,
+        }
         if self._classification_task_enable:
             if not self._text_label_field in data_dict:
                 raise KeyError(
-                    f"Unable to find text by keys: {self._text_label_field}, available keys: {data_dict.keys()}")
+                    f"Unable to find text by keys: {self._text_label_field}, available keys: {data_dict.keys()}"
+                )
             if self._multi_label_enable:
                 # multi label
                 multi_label = np.zeros(len(self._multi_label_map), dtype=int)
@@ -79,11 +93,11 @@ class TextProcessor:
                         print(f"[WARNING] label {l} not in multi_label_map!!!")
                         continue
                     multi_label[self._multi_label_map[l]] = 1
-                return_dict['classification_labels'] = multi_label
+                return_dict["classification_labels"] = multi_label
             else:
                 label = int(data_dict.get(self._text_label_field))
                 # label = int(ccr_label_map[data_dict.get(self._text_label_field)])
-                return_dict['classification_labels'] = int(label)
+                return_dict["classification_labels"] = int(label)
         return return_dict
 
     def batch_transform(self, batch_data):
@@ -98,15 +112,17 @@ class TextProcessor:
 
         for ib, ibatch in enumerate(batch_data):
             mlm_input_ids.append(
-                ibatch['mlm_input_ids'][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch['mlm_input_ids'])))
-            input_ids.append(ibatch['input_ids'][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch['input_ids'])))
+                ibatch["mlm_input_ids"][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch["mlm_input_ids"]))
+            )
+            input_ids.append(ibatch["input_ids"][:max_len] + [self.PAD_IDX] * (max_len - len(ibatch["input_ids"])))
             input_mask.append(
-                [1] * len(ibatch['mlm_input_ids'][:max_len]) + [0] * (max_len - len(ibatch['mlm_input_ids'])))
+                [1] * len(ibatch["mlm_input_ids"][:max_len]) + [0] * (max_len - len(ibatch["mlm_input_ids"]))
+            )
             input_segment_ids.append([0] * max_len)
-            mlm_labels.append(ibatch['mlm_labels'][:max_len] + [-100] * (max_len - len(ibatch['mlm_labels'])))
+            mlm_labels.append(ibatch["mlm_labels"][:max_len] + [-100] * (max_len - len(ibatch["mlm_labels"])))
 
             if self._classification_task_enable:
-                classification_labels.append(ibatch['classification_labels'])
+                classification_labels.append(ibatch["classification_labels"])
 
         # for cl, double data
         if self._cl_enable:
@@ -122,14 +138,15 @@ class TextProcessor:
         input_mask = torch.tensor(input_mask)
         input_segment_ids = torch.tensor(input_segment_ids)
 
-        res = {"mlm_labels"       : mlm_labels,
-               "mlm_input_ids"    : mlm_input_ids,
-               "input_ids"        : input_ids,
-               "input_masks"      : input_mask,
-               "input_segment_ids": input_segment_ids
-               }
+        res = {
+            "mlm_labels": mlm_labels,
+            "mlm_input_ids": mlm_input_ids,
+            "input_ids": input_ids,
+            "input_masks": input_mask,
+            "input_segment_ids": input_segment_ids,
+        }
         if self._classification_task_enable:
-            res['classification_labels'] = torch.tensor(np.array(classification_labels))
+            res["classification_labels"] = torch.tensor(np.array(classification_labels))
         return res
 
     def mlm_span_mask(self, input_tokens):
@@ -169,7 +186,7 @@ class TextProcessor:
             for j in range(self._max_forward_search_step):
                 if i + j + 1 > text_token_len:
                     break
-                span_list = text_token_rm_shape[i:i + j + 1]
+                span_list = text_token_rm_shape[i : i + j + 1]
                 span_str = "".join(span_list)
                 if span_str in self._span_set:
                     max_span_len = max(j, max_span_len)
@@ -183,8 +200,8 @@ class TextProcessor:
             # if max_span_len > 3:
             #     print(f"max_span_len: {max_span_len}")
         # if sum(mlm_mask_idxs) > 0:
-        #     print(f"text_tokens: {input_tokens}") 
-        #     print(f"mlm_mask_idxs: {mlm_mask_idxs}") 
+        #     print(f"text_tokens: {input_tokens}")
+        #     print(f"mlm_mask_idxs: {mlm_mask_idxs}")
         # 如果span mask不够mlm_mask_num，剩下的用rand mask补齐
         total_mask_num = math.ceil(len(input_tokens) * self._mlm_probability)
         total_span_len = min(total_mask_num, sum(mlm_mask_idxs))
@@ -265,30 +282,33 @@ class TextProcessor:
 
 
 class FashionDataModule(CruiseDataModule):
-    def __init__(self,
-                 train_batch_size: int = 8,
-                 val_batch_size: int = 8,
-                 train_paths: Union[str, List[
-                     str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/traindata/part*',
-                 val_paths: Union[str, List[
-                     str]] = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/validdata/part*',
-                 data_size: int = 1000,
-                 val_step: int = 10,
-                 classification_task_enable: bool = False,
-                 text_label_field: str = 'label',
-                 text_field: str = 'text',
-                 cl_enable: bool = True,
-                 num_workers: int = 1,
-                 context_length: int = 512,
-                 mlm_probability: float = 0.15,
-                 key_span_file_path: str = "",
-                 max_forward_search_step: int = 6,
-                 multi_label_enable: bool = False,
-                 multi_label_map_file: str = '',
-                 multi_label_split_token: str = "@##@",
-                 vocab_file_path: str = 'hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt',
-                 pretrain_model_name: str = "fashion-deberta-asr",
-                 ):
+    def __init__(
+        self,
+        train_batch_size: int = 8,
+        val_batch_size: int = 8,
+        train_paths: Union[
+            str, List[str]
+        ] = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/traindata/part*",
+        val_paths: Union[
+            str, List[str]
+        ] = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/chinese/common_model/trails/ccr_v3_live_0.3b_mlm/validdata/part*",
+        data_size: int = 1000,
+        val_step: int = 10,
+        classification_task_enable: bool = False,
+        text_label_field: str = "label",
+        text_field: str = "text",
+        cl_enable: bool = True,
+        num_workers: int = 1,
+        context_length: int = 512,
+        mlm_probability: float = 0.15,
+        key_span_file_path: str = "",
+        max_forward_search_step: int = 6,
+        multi_label_enable: bool = False,
+        multi_label_map_file: str = "",
+        multi_label_split_token: str = "@##@",
+        vocab_file_path: str = "hdfs://haruna/home/byte_ecom_govern/user/yangzheming/asr_model/zh_deberta_base_l6_emd_20210720/vocab.txt",
+        pretrain_model_name: str = "fashion-deberta-asr",
+    ):
         super().__init__()
         self.save_hparams()
 
@@ -363,10 +383,10 @@ class FashionDataModule(CruiseDataModule):
                 self.hparams.multi_label_enable,
                 self.multi_label_map,
                 self.multi_label_split_token,
-                mlm_probability=self.hparams.mlm_probability
+                mlm_probability=self.hparams.mlm_probability,
             ),
             predefined_steps=self.hparams.data_size // self.hparams.train_batch_size // self.trainer.world_size,
-            source_types=['jsonl'],
+            source_types=["jsonl"],
             shuffle=True,
         )
 
@@ -391,9 +411,9 @@ class FashionDataModule(CruiseDataModule):
                 self.hparams.multi_label_enable,
                 self.multi_label_map,
                 self.multi_label_split_token,
-                mlm_probability=self.hparams.mlm_probability
+                mlm_probability=self.hparams.mlm_probability,
             ),
             predefined_steps=self.hparams.val_step,
-            source_types=['jsonl'],
+            source_types=["jsonl"],
             shuffle=False,
         )

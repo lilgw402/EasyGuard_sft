@@ -58,10 +58,7 @@ else:
 
 
 if TYPE_CHECKING:
-    from .configuration_bart import (
-        BART_PRETRAINED_CONFIG_ARCHIVE_MAP,
-        BartConfig,
-    )
+    from .configuration_bart import BART_PRETRAINED_CONFIG_ARCHIVE_MAP, BartConfig
     from .tokenization_bart import BartTokenizer
 
     try:
@@ -93,5 +90,8 @@ else:
     import sys
 
     sys.modules[__name__] = _LazyModule(
-        __name__, globals()["__file__"], _import_structure, module_spec=__spec__
+        __name__,
+        globals()["__file__"],
+        _import_structure,
+        module_spec=__spec__,
     )

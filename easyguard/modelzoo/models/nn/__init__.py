@@ -1,1 +1,1 @@
-from .basic_layers import Prediction, LayerNorm, Linear
+from .basic_layers import LayerNorm, Linear, Prediction

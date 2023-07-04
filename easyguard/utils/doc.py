@@ -22,9 +22,7 @@ import types
 
 def add_start_docstrings(*docstr):
     def docstring_decorator(fn):
-        fn.__doc__ = "".join(docstr) + (
-            fn.__doc__ if fn.__doc__ is not None else ""
-        )
+        fn.__doc__ = "".join(docstr) + (fn.__doc__ if fn.__doc__ is not None else "")
         return fn
 
     return docstring_decorator
@@ -32,9 +30,7 @@ def add_start_docstrings(*docstr):
 
 def add_start_docstrings_to_model_forward(*docstr):
     def docstring_decorator(fn):
-        docstring = "".join(docstr) + (
-            fn.__doc__ if fn.__doc__ is not None else ""
-        )
+        docstring = "".join(docstr) + (fn.__doc__ if fn.__doc__ is not None else "")
         class_name = f"[`{fn.__qualname__.split('.')[0]}`]"
         intro = f"   The {class_name} forward method, overrides the `__call__` special method."
         note = r"""
@@ -56,9 +52,7 @@ def add_start_docstrings_to_model_forward(*docstr):
 
 def add_end_docstrings(*docstr):
     def docstring_decorator(fn):
-        fn.__doc__ = (fn.__doc__ if fn.__doc__ is not None else "") + "".join(
-            docstr
-        )
+        fn.__doc__ = (fn.__doc__ if fn.__doc__ is not None else "") + "".join(docstr)
         return fn
 
     return docstring_decorator
@@ -123,10 +117,7 @@ def _prepare_output_docstrings(output_type, config_class, min_indent=None):
     # Remove the head of the docstring to keep the list of args only
     lines = output_docstring.split("\n")
     i = 0
-    while (
-        i < len(lines)
-        and re.search(r"^\s*(Args|Parameters):\s*$", lines[i]) is None
-    ):
+    while i < len(lines) and re.search(r"^\s*(Args|Parameters):\s*$", lines[i]) is None:
         i += 1
     if i < len(lines):
         params_docstring = "\n".join(lines[(i + 1) :])
@@ -134,14 +125,8 @@ def _prepare_output_docstrings(output_type, config_class, min_indent=None):
 
     # Add the return introduction
     full_output_type = f"{output_type.__module__}.{output_type.__name__}"
-    intro = (
-        TF_RETURN_INTRODUCTION
-        if output_type.__name__.startswith("TF")
-        else PT_RETURN_INTRODUCTION
-    )
-    intro = intro.format(
-        full_output_type=full_output_type, config_class=config_class
-    )
+    intro = TF_RETURN_INTRODUCTION if output_type.__name__.startswith("TF") else PT_RETURN_INTRODUCTION
+    intro = intro.format(full_output_type=full_output_type, config_class=config_class)
     result = intro + params_docstring
 
     # Apply minimum indent if necessary
@@ -155,9 +140,7 @@ def _prepare_output_docstrings(output_type, config_class, min_indent=None):
         # If too small, add indentation to all nonempty lines
         if indent < min_indent:
             to_add = " " * (min_indent - indent)
-            lines = [
-                (f"{to_add}{line}" if len(line) > 0 else line) for line in lines
-            ]
+            lines = [(f"{to_add}{line}" if len(line) > 0 else line) for line in lines]
             result = "\n".join(lines)
 
     return result
@@ -1081,9 +1064,7 @@ def add_code_sample_docstrings(
 ):
     def docstring_decorator(fn):
         # model_class defaults to function's class if not specified otherwise
-        model_class = (
-            fn.__qualname__.split(".")[0] if model_cls is None else model_cls
-        )
+        model_class = fn.__qualname__.split(".")[0] if model_cls is None else model_cls
 
         if model_class[:2] == "TF":
             sample_docstrings = TF_SAMPLE_DOCSTRINGS
@@ -1106,10 +1087,7 @@ def add_code_sample_docstrings(
             expected_loss=expected_loss,
         )
 
-        if (
-            "SequenceClassification" in model_class
-            or "AudioClassification" in model_class
-        ) and modality == "audio":
+        if ("SequenceClassification" in model_class or "AudioClassification" in model_class) and modality == "audio":
             code_sample = sample_docstrings["AudioClassification"]
         elif "SequenceClassification" in model_class:
             code_sample = sample_docstrings["SequenceClassification"]
@@ -1141,16 +1119,10 @@ def add_code_sample_docstrings(
         elif "ImageClassification" in model_class:
             code_sample = sample_docstrings["ImageClassification"]
         else:
-            raise ValueError(
-                f"Docstring can't be built for model {model_class}"
-            )
+            raise ValueError(f"Docstring can't be built for model {model_class}")
 
         func_doc = (fn.__doc__ or "") + "".join(docstr)
-        output_doc = (
-            ""
-            if output_type is None
-            else _prepare_output_docstrings(output_type, config_class)
-        )
+        output_doc = "" if output_type is None else _prepare_output_docstrings(output_type, config_class)
         built_doc = code_sample.format(**doc_kwargs)
         fn.__doc__ = func_doc + output_doc + built_doc
         return fn
@@ -1163,15 +1135,11 @@ def replace_return_docstrings(output_type=None, config_class=None):
         func_doc = fn.__doc__
         lines = func_doc.split("\n")
         i = 0
-        while (
-            i < len(lines) and re.search(r"^\s*Returns?:\s*$", lines[i]) is None
-        ):
+        while i < len(lines) and re.search(r"^\s*Returns?:\s*$", lines[i]) is None:
             i += 1
         if i < len(lines):
             indent = len(_get_indent(lines[i]))
-            lines[i] = _prepare_output_docstrings(
-                output_type, config_class, min_indent=indent
-            )
+            lines[i] = _prepare_output_docstrings(output_type, config_class, min_indent=indent)
             func_doc = "\n".join(lines)
         else:
             raise ValueError(

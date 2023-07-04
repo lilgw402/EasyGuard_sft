@@ -48,11 +48,7 @@ if is_torch_available():
 if TYPE_CHECKING:
     # from .configuration_bert import BERT_PRETRAINED_CONFIG_ARCHIVE_MAP, BertConfig
     from .configuration_bert import BertConfig
-    from .tokenization_bert import (
-        BasicTokenizer,
-        BertTokenizer,
-        WordpieceTokenizer,
-    )
+    from .tokenization_bert import BasicTokenizer, BertTokenizer, WordpieceTokenizer
 
     if is_tokenizers_available():
         from .tokenization_bert_fast import BertTokenizerFast
@@ -76,5 +72,8 @@ else:
     import sys
 
     sys.modules[__name__] = _LazyModule(
-        __name__, globals()["__file__"], _import_structure, module_spec=__spec__
+        __name__,
+        globals()["__file__"],
+        _import_structure,
+        module_spec=__spec__,
     )

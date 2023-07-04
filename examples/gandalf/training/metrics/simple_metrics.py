@@ -1,12 +1,20 @@
 # coding=utf-8
 # Email: jiangxubin@bytedance.com
 # Create: 2023/3/9 18:00
-import numpy as np
-from utils.registry import METRICS
-from training.metrics.base_metric import BaseMetric
 from typing import List, Union
-from sklearn.metrics import precision_score,recall_score, auc, roc_curve,roc_auc_score
-from utils.analyzer import roc_curve_custom,mae_sklearn,mse_sklearn,rmse_sklearn,pr_score_analysis,precision_rescall_score
+
+import numpy as np
+from sklearn.metrics import auc, precision_score, recall_score, roc_curve
+from training.metrics.base_metric import BaseMetric
+from utils.analyzer import (
+    mae_sklearn,
+    mse_sklearn,
+    pr_score_analysis,
+    precision_rescall_score,
+    rmse_sklearn,
+    roc_curve_custom,
+)
+from utils.registry import METRICS
 
 
 class SimpleMetric(BaseMetric):
@@ -48,7 +56,7 @@ class AUC(SimpleMetric):
         pr_scope: List[int] = None,
         fix_recall: float = 0.3,
         dump_table_name: str = None,
-        hdfs_table_name: str = None
+        hdfs_table_name: str = None,
     ):
         super().__init__(score_key, label_key, score_idx)
         self._show_threshold_details = show_threshold_details
@@ -65,9 +73,7 @@ class AUC(SimpleMetric):
             "Total": len(labels),
             "PosCnt": positive_count,
             "NegCnt": negative_count,
-            "PosRate": round(
-                positive_count / (negative_count + positive_count + 1e-12), 3
-            ),
+            "PosRate": round(positive_count / (negative_count + positive_count + 1e-12), 3),
         }
         if self._show_threshold_details:
             fix_recall_metric_dict = pr_score_analysis(
@@ -78,11 +84,14 @@ class AUC(SimpleMetric):
                 partition=self._pr_scope[2],
                 fixed_recall=self._fix_recall,
                 dump_table_name=self._dump_table_name,
-                hdfs_table_name=self._hdfs_table_name
+                hdfs_table_name=self._hdfs_table_name,
             )
             result.update(fix_recall_metric_dict)
-            table_name = self._dump_table_name.replace(".csv", f"_{self.name}.csv") if isinstance(self._dump_table_name,
-                                                                                                  str) else None
+            table_name = (
+                self._dump_table_name.replace(".csv", f"_{self.name}.csv")
+                if isinstance(self._dump_table_name, str)
+                else None
+            )
             pr_score_analysis(
                 scores,
                 labels,
@@ -92,6 +101,7 @@ class AUC(SimpleMetric):
                 dump_table_name=table_name,
             )
         return result
+
 
 @METRICS.register_module()
 class ClsMetric(SimpleMetric):
@@ -103,8 +113,8 @@ class ClsMetric(SimpleMetric):
         binary_threshold=0.5,
         multi_class=False,
         neg_tag=0,
-        **kwargs
-        ):
+        **kwargs,
+    ):
         super().__init__(score_key, label_key, score_idx)
         self.score_key = score_key
         self.label_key = label_key
@@ -114,9 +124,9 @@ class ClsMetric(SimpleMetric):
         self.neg_tag = neg_tag
         assert self.neg_tag != 1, "neg_tag=1 is ambiguous, choose another num"
 
-    def cal_metric(self,scores,labels):
-        scores = np.stack(scores,axis=0)
-        labels = np.array(labels,dtype=np.int32)
+    def cal_metric(self, scores, labels):
+        scores = np.stack(scores, axis=0)
+        labels = np.array(labels, dtype=np.int32)
         if self.multi_class:
             scores = np.argmax(scores, axis=1)
         else:
@@ -124,7 +134,7 @@ class ClsMetric(SimpleMetric):
             scores[scores > self.binary_threshold] = 1
             scores[scores <= self.binary_threshold] = self.neg_tag
         total_num = labels.shape[0]
-        pos_num = np.sum(labels[labels==1])
+        pos_num = np.sum(labels[labels == 1])
         input_neg_ratio = np.sum(labels == self.neg_tag) / labels.shape[0]
         input_pos_ratio = 1 - input_neg_ratio
         output_neg_ratio = np.sum(scores == self.neg_tag) / scores.shape[0]
@@ -138,9 +148,22 @@ class ClsMetric(SimpleMetric):
         binary_auc = auc(binary_fpr, binary_tpr)
         if binary_auc != binary_auc:
             binary_auc = 0
-        binary_f1 = (2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6))
-        binary_metric = {'acc':acc,'precision':binary_prec,'recall':binary_recall,'auc':binary_auc,'binary_f1':binary_f1,'input_neg_ratio':input_neg_ratio,'input_pos_ratio':input_pos_ratio,'output_neg_ratio':output_neg_ratio,'output_pos_ratio':output_pos_ratio,'pos_num':pos_num,'total_num':total_num}
+        binary_f1 = 2 * (binary_prec * binary_recall) / (binary_prec + binary_recall + 1e-6)
+        binary_metric = {
+            "acc": acc,
+            "precision": binary_prec,
+            "recall": binary_recall,
+            "auc": binary_auc,
+            "binary_f1": binary_f1,
+            "input_neg_ratio": input_neg_ratio,
+            "input_pos_ratio": input_pos_ratio,
+            "output_neg_ratio": output_neg_ratio,
+            "output_pos_ratio": output_pos_ratio,
+            "pos_num": pos_num,
+            "total_num": total_num,
+        }
         return binary_metric
+
 
 @METRICS.register_module()
 class MSE(SimpleMetric):
@@ -180,7 +203,14 @@ class RMSE(SimpleMetric):
 
 @METRICS.register_module()
 class MeanPrecisionRecall(SimpleMetric):
-    def __init__(self, score_key, label_key, shares=[0.1], score_idx=1, round_result=True):
+    def __init__(
+        self,
+        score_key,
+        label_key,
+        shares=[0.1],
+        score_idx=1,
+        round_result=True,
+    ):
         super().__init__(score_key, label_key, score_idx)
         if not isinstance(shares, list):
             shares = list(shares)
@@ -203,9 +233,15 @@ class MeanPrecisionRecall(SimpleMetric):
         precisions, recalls = [], []
         for share in self._shares:
             threshold = scores_sorted[int(share * len(scores))]
-            precision, recall, review_rate, _, _, _, _ = precision_rescall_score(
-                scores, labels, threshold=threshold
-            )
+            (
+                precision,
+                recall,
+                review_rate,
+                _,
+                _,
+                _,
+                _,
+            ) = precision_rescall_score(scores, labels, threshold=threshold)
             precisions.append(precision)
             recalls.append(recall)
             result.update({f"{self._score_key}-recall-{share}": self._round(recall, 4)})
@@ -217,5 +253,18 @@ class MeanPrecisionRecall(SimpleMetric):
 
 @METRICS.register_module()
 class MPR(MeanPrecisionRecall):
-    def __init__(self, score_key, label_key, shares=[0.1], score_idx=1, round_result=True):
-        super(MPR, self).__init__(score_key, label_key, shares=shares, score_idx=score_idx, round_result=round_result)
+    def __init__(
+        self,
+        score_key,
+        label_key,
+        shares=[0.1],
+        score_idx=1,
+        round_result=True,
+    ):
+        super(MPR, self).__init__(
+            score_key,
+            label_key,
+            shares=shares,
+            score_idx=score_idx,
+            round_result=round_result,
+        )

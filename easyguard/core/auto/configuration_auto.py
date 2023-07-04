@@ -22,14 +22,7 @@ from genericpath import isfile
 
 from ...modelzoo import MODELZOO_CONFIG
 from ...modelzoo.configuration_utils import ConfigBase
-from ...utils import (
-    CONFIG_NAME,
-    cache_file,
-    file_read,
-    hf_name_or_path_check,
-    lazy_model_import,
-    logging,
-)
+from ...utils import CONFIG_NAME, cache_file, file_read, hf_name_or_path_check, lazy_model_import, logging
 from . import MODEL_CONFIG_NAMES, MODELZOO_CONFIG
 
 # TODO (junwei.Dong): 需要简化一下configuration_auto的逻辑
@@ -92,9 +85,7 @@ class AutoConfig:
                 else pretrained_model_name_or_path
             )
 
-            return HFAutoConfig.from_pretrained(
-                pretrained_model_name_or_path_, **kwargs
-            )
+            return HFAutoConfig.from_pretrained(pretrained_model_name_or_path_, **kwargs)
 
         if backend_default_flag:
             model_config_name_tuple = MODELZOO_CONFIG[model_type][config_name]
@@ -103,9 +94,7 @@ class AutoConfig:
                 model_config_module_name,
             ) = MODELZOO_CONFIG.to_module(model_config_name_tuple)
             # obtain config class
-            model_config_class = lazy_model_import(
-                model_config_module_package, model_config_module_name
-            )
+            model_config_class = lazy_model_import(model_config_module_package, model_config_module_name)
             extra_dict = {
                 "model_type": model_type,
                 "remote_url": model_url,

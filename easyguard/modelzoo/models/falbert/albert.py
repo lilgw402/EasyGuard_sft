@@ -28,16 +28,7 @@ def gelu_new(x):
     """Implementation of the gelu activation function currently in Google Bert repo (identical to OpenAI GPT).
     Also see https://arxiv.org/abs/1606.08415
     """
-    return (
-        0.5
-        * x
-        * (
-            1
-            + torch.tanh(
-                math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))
-            )
-        )
-    )
+    return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
     # return 0.5 * x * (1 + torch.tanh(math.sqrt(math.pi / 2) * (x + 0.044715 * x ** 3)))
 
 
@@ -141,14 +132,10 @@ class AlbertLMPredictionHead(torch.nn.Module):
         super().__init__()
         self.dense = torch.nn.Linear(config.hidden_size, config.embedding_size)
         self.activation = gelu_new
-        self.layer_norm = nn.LayerNorm(
-            config.embedding_size, eps=config.layernorm_eps
-        )
+        self.layer_norm = nn.LayerNorm(config.embedding_size, eps=config.layernorm_eps)
 
         # self.decoder = torch.nn.Linear(config.embedding_size, config.vocab_size, bias=False)
-        self.decoder = nn.Linear(
-            embedding_weights.size(1), embedding_weights.size(0), bias=False
-        )
+        self.decoder = nn.Linear(embedding_weights.size(1), embedding_weights.size(0), bias=False)
         self.decoder.weight = embedding_weights
 
         self.bias = torch.nn.Parameter(torch.zeros(config.vocab_size))
@@ -199,12 +186,7 @@ class Transformer(nn.Module):
     def __init__(self, config):
         """ """
         super().__init__()
-        self.blocks = nn.ModuleList(
-            [
-                self._create_layer(config)
-                for _ in range(config.num_hidden_layers)
-            ]
-        )
+        self.blocks = nn.ModuleList([self._create_layer(config) for _ in range(config.num_hidden_layers)])
         self.dim = config.hidden_size
         self.attn_weights = None
 
@@ -267,28 +249,18 @@ class BertEmbedding(nn.Module):
         super().__init__()
 
         self.project_embedding_first = config.project_embedding_first
-        dim = (
-            config.hidden_size
-            if self.project_embedding_first
-            else config.embedding_size
-        )
+        dim = config.hidden_size if self.project_embedding_first else config.embedding_size
         self.token_embedder_tokens = torch.nn.Embedding(
             config.vocab_size, config.embedding_size, padding_idx=padding_index
         )
-        self.token_embedder_positions = torch.nn.Embedding(
-            config.max_position_embeddings, dim
-        )
-        self.token_embedder_segments = torch.nn.Embedding(
-            config.type_vocab_size, dim
-        )
+        self.token_embedder_positions = torch.nn.Embedding(config.max_position_embeddings, dim)
+        self.token_embedder_segments = torch.nn.Embedding(config.type_vocab_size, dim)
 
         self.norm = nn.LayerNorm(dim, eps=config.layernorm_eps)
         self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
 
         if config.embedding_size != config.hidden_size:
-            self.proj_embedding_hidden = torch.nn.Linear(
-                config.embedding_size, config.hidden_size
-            )
+            self.proj_embedding_hidden = torch.nn.Linear(config.embedding_size, config.hidden_size)
         else:
             self.proj_embedding_hidden = None
 
@@ -314,9 +286,7 @@ class BertEmbedding(nn.Module):
 
         bsz, length = inputs_embeds.size()[:2]
         if position_ids is None:
-            position_ids = torch.arange(
-                0, length, dtype=torch.long, device=input_ids.device
-            ).expand(bsz, length)
+            position_ids = torch.arange(0, length, dtype=torch.long, device=input_ids.device).expand(bsz, length)
 
         position_embeddings = self.token_embedder_positions(position_ids)
         token_type_embeddings = self.token_embedder_segments(token_type_ids)
@@ -366,18 +336,14 @@ class ALBert(nn.Module):
         if isinstance(module, (nn.Linear, nn.Embedding)):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range
-            )
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
         if isinstance(module, nn.Linear) and module.bias is not None:
             module.bias.data.zero_()
 
-    def forward(
-        self, input_ids, input_segment_ids, input_mask, *args, **kwargs
-    ):
+    def forward(self, input_ids, input_segment_ids, input_mask, *args, **kwargs):
         embeddings = self.embedding(
             input_ids=input_ids,
             token_type_ids=input_segment_ids,
@@ -391,9 +357,7 @@ class ALBert(nn.Module):
             encoded_layers = out
             attention_probs = None
         sequence_output = encoded_layers[-1]
-        pooled_output = (
-            self.pooler(sequence_output) if self.config.with_pooler else None
-        )
+        pooled_output = self.pooler(sequence_output) if self.config.with_pooler else None
 
         return {
             "encoded_layers": encoded_layers,

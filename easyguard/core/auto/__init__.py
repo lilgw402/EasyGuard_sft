@@ -18,20 +18,12 @@ MODEL_SAVE_NAMES = set(
 VOCAB_NAME = "vocab.txt"
 VOCAB_JSON_NAMES = set(["vocab.yaml", "vocab.json"])
 TOKENIZER_CONFIG = "tokenizer_config"
-TOKENIZER_CONFIG_NAMES = set(
-    [f"{TOKENIZER_CONFIG}.yaml", f"{TOKENIZER_CONFIG}.json"]
-)
+TOKENIZER_CONFIG_NAMES = set([f"{TOKENIZER_CONFIG}.yaml", f"{TOKENIZER_CONFIG}.json"])
 IMAGE_PROCESSOR_CONFIG = "preprocessor_config"
-IMAGE_PROCESSOR_CONFIG_NAMES = set(
-    [f"{IMAGE_PROCESSOR_CONFIG}.json", f"{IMAGE_PROCESSOR_CONFIG}.yaml"]
-)
+IMAGE_PROCESSOR_CONFIG_NAMES = set([f"{IMAGE_PROCESSOR_CONFIG}.json", f"{IMAGE_PROCESSOR_CONFIG}.yaml"])
 PROCESSOR_CONFIG = "processor_config"
-PROCESSOR_CONFIG_NAMES = set(
-    [f"{PROCESSOR_CONFIG}.yaml", f"{PROCESSOR_CONFIG}.json"]
-)
-SPECIAL_TOKENS_MAP_NAMES = set(
-    ["special_tokens_map.yaml", "special_tokens_map.json"]
-)
+PROCESSOR_CONFIG_NAMES = set([f"{PROCESSOR_CONFIG}.yaml", f"{PROCESSOR_CONFIG}.json"])
+SPECIAL_TOKENS_MAP_NAMES = set(["special_tokens_map.yaml", "special_tokens_map.json"])
 
 # # different pools for differrnt parts, files that are in pool will be downloaded together
 # TOKENIZER_FILE_POOL = [

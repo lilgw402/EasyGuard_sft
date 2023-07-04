@@ -2,7 +2,6 @@ import torch
 
 
 class BaseRunningMetric:
-
     def batch_eval(self, *args, **kwargs) -> dict:
         raise NotImplementedError
 
@@ -14,5 +13,6 @@ class BaseRunningMetric:
         graph. This method ensures that you're using tensors directly, and they can be on
         the CPU.
         """
-        return ((x.detach().cpu() if move_to_cpu else x.detach()) if isinstance(x, torch.Tensor) else x for x in
-                tensors)
+        return (
+            (x.detach().cpu() if move_to_cpu else x.detach()) if isinstance(x, torch.Tensor) else x for x in tensors
+        )

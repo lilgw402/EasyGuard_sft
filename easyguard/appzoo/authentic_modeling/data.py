@@ -4,11 +4,7 @@ import json
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-from cruise.data_module import (
-    CruiseDataModule,
-    create_cruise_loader,
-    customized_processor,
-)
+from cruise.data_module import CruiseDataModule, create_cruise_loader
 from cruise.data_module.preprocess.decode import save_args
 from PIL import Image
 
@@ -93,9 +89,7 @@ class VideoFrameProcess(object):
         self.test_mode = test_mode
 
     def get_transform(self, test_mode: bool = False):
-        normalize = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         if not test_mode:
             com_transforms = transforms.Compose(
                 [
@@ -121,10 +115,7 @@ class VideoFrameProcess(object):
         total_frames = len(image_paths)
         if total_frames > 0:
             clip_offsets = self._sample_clips(total_frames)
-            frame_inds = (
-                clip_offsets[:, None]
-                + np.arange(self.clip_len)[None, :] * self.frame_interval
-            )
+            frame_inds = clip_offsets[:, None] + np.arange(self.clip_len)[None, :] * self.frame_interval
             frame_inds = np.concatenate(frame_inds)
             frame_inds = frame_inds.reshape((-1, self.clip_len))
             if self.out_of_bound_opt == "loop":
@@ -141,9 +132,7 @@ class VideoFrameProcess(object):
             frames = []
             for i in frame_inds:
                 try:
-                    image = Image.open(
-                        io.BytesIO(open(image_paths[i], "rb").read())
-                    ).convert("RGB")
+                    image = Image.open(io.BytesIO(open(image_paths[i], "rb").read())).convert("RGB")
                 except:
                     image = Image.new("RGB", (256, 256), (255, 255, 255))
                     print("error_image_path", image_paths[i])
@@ -173,15 +162,10 @@ class VideoFrameProcess(object):
         ori_clip_len = self.clip_len * self.frame_interval
 
         if self.keep_tail_frames:
-            avg_interval = (num_frames - ori_clip_len + 1) / float(
-                self.num_clips
-            )
+            avg_interval = (num_frames - ori_clip_len + 1) / float(self.num_clips)
             if num_frames > ori_clip_len - 1:
                 base_offsets = np.arange(self.num_clips) * avg_interval
-                clip_offsets = (
-                    base_offsets
-                    + np.random.uniform(0, avg_interval, self.num_clips)
-                ).astype(int)
+                clip_offsets = (base_offsets + np.random.uniform(0, avg_interval, self.num_clips)).astype(int)
             else:
                 clip_offsets = np.zeros((self.num_clips,), dtype=int)
         else:
@@ -189,15 +173,9 @@ class VideoFrameProcess(object):
 
             if avg_interval > 0:
                 base_offsets = np.arange(self.num_clips) * avg_interval
-                clip_offsets = base_offsets + np.random.randint(
-                    avg_interval, size=self.num_clips
-                )
+                clip_offsets = base_offsets + np.random.randint(avg_interval, size=self.num_clips)
             elif num_frames > max(self.num_clips, ori_clip_len):
-                clip_offsets = np.sort(
-                    np.random.randint(
-                        num_frames - ori_clip_len + 1, size=self.num_clips
-                    )
-                )
+                clip_offsets = np.sort(np.random.randint(num_frames - ori_clip_len + 1, size=self.num_clips))
             elif avg_interval == 0:
                 ratio = (num_frames - ori_clip_len + 1.0) / self.num_clips
                 clip_offsets = np.around(np.arange(self.num_clips) * ratio)
@@ -255,9 +233,7 @@ class AuthenticProcessor:
         frame_key="frame_file_paths",
         label_keys=("label",),
     ):
-        self.text_process = TextProcessor(
-            vocab_file=vocab_file, max_len=text_max_len
-        )
+        self.text_process = TextProcessor(vocab_file=vocab_file, max_len=text_max_len)
         self.frame_process = VideoFrameProcess(test_mode, num_clips=frame_len)
         self.text_keys = text_keys
         self.frame_key = frame_key
@@ -372,9 +348,7 @@ class AuthenticDataModule(CruiseDataModule):
             decode_fn_list=[AuthenticDataDecode()],
         )
 
-    def predict_dataloader(
-        self, data_source=None, batch_size=32, num_workers=8
-    ):
+    def predict_dataloader(self, data_source=None, batch_size=32, num_workers=8):
         return create_cruise_loader(
             data_sources=data_source,
             data_types="kv",

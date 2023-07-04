@@ -18,7 +18,6 @@ import json
 from typing import List, Optional, Tuple
 
 from tokenizers import normalizers
-
 from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
 from ....utils import logging
@@ -120,13 +119,10 @@ class BertTokenizerFast(PreTrainedTokenizerFast):
             **kwargs,
         )
 
-        pre_tok_state = json.loads(
-            self.backend_tokenizer.normalizer.__getstate__()
-        )
+        pre_tok_state = json.loads(self.backend_tokenizer.normalizer.__getstate__())
         if (
             pre_tok_state.get("lowercase", do_lower_case) != do_lower_case
-            or pre_tok_state.get("strip_accents", strip_accents)
-            != strip_accents
+            or pre_tok_state.get("strip_accents", strip_accents) != strip_accents
         ):
             pre_tok_class = getattr(normalizers, pre_tok_state.pop("type"))
             pre_tok_state["lowercase"] = do_lower_case
@@ -189,8 +185,6 @@ class BertTokenizerFast(PreTrainedTokenizerFast):
             return len(cls + token_ids_0 + sep) * [0]
         return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
 
-    def save_vocabulary(
-        self, save_directory: str, filename_prefix: Optional[str] = None
-    ) -> Tuple[str]:
+    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
         files = self._tokenizer.model.save(save_directory, name=filename_prefix)
         return tuple(files)

@@ -160,9 +160,7 @@ class BartConfig(PretrainedConfig):
         self.classifier_dropout = classifier_dropout
         self.use_cache = use_cache
         self.num_hidden_layers = encoder_layers
-        self.scale_embedding = (
-            scale_embedding  # scale factor will be sqrt(d_model) if True
-        )
+        self.scale_embedding = scale_embedding  # scale factor will be sqrt(d_model) if True
 
         super().__init__(
             num_labels=num_labels,
@@ -176,9 +174,7 @@ class BartConfig(PretrainedConfig):
         )
 
         # ensure backward compatibility for BART CNN models
-        if self.forced_bos_token_id is None and kwargs.get(
-            "force_bos_token_to_be_generated", False
-        ):
+        if self.forced_bos_token_id is None and kwargs.get("force_bos_token_to_be_generated", False):
             self.forced_bos_token_id = self.bos_token_id
             warnings.warn(
                 f"Please make sure the config includes `forced_bos_token_id={self.bos_token_id}` in future versions. "

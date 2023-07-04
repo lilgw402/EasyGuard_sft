@@ -1,8 +1,5 @@
 import logging
 import logging.config
-import os
-import sys
-import threading
 from typing import Optional
 
 from .config import LOGGER_CONFIG

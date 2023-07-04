@@ -18,14 +18,10 @@ def get_real_url(url):
         return url
     elif url.startswith("v1"):
         url = url.split("~")[0]
-        return "https://p-multimodal.byted.org/img/ecom-shop-material/{}~tplv-houlpd90xl-mm.png".format(
-            url
-        )
+        return "https://p-multimodal.byted.org/img/ecom-shop-material/{}~tplv-houlpd90xl-mm.png".format(url)
     else:
         url = url.split("~")[0]
-        return "https://p-multimodal.byted.org/img/temai/{}~tplv-houlpd90xl-mm.png".format(
-            url
-        )
+        return "https://p-multimodal.byted.org/img/temai/{}~tplv-houlpd90xl-mm.png".format(url)
 
 
 def get_original_urls(urls):
@@ -33,31 +29,13 @@ def get_original_urls(urls):
     for url in urls:
         suffix = url.split("/")[-1].split("~")[0]
         if "ecom-shop-material" in url and "p-multimodal.byted.org" in url:
-            urls_new.append(
-                "https://p9-aio.ecombdimg.com/obj/ecom-shop-material/{}".format(
-                    suffix
-                )
-            )
-            urls_new.append(
-                "https://p6-aio.ecombdimg.com/obj/ecom-shop-material/{}".format(
-                    suffix
-                )
-            )
-            urls_new.append(
-                "https://p3-aio.ecombdimg.com/obj/ecom-shop-material/{}".format(
-                    suffix
-                )
-            )
+            urls_new.append("https://p9-aio.ecombdimg.com/obj/ecom-shop-material/{}".format(suffix))
+            urls_new.append("https://p6-aio.ecombdimg.com/obj/ecom-shop-material/{}".format(suffix))
+            urls_new.append("https://p3-aio.ecombdimg.com/obj/ecom-shop-material/{}".format(suffix))
         elif "temai" in url and "p-multimodal.byted.org" in url:
-            urls_new.append(
-                "https://p9-aio.ecombdimg.com/obj/temai/{}".format(suffix)
-            )
-            urls_new.append(
-                "https://p6-aio.ecombdimg.com/obj/temai/{}".format(suffix)
-            )
-            urls_new.append(
-                "https://p3-aio.ecombdimg.com/obj/temai/{}".format(suffix)
-            )
+            urls_new.append("https://p9-aio.ecombdimg.com/obj/temai/{}".format(suffix))
+            urls_new.append("https://p6-aio.ecombdimg.com/obj/temai/{}".format(suffix))
+            urls_new.append("https://p3-aio.ecombdimg.com/obj/temai/{}".format(suffix))
         urls_new.append(url)
 
     return urls_new
@@ -91,5 +69,5 @@ def download_url_with_exception(url: str, timeout=3):
     try:
         req = urllib.request.urlopen(url=url, timeout=timeout)
         return req.read()
-    except:
+    except:  # noqa: E722
         return b""

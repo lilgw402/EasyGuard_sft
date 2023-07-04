@@ -1,13 +1,14 @@
-from functools import lru_cache  # noqa
-from typing import Optional, List
 from dataclasses import dataclass, field
+from functools import lru_cache  # noqa
+from typing import List, Optional
 
 import numpy as np  # noqa
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .xperf_training import FTDAGather, FTLinearTranspose, FTTransposeV1, FTMatMul, FTSoftmax
+from .xperf_training import FTDAGather, FTLinearTranspose, FTMatMul, FTSoftmax, FTTransposeV1
+
 # FTDAGather = FTLinearTranspose = FTTransposeV1 = FTMatMul = FTSoftmax = None
 
 
@@ -21,8 +22,15 @@ def make_log_bucket_position(relative_pos: torch.Tensor, bucket_size: int, max_p
     # bucket_pos = np.where(abs_pos <= mid, relative_pos, log_pos * sign).astype(np.int)
 
     sign = relative_pos.sign()
-    abs_pos = torch.where((relative_pos < mid) & (relative_pos > -mid), torch.zeros_like(relative_pos).fill_(mid - 1), relative_pos.abs()).float()
-    log_pos = torch.ceil(torch.log(abs_pos / mid) / torch.log(torch.tensor((max_position - 1) / mid)) * (mid - 1)).long() + mid
+    abs_pos = torch.where(
+        (relative_pos < mid) & (relative_pos > -mid),
+        torch.zeros_like(relative_pos).fill_(mid - 1),
+        relative_pos.abs(),
+    ).float()
+    log_pos = (
+        torch.ceil(torch.log(abs_pos / mid) / torch.log(torch.tensor((max_position - 1) / mid)) * (mid - 1)).long()
+        + mid
+    )
     bucket_pos = torch.where(abs_pos <= mid, relative_pos, log_pos * sign).long()
 
     return bucket_pos
@@ -32,9 +40,11 @@ def make_log_bucket_position(relative_pos: torch.Tensor, bucket_size: int, max_p
 @torch.jit.script
 @torch.no_grad()
 def build_relative_position(
-    query_size: int, key_size: int,
-    bucket_size: int = -1, max_position: int = -1,
-    device: torch.device = torch.device('cpu'),
+    query_size: int,
+    key_size: int,
+    bucket_size: int = -1,
+    max_position: int = -1,
+    device: torch.device = torch.device("cpu"),
 ) -> torch.Tensor:
     """
     Build relative position according to the query and key
@@ -60,8 +70,15 @@ def build_relative_position(
         # rel_pos_ids = make_log_bucket_position(rel_pos_ids, bucket_size, max_position)
         mid = bucket_size // 2
         sign = rel_pos_ids.sign()
-        abs_pos = torch.where((rel_pos_ids < mid) & (rel_pos_ids > -mid), torch.zeros_like(rel_pos_ids).fill_(mid - 1), rel_pos_ids.abs()).float()
-        log_pos = torch.ceil(torch.log(abs_pos / mid) / torch.log(torch.tensor((max_position - 1) / mid)) * (mid - 1)).long() + mid
+        abs_pos = torch.where(
+            (rel_pos_ids < mid) & (rel_pos_ids > -mid),
+            torch.zeros_like(rel_pos_ids).fill_(mid - 1),
+            rel_pos_ids.abs(),
+        ).float()
+        log_pos = (
+            torch.ceil(torch.log(abs_pos / mid) / torch.log(torch.tensor((max_position - 1) / mid)) * (mid - 1)).long()
+            + mid
+        )
         bucket_pos = torch.where(abs_pos <= mid, rel_pos_ids, log_pos * sign).long()
         rel_pos_ids = bucket_pos
 
@@ -71,12 +88,26 @@ def build_relative_position(
 
 @torch.jit.script
 def c2p_dynamic_expand(c2p_pos, query_layer, relative_pos):
-    return c2p_pos.expand([query_layer.size(0), query_layer.size(1), query_layer.size(2), relative_pos.size(-1)])
+    return c2p_pos.expand(
+        [
+            query_layer.size(0),
+            query_layer.size(1),
+            query_layer.size(2),
+            relative_pos.size(-1),
+        ]
+    )
 
 
 @torch.jit.script
 def p2c_dynamic_expand(c2p_pos, query_layer, key_layer):
-    return c2p_pos.expand([query_layer.size(0), query_layer.size(1), key_layer.size(-2), key_layer.size(-2)])
+    return c2p_pos.expand(
+        [
+            query_layer.size(0),
+            query_layer.size(1),
+            key_layer.size(-2),
+            key_layer.size(-2),
+        ]
+    )
 
 
 @torch.jit.script
@@ -90,8 +121,8 @@ class DAConfig:
     dim: int
     n_heads: int
     dim_ff: int
-    act: str = 'gelu'
-    layernorm_type: str = 'v0'  # See `ptx.ops.layernorm`
+    act: str = "gelu"
+    layernorm_type: str = "v0"  # See `ptx.ops.layernorm`
     use_pre_layernorm: bool = False
     use_realformer: bool = False
     p_drop_hidden: float = 0.1
@@ -156,8 +187,8 @@ class DAConfig:
     moe_load_balanced: bool = False
     moe_enable_token_drop: bool = False
     moe_warmup_stage: Optional[str] = None
-    moe_warmup_steps: str = ''
-    moe_expert_shape: str = 'abc->abd'
+    moe_warmup_steps: str = ""
+    moe_expert_shape: str = "abc->abd"
     use_moe_attn: bool = False
     use_moe_transformer_layer_attn: str = ""
     moe_k_attn: int = 2
@@ -166,17 +197,17 @@ class DAConfig:
     moe_l_aux_factor_attn: float = 0.01
     moe_dim_attn: int = 1024
     moe_load_balanced_attn: bool = False
-    moe_attn_expert_shape: str = 'abc->abd'
+    moe_attn_expert_shape: str = "abc->abd"
     use_moe_lego: bool = False
-    pos_emb_type: str = ''
-    use_ft_preset: str = ''
+    pos_emb_type: str = ""
+    use_ft_preset: str = ""
     n_t5_rel_pos_buckets: int = 32
     beit_rel_pos_window_size: List[int] = field(default_factory=list)
     use_deep_norm: bool = False
     deep_norm_enc_alpha: float = 1.0
     deep_norm_enc_beta: float = 1.0
     layer_grad_checkpoint_skipped_per_blocks: int = 1
-    pos_att_type: str = 'c2p|p2c'
+    pos_att_type: str = "c2p|p2c"
     max_relative_positions: int = 512
     position_buckets: int = -1
     p_drop_pos: float = 0.1
@@ -192,7 +223,7 @@ class DAConfig:
         self.head_dim = self.dim // self.n_heads
         assert self.dim % self.n_heads == 0, f"`dim` must be divisible by `n_heads` (got {self.dim}/{self.n_heads})."
 
-        if self.use_ft_preset != '':
+        if self.use_ft_preset != "":
             raise NotImplementedError("use_ft_preset is not supported in titan")
             # ft_preset = FT_PRESET[self.use_ft_preset]
             # for k, v in ft_preset.items():
@@ -205,7 +236,6 @@ class DAConfig:
 
 
 class AttentionExpertLinearTranspose(nn.Module):
-
     def __init__(self, dim, dim2, n_heads, head_dim):
         super().__init__()
         self.proj_k = nn.Linear(dim, dim2)
@@ -236,31 +266,35 @@ class DisentangledMHA(nn.Module):
         self.config = config
         self.use_moe = False
         self.l_aux = 0
-        order = kwargs.get('order', -1)
+        order = kwargs.get("order", -1)
 
-        if self.config.use_moe_attn and str(order) in self.config.use_moe_transformer_layer_attn.split(','):
+        if self.config.use_moe_attn and str(order) in self.config.use_moe_transformer_layer_attn.split(","):
             import janus.layer
+
             self.use_moe = True
             self.proj_moe = janus.layer.MoE(
                 hidden_size=config.moe_dim_attn,
                 expert=AttentionExpertLinearTranspose(config.dim, config.dim, config.n_heads, config.head_dim),
                 num_experts=config.moe_experts_attn,
                 k=config.moe_k_attn,
-                noisy_gate_policy='None',
+                noisy_gate_policy="None",
                 load_balanced=config.moe_load_balanced_attn,
                 enable_token_drop=False,
-                expert_shape=config.moe_attn_expert_shape)
+                expert_shape=config.moe_attn_expert_shape,
+            )
         else:
             self.proj_k = nn.Linear(config.dim, config.dim)
             self.proj_v = nn.Linear(config.dim, config.dim)
         self.proj_q = nn.Linear(config.dim, config.dim)
 
         self.dropout = nn.Dropout(config.p_drop_attn)
-        self.score_scale = config.head_dim ** -0.5
+        self.score_scale = config.head_dim**-0.5
 
         assert not config.mha_acts_unite_d01
 
-        self.pos_att_type = tuple([x.strip() for x in config.pos_att_type.lower().split('|')] if config.pos_att_type else [])
+        self.pos_att_type = tuple(
+            [x.strip() for x in config.pos_att_type.lower().split("|")] if config.pos_att_type else []
+        )
         self.max_relative_positions = config.max_relative_positions
         self.position_buckets = config.position_buckets
         if self.position_buckets < 1:
@@ -289,7 +323,8 @@ class DisentangledMHA(nn.Module):
         k_len = key_layer.size(-2)
         if relative_pos is None:
             relative_pos = build_relative_position(
-                q_len, k_len,
+                q_len,
+                k_len,
                 bucket_size=self.position_buckets,
                 max_position=self.max_relative_positions,
                 device=query_layer.device,
@@ -304,19 +339,24 @@ class DisentangledMHA(nn.Module):
         # att_span = self.pos_ebd_size // 2  # 256
         att_span = q_len
 
-        rel_embeddings = rel_embeddings[self.max_relative_positions - att_span : self.max_relative_positions + att_span, :]
+        rel_embeddings = rel_embeddings[
+            self.max_relative_positions - att_span : self.max_relative_positions + att_span,
+            :,
+        ]
 
         score = None
 
         # content->position
-        if 'c2p' in self.pos_att_type:
+        if "c2p" in self.pos_att_type:
             if self.use_moe:
                 states, _, _ = self.proj_moe(rel_embeddings, add_step=False)
                 slice_line = states.shape[3] // 2
                 pos_key_layer = states[:, :, :, :slice_line].contiguous()
             else:
                 pos_key_layer = self.proj_k(rel_embeddings)  # (att_span*2, dim)
-            pos_key_layer = pos_key_layer.view(-1, self.config.n_heads, self.config.head_dim)  # (att_span*2, n_heads, head_dim)
+            pos_key_layer = pos_key_layer.view(
+                -1, self.config.n_heads, self.config.head_dim
+            )  # (att_span*2, n_heads, head_dim)
             c2p_att = torch.matmul(query_layer, pos_key_layer.permute(1, 2, 0))  # (bsz, n_heads, q_len, att_span*2)
 
             if not self.config.use_tricky_gather:
@@ -325,24 +365,35 @@ class DisentangledMHA(nn.Module):
                 c2p_att = torch.gather(c2p_att, dim=-1, index=c2p_pos)
             else:
                 c2p_att = c2p_att.view(c2p_att.size(0), c2p_att.size(1), -1)
-                c2p_att = F.pad(c2p_att, (0, att_span), 'constant', 0)
+                c2p_att = F.pad(c2p_att, (0, att_span), "constant", 0)
                 # c2p_att = torch.cat([c2p_att, torch.zeros((1, 1, att_span), dtype=c2p_att.dtype, device=c2p_att.device).expand([c2p_att.size(0), c2p_att.size(1), -1])], dim=-1)
                 # c2p_att = c2p_att.view(c2p_att.size(0), c2p_att.size(1), att_span, 2 * att_span + 1)[:, :, :, :att_span]
                 # c2p_att = torch.flip(c2p_att, [-1])
-                c2p_att = c2p_att.view(c2p_att.size(0), c2p_att.size(1), att_span, 2 * att_span + 1)[..., torch.arange(att_span - 1, -1, -1, device=c2p_att.device)]
+                c2p_att = c2p_att.view(
+                    c2p_att.size(0),
+                    c2p_att.size(1),
+                    att_span,
+                    2 * att_span + 1,
+                )[
+                    ...,
+                    torch.arange(att_span - 1, -1, -1, device=c2p_att.device),
+                ]
 
             score = c2p_att
 
         # position->content
-        if 'p2c' in self.pos_att_type:
+        if "p2c" in self.pos_att_type:
             pos_query_layer = self.proj_q(rel_embeddings)  # (att_span*2, dim)
-            pos_query_layer = pos_query_layer.view(-1, self.config.n_heads, self.config.head_dim)  # (att_span*2, n_heads, head_dim)
+            pos_query_layer = pos_query_layer.view(
+                -1, self.config.n_heads, self.config.head_dim
+            )  # (att_span*2, n_heads, head_dim)
             p2c_att = torch.matmul(key_layer, pos_query_layer.permute(1, 2, 0))  # (bsz, n_heads, k_len, att_span*2)
 
             if not self.config.use_tricky_gather:
                 if q_len != k_len:  # TODO: ensure
                     r_pos = build_relative_position(
-                        k_len, k_len,
+                        k_len,
+                        k_len,
                         bucket_size=self.position_buckets,
                         max_position=self.max_relative_positions,
                         device=query_layer.device,
@@ -356,15 +407,27 @@ class DisentangledMHA(nn.Module):
                 p2c_att = torch.gather(p2c_att, dim=-1, index=p2c_pos)
             else:
                 p2c_att = p2c_att.view(p2c_att.size(0), p2c_att.size(1), -1)
-                p2c_att = F.pad(p2c_att, (0, att_span), 'constant', 0)
+                p2c_att = F.pad(p2c_att, (0, att_span), "constant", 0)
                 # p2c_att = torch.cat([p2c_att, torch.zeros((1, 1, att_span), dtype=p2c_att.dtype, device=p2c_att.device).expand([p2c_att.size(0), p2c_att.size(1), -1])], dim=-1)
                 # p2c_att = p2c_att.view(p2c_att.size(0), p2c_att.size(1), att_span, 2 * att_span + 1)[:, :, :, :att_span]
                 # p2c_att = torch.flip(p2c_att, [-1])
-                p2c_att = p2c_att.view(p2c_att.size(0), p2c_att.size(1), att_span, 2 * att_span + 1)[..., torch.arange(att_span - 1, -1, -1, device=p2c_att.device)]
+                p2c_att = p2c_att.view(
+                    p2c_att.size(0),
+                    p2c_att.size(1),
+                    att_span,
+                    2 * att_span + 1,
+                )[
+                    ...,
+                    torch.arange(att_span - 1, -1, -1, device=p2c_att.device),
+                ]
 
             if q_len != k_len:  # TODO: ensure
                 pos_index = relative_pos[:, :, :, 0].unsqueeze(-1)
-                p2c_att = torch.gather(p2c_att, dim=-2, index=pos_index.expand(p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2))))
+                p2c_att = torch.gather(
+                    p2c_att,
+                    dim=-2,
+                    index=pos_index.expand(p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2))),
+                )
 
             p2c_att = p2c_att.transpose(-1, -2)
             if score is None:
@@ -373,7 +436,7 @@ class DisentangledMHA(nn.Module):
                 score += p2c_att
 
         if score is None:
-            return 0.
+            return 0.0
         return score * self.score_scale
 
     def _experimental_disentangled_att_bias(
@@ -387,7 +450,8 @@ class DisentangledMHA(nn.Module):
         k_len = key_layer.size(-2)
         if relative_pos is None:
             relative_pos = build_relative_position(
-                q_len, k_len,
+                q_len,
+                k_len,
                 bucket_size=self.position_buckets,
                 max_position=self.max_relative_positions,
                 device=query_layer.device,
@@ -402,16 +466,23 @@ class DisentangledMHA(nn.Module):
         # att_span = self.pos_ebd_size // 2  # 256
         att_span = q_len
 
-        rel_embeddings = rel_embeddings[self.max_relative_positions - att_span : self.max_relative_positions + att_span, :]
+        rel_embeddings = rel_embeddings[
+            self.max_relative_positions - att_span : self.max_relative_positions + att_span,
+            :,
+        ]
 
         score = None
 
         # content->position
-        if 'c2p' in self.pos_att_type:
+        if "c2p" in self.pos_att_type:
             pos_key_layer = self.proj_k(rel_embeddings)  # (att_span*2, dim)
-            pos_key_layer = pos_key_layer.view(-1, self.config.n_heads, self.config.head_dim)  # (att_span*2, n_heads, head_dim)
+            pos_key_layer = pos_key_layer.view(
+                -1, self.config.n_heads, self.config.head_dim
+            )  # (att_span*2, n_heads, head_dim)
             pos_key_layer = pos_key_layer.permute(1, 2, 0)  # (n_heads, head_dim, att_span*2)
-            pos_key_layer = pos_key_layer.unsqueeze(1).expand(-1, q_len, -1, -1)  # (n_heads, q_len, head_dim, att_span*2)
+            pos_key_layer = pos_key_layer.unsqueeze(1).expand(
+                -1, q_len, -1, -1
+            )  # (n_heads, q_len, head_dim, att_span*2)
             c2p_pos = torch.clamp(relative_pos + att_span - 1, 0, att_span * 2 - 1)
             c2p_pos = c2p_pos.squeeze(0).unsqueeze(2)
             c2p_pos = c2p_pos.expand([pos_key_layer.size(0), -1, pos_key_layer.size(2), -1])
@@ -423,14 +494,17 @@ class DisentangledMHA(nn.Module):
             score = c2p_att
 
         # position->content
-        if 'p2c' in self.pos_att_type:
+        if "p2c" in self.pos_att_type:
             pos_query_layer = self.proj_q(rel_embeddings)  # (att_span*2, dim)
-            pos_query_layer = pos_query_layer.view(-1, self.config.n_heads, self.config.head_dim)  # (att_span*2, n_heads, head_dim)
+            pos_query_layer = pos_query_layer.view(
+                -1, self.config.n_heads, self.config.head_dim
+            )  # (att_span*2, n_heads, head_dim)
             p2c_att = torch.matmul(key_layer, pos_query_layer.permute(1, 2, 0))  # (bsz, n_heads, k_len, att_span*2)
 
             if q_len != k_len:  # TODO: ensure
                 r_pos = build_relative_position(
-                    k_len, k_len,
+                    k_len,
+                    k_len,
                     bucket_size=self.position_buckets,
                     max_position=self.max_relative_positions,
                     device=query_layer.device,
@@ -445,7 +519,11 @@ class DisentangledMHA(nn.Module):
 
             if q_len != k_len:  # TODO: ensure
                 pos_index = relative_pos[:, :, :, 0].unsqueeze(-1)
-                p2c_att = torch.gather(p2c_att, dim=-2, index=pos_index.expand(p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2))))
+                p2c_att = torch.gather(
+                    p2c_att,
+                    dim=-2,
+                    index=pos_index.expand(p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2))),
+                )
 
             p2c_att = p2c_att.transpose(-1, -2)
             if score is None:
@@ -454,7 +532,7 @@ class DisentangledMHA(nn.Module):
                 score += p2c_att
 
         if score is None:
-            return 0.
+            return 0.0
         return score * self.score_scale
 
     def forward(
@@ -467,20 +545,30 @@ class DisentangledMHA(nn.Module):
     ) -> torch.Tensor:
         bsz = hidden_states.size(0)
 
-        q_states = self._shape(self.proj_q(hidden_states if q_state is None else q_state), bsz)  # (bsz, n_heads, seq_len, head_dim)
+        q_states = self._shape(
+            self.proj_q(hidden_states if q_state is None else q_state), bsz
+        )  # (bsz, n_heads, seq_len, head_dim)
         if self.use_moe:
             states, self.l_aux, _ = self.proj_moe(hidden_states)
             slice_line = states.shape[3] // 2
-            k_states, v_states = states[:, :, :, :slice_line].contiguous(), states[:, :, :, slice_line:].contiguous()
+            k_states, v_states = (
+                states[:, :, :, :slice_line].contiguous(),
+                states[:, :, :, slice_line:].contiguous(),
+            )
         else:
             k_states = self._shape(self.proj_k(hidden_states), bsz)
             v_states = self._shape(self.proj_v(hidden_states), bsz)
 
-        attn_weights = torch.matmul(q_states * self.score_scale, k_states.permute(0, 1, 3, 2))  # (bsz, n_heads, seq_len, seq_len)
+        attn_weights = torch.matmul(
+            q_states * self.score_scale, k_states.permute(0, 1, 3, 2)
+        )  # (bsz, n_heads, seq_len, seq_len)
 
         # The only diff from original MHA
         attn_weights = attn_weights + self.disentangled_att_bias(
-            q_states, k_states, relative_pos, self.pos_dropout(relative_pos_embed),
+            q_states,
+            k_states,
+            relative_pos,
+            self.pos_dropout(relative_pos_embed),
         )
 
         attn_weights = attn_weights + attn_mask
@@ -504,7 +592,6 @@ class DisentangledMHA(nn.Module):
 
 
 class AttentionExpertFTLinearTranspose(nn.Module):
-
     def __init__(self, dim, dim2, n_heads):
         super().__init__()
         self.proj_k = FTLinearTranspose(dim, dim2, n_heads, transpose_type="2013")
@@ -529,19 +616,21 @@ class FTDisentangledMHA(nn.Module):
 
         self.use_moe = False
         self.l_aux = 0
-        order = kwargs.get('order', -1)
-        if self.config.use_moe_attn and str(order) in self.config.use_moe_transformer_layer_attn.split(','):
+        order = kwargs.get("order", -1)
+        if self.config.use_moe_attn and str(order) in self.config.use_moe_transformer_layer_attn.split(","):
             import janus.layer
+
             self.use_moe = True
             self.proj_moe = janus.layer.MoE(
                 hidden_size=config.moe_dim_attn,
                 expert=AttentionExpertFTLinearTranspose(config.dim, config.dim, config.n_heads),
                 num_experts=config.moe_experts_attn,
                 k=config.moe_k_attn,
-                noisy_gate_policy='None',
+                noisy_gate_policy="None",
                 load_balanced=config.moe_load_balanced_attn,
                 enable_token_drop=False,
-                expert_shape=config.moe_attn_expert_shape)
+                expert_shape=config.moe_attn_expert_shape,
+            )
         else:
             self.proj_k = FTLinearTranspose(self.dim, self.dim, self.n_heads, transpose_type="2013")
             self.proj_v = FTLinearTranspose(self.dim, self.dim, self.n_heads, transpose_type="2013")
@@ -549,7 +638,9 @@ class FTDisentangledMHA(nn.Module):
 
         # assert config.pos_att_type == 'c2p|p2c', 'Faster DA does only support `c2p|p2c` as `pos_att_type`'
         # self.pos_att_type = ['c2p', 'p2c']
-        self.pos_att_type = tuple([x.strip() for x in config.pos_att_type.lower().split('|')] if config.pos_att_type else [])
+        self.pos_att_type = tuple(
+            [x.strip() for x in config.pos_att_type.lower().split("|")] if config.pos_att_type else []
+        )
         self.is_deberta = len(self.pos_att_type) > 0
         self.score_scale = (self.head_size * (1 + len(self.pos_att_type))) ** -0.5
 
@@ -559,7 +650,7 @@ class FTDisentangledMHA(nn.Module):
         else:
             self.faster_gather = None
 
-        assert config.position_buckets < 1, 'Faster DA does not support `position_buckets` > 0'
+        assert config.position_buckets < 1, "Faster DA does not support `position_buckets` > 0"
         self.max_relative_positions = config.max_relative_positions
 
         self.p_drop_attn = config.p_drop_attn
@@ -574,10 +665,10 @@ class FTDisentangledMHA(nn.Module):
         self._use_rel_pos_cache = config.use_rel_pos_cache
 
         self._pos_att_case = 0
-        if 'c2p' in self.pos_att_type:
-            self._pos_att_case += 2 ** 0
-        if 'p2c' in self.pos_att_type:
-            self._pos_att_case += 2 ** 1
+        if "c2p" in self.pos_att_type:
+            self._pos_att_case += 2**0
+        if "p2c" in self.pos_att_type:
+            self._pos_att_case += 2**1
         if self._use_ft_gather:
             assert self._pos_att_case % 4 == 3
 
@@ -590,13 +681,22 @@ class FTDisentangledMHA(nn.Module):
         return self.ft_trans_0213(x)
 
     @torch.no_grad()
-    def cache_rel_pos(self, att_span: int, q_len: int, k_len: int, bsz: int, relative_pos: torch.Tensor) -> torch.Tensor:
+    def cache_rel_pos(
+        self,
+        att_span: int,
+        q_len: int,
+        k_len: int,
+        bsz: int,
+        relative_pos: torch.Tensor,
+    ) -> torch.Tensor:
         use_rel_pos_cache = self._use_rel_pos_cache or self.training
         if use_rel_pos_cache:
             cache_key = (q_len, k_len, bsz, att_span)
             if cache_key in self._rel_pos_cache:
                 return self._rel_pos_cache[cache_key]
-        rel_pos = torch.clamp(relative_pos + att_span - 1, 0, att_span * 2 - 1).unsqueeze(0).unsqueeze(0)  # (1, 1, q_len, k_len)
+        rel_pos = (
+            torch.clamp(relative_pos + att_span - 1, 0, att_span * 2 - 1).unsqueeze(0).unsqueeze(0)
+        )  # (1, 1, q_len, k_len)
         rel_pos = rel_pos.expand([bsz, self.n_heads, q_len, -1])
         if use_rel_pos_cache:
             self._rel_pos_cache[cache_key] = rel_pos
@@ -614,7 +714,10 @@ class FTDisentangledMHA(nn.Module):
         k_len = key_layer.size(-2)
         att_span = q_len
 
-        rel_embeddings = rel_embeddings[self.max_relative_positions - att_span : self.max_relative_positions + att_span, :]
+        rel_embeddings = rel_embeddings[
+            self.max_relative_positions - att_span : self.max_relative_positions + att_span,
+            :,
+        ]
         rel_embeddings = rel_embeddings.unsqueeze(0)
 
         bsz = query_layer.size(1)  # Actually (n_heads, bsz, seq_len, head_dim)
@@ -629,7 +732,11 @@ class FTDisentangledMHA(nn.Module):
                 pos_k_layer = self.proj_k(rel_embeddings)
             pos_k_layer = pos_k_layer.view(self.n_heads, pos_k_layer.size(-2), -1)
             query_layer = query_layer.view(self.n_heads, -1, query_layer.size(-1))
-            c2p_att = self.ft_mm(query_layer, pos_k_layer.to(query_layer.dtype), transpose_b=True)
+            c2p_att = self.ft_mm(
+                query_layer,
+                pos_k_layer.to(query_layer.dtype),
+                transpose_b=True,
+            )
             c2p_att = c2p_att.view(self.n_heads, bsz, q_len, c2p_att.size(-1))
 
         # p2c
@@ -674,7 +781,10 @@ class FTDisentangledMHA(nn.Module):
         if self.use_moe:
             states, self.l_aux, _ = self.proj_moe(hidden_states)
             slice_line = states.shape[3] // 2
-            tk, tv = states[:, :, :, :slice_line].contiguous(), states[:, :, :, slice_line:].contiguous()
+            tk, tv = (
+                states[:, :, :, :slice_line].contiguous(),
+                states[:, :, :, slice_line:].contiguous(),
+            )
         else:
             tk = self.proj_k(hidden_states)
             tv = self.proj_v(hidden_states)
@@ -683,7 +793,13 @@ class FTDisentangledMHA(nn.Module):
         scores = self.ft_mm(tq, tk, transpose_b=True, scale=self.score_scale)
 
         if self.is_deberta:
-            scores = self.disentangled_att_bias(scores, tq, tk, relative_pos, self.pos_dropout(relative_pos_embed))
+            scores = self.disentangled_att_bias(
+                scores,
+                tq,
+                tk,
+                relative_pos,
+                self.pos_dropout(relative_pos_embed),
+            )
 
         attn_mask = attn_mask.transpose(0, 1)
 

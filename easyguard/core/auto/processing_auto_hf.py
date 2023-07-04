@@ -16,7 +16,6 @@
 import importlib
 import inspect
 import json
-from collections import OrderedDict
 
 # Build the list of all feature extractors
 from transformers.configuration_utils import PretrainedConfig
@@ -40,9 +39,7 @@ logger = logging.get_logger(__name__)
 
 PROCESSOR_MAPPING_NAMES = PROCESSOR_MAPPING_NAMES
 
-PROCESSOR_MAPPING = _LazyAutoMapping(
-    CONFIG_MAPPING_NAMES, PROCESSOR_MAPPING_NAMES
-)
+PROCESSOR_MAPPING = _LazyAutoMapping(CONFIG_MAPPING_NAMES, PROCESSOR_MAPPING_NAMES)
 
 
 def processor_class_from_name(class_name: str):
@@ -149,7 +146,8 @@ class HFAutoProcessor:
         >>> # Download processor from huggingface.co and cache.
         >>> processor = AutoProcessor.from_pretrained("facebook/wav2vec2-base-960h")
 
-        >>> # If processor files are in a directory (e.g. processor was saved using *save_pretrained('./test/saved_model/')*)
+        >>> # If processor files are in a directory
+        >>> # (e.g. processor was saved using *save_pretrained('./test/saved_model/')*)
         >>> processor = AutoProcessor.from_pretrained("./test/saved_model/")
         ```"""
         config = kwargs.pop("config", None)
@@ -162,9 +160,7 @@ class HFAutoProcessor:
         # First, let's see if we have a preprocessor config.
         # Filter the kwargs for `get_file_from_repo`.
         get_file_from_repo_kwargs = {
-            key: kwargs[key]
-            for key in inspect.signature(get_file_from_repo).parameters.keys()
-            if key in kwargs
+            key: kwargs[key] for key in inspect.signature(get_file_from_repo).parameters.keys() if key in kwargs
         }
         # Let's start by checking whether the processor class is saved in an image processor
         preprocessor_config_file = get_file_from_repo(
@@ -173,18 +169,14 @@ class HFAutoProcessor:
             **get_file_from_repo_kwargs,
         )
         if preprocessor_config_file is not None:
-            config_dict, _ = ImageProcessingMixin.get_image_processor_dict(
-                pretrained_model_name_or_path, **kwargs
-            )
+            config_dict, _ = ImageProcessingMixin.get_image_processor_dict(pretrained_model_name_or_path, **kwargs)
             processor_class = config_dict.get("processor_class", None)
             if "AutoProcessor" in config_dict.get("auto_map", {}):
                 processor_auto_map = config_dict["auto_map"]["AutoProcessor"]
 
         # If not found, let's check whether the processor class is saved in a feature extractor config
         if preprocessor_config_file is not None and processor_class is None:
-            config_dict, _ = FeatureExtractionMixin.get_feature_extractor_dict(
-                pretrained_model_name_or_path, **kwargs
-            )
+            config_dict, _ = FeatureExtractionMixin.get_feature_extractor_dict(pretrained_model_name_or_path, **kwargs)
             processor_class = config_dict.get("processor_class", None)
             if "AutoProcessor" in config_dict.get("auto_map", {}):
                 processor_auto_map = config_dict["auto_map"]["AutoProcessor"]
@@ -202,9 +194,7 @@ class HFAutoProcessor:
 
                 processor_class = config_dict.get("processor_class", None)
                 if "AutoProcessor" in config_dict.get("auto_map", {}):
-                    processor_auto_map = config_dict["auto_map"][
-                        "AutoProcessor"
-                    ]
+                    processor_auto_map = config_dict["auto_map"]["AutoProcessor"]
 
         if processor_class is None:
             # Otherwise, load config, if it can be loaded.
@@ -217,10 +207,7 @@ class HFAutoProcessor:
 
             # And check if the config contains the processor class.
             processor_class = getattr(config, "processor_class", None)
-            if (
-                hasattr(config, "auto_map")
-                and "AutoProcessor" in config.auto_map
-            ):
+            if hasattr(config, "auto_map") and "AutoProcessor" in config.auto_map:
                 processor_auto_map = config.auto_map["AutoProcessor"]
 
         if processor_class is not None:
@@ -256,9 +243,7 @@ class HFAutoProcessor:
 
         # Last try: we use the PROCESSOR_MAPPING.
         if type(config) in PROCESSOR_MAPPING:
-            return PROCESSOR_MAPPING[type(config)].from_pretrained(
-                pretrained_model_name_or_path, **kwargs
-            )
+            return PROCESSOR_MAPPING[type(config)].from_pretrained(pretrained_model_name_or_path, **kwargs)
 
         # At this stage, there doesn't seem to be a `Processor` class available for this model, so let's try a
         # tokenizer.

@@ -9,9 +9,10 @@ FileName: decay_schedulers.py
 Author: Ye Jinxing (yejinxing.yjx@bytedance.com)
 Created Time: 2021-06-19 15:10:12
 """
-import torch
 import functools
+
 import numpy as np
+import torch
 from utils.registry import SCHEDULERS
 
 
@@ -41,13 +42,14 @@ def raw_with_warm_up(learning_rate, warmup_steps=0):
 
     return decorator
 
+
 class BaseLrScheduler(object):
     def __init__(
         self,
         optimizer: torch.optim.Optimizer,
         total_step: int,
         warmup_steps: int,
-        **kwargs
+        **kwargs,
     ):
         r"""
         params:
@@ -81,7 +83,11 @@ class BaseLrScheduler(object):
         It contains an entry for every variable in self.__dict__ which
         is not the optimizer.
         """
-        return {key: value for key, value in self.__dict__.items() if key in ('_total_step', '_base_lr', '_latest_lr', '_warmup_steps')}
+        return {
+            key: value
+            for key, value in self.__dict__.items()
+            if key in ("_total_step", "_base_lr", "_latest_lr", "_warmup_steps")
+        }
 
     def load_state_dict(self, state_dict):
         """Loads the schedulers state.
@@ -105,21 +111,21 @@ class BaseLrScheduler(object):
         self.update_lr(step)
         return self._latest_lr
 
+
 @SCHEDULERS.register_module()
 class ConstLrScheduler(BaseLrScheduler):
     def __init__(self, optimizer, total_step=-1, warmup_steps=0, **kwargs):
         r"""
         Keep lr const during the training. No other custom args.
         """
-        super(ConstLrScheduler, self).__init__(
-            optimizer, total_step, warmup_steps, **kwargs
-        )
+        super(ConstLrScheduler, self).__init__(optimizer, total_step, warmup_steps, **kwargs)
 
         @self.with_warm_up
         def f(_step, _total_step=-1):
             return self._base_lr
 
         self._lr_decay_func = functools.partial(f, _total_step=total_step)
+
 
 @SCHEDULERS.register_module()
 class LinearDecayLrScheduler(BaseLrScheduler):
@@ -130,9 +136,7 @@ class LinearDecayLrScheduler(BaseLrScheduler):
             - min_lr
                 learning rate at the last step.
         """
-        super(LinearDecayLrScheduler, self).__init__(
-            optimizer, total_step, warmup_steps, **kwargs
-        )
+        super(LinearDecayLrScheduler, self).__init__(optimizer, total_step, warmup_steps, **kwargs)
 
         @self.with_warm_up
         def f(_step, _total_step=-1):
@@ -149,6 +153,7 @@ class LinearDecayLrScheduler(BaseLrScheduler):
 
         self._lr_decay_func = functools.partial(f, _total_step=total_step)
 
+
 @SCHEDULERS.register_module()
 class CosineDecayLrScheduler(BaseLrScheduler):
     def __init__(self, optimizer, total_step=-1, warmup_steps=0, min_lr=0.0, **kwargs):
@@ -158,9 +163,7 @@ class CosineDecayLrScheduler(BaseLrScheduler):
             - min_lr
                 learning rate at the last step.
         """
-        super(CosineDecayLrScheduler, self).__init__(
-            optimizer, total_step, warmup_steps, **kwargs
-        )
+        super(CosineDecayLrScheduler, self).__init__(optimizer, total_step, warmup_steps, **kwargs)
 
         @self.with_warm_up
         def f(_step, _total_step=-1):
@@ -177,6 +180,7 @@ class CosineDecayLrScheduler(BaseLrScheduler):
 
         self._lr_decay_func = functools.partial(f, _total_step=total_step)
 
+
 @SCHEDULERS.register_module()
 class ExpDecayLrScheduler(BaseLrScheduler):
     def __init__(
@@ -187,7 +191,7 @@ class ExpDecayLrScheduler(BaseLrScheduler):
         min_lr=0.0,
         gamma=1.0,
         decay_step=1,
-        **kwargs
+        **kwargs,
     ):
         r"""
         Make lr times $gamma$ for each $decay_step$ steps, until it becomes $min_lr$.
@@ -196,9 +200,7 @@ class ExpDecayLrScheduler(BaseLrScheduler):
             - gamma
             - decay_step
         """
-        super(ExpDecayLrScheduler, self).__init__(
-            optimizer, total_step, warmup_steps, **kwargs
-        )
+        super(ExpDecayLrScheduler, self).__init__(optimizer, total_step, warmup_steps, **kwargs)
 
         @self.with_warm_up
         def f(_step, _total_step=-1):

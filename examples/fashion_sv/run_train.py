@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
-
-# sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-try:
-    import easyguard
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
 import random
 
 import numpy as np
 import torch
 from cruise import CruiseCLI, CruiseTrainer
+
 # from examples.fashion_sv.data import SVDataModule
 from examples.fashion_sv.dataset import SVDataModule
 from examples.fashion_sv.sv_model import FashionSV
@@ -27,11 +19,11 @@ def setup_seed(seed):
     random.seed(seed)
     try:
         torch.backends.cudnn.deterministic = True
-    except:
+    except:  # noqa: E722
         ...
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # random seed
     setup_seed(rand_seed)
     cli = CruiseCLI(

@@ -5,9 +5,6 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-
-from collections import namedtuple
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -28,25 +25,17 @@ class Block(nn.Module):
 
     def __init__(self, dim, drop_path=0.0, layer_scale_init_value=1e-6):
         super().__init__()
-        self.dwconv = nn.Conv2d(
-            dim, dim, kernel_size=7, padding=3, groups=dim
-        )  # depthwise conv
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)  # depthwise conv
         self.norm = LayerNorm(dim, eps=1e-6)
-        self.pwconv1 = nn.Linear(
-            dim, 4 * dim
-        )  # pointwise/1x1 convs, implemented with linear layers
+        self.pwconv1 = nn.Linear(dim, 4 * dim)  # pointwise/1x1 convs, implemented with linear layers
         self.act = nn.GELU()
         self.pwconv2 = nn.Linear(4 * dim, dim)
         self.gamma = (
-            nn.Parameter(
-                layer_scale_init_value * torch.ones((dim)), requires_grad=True
-            )
+            nn.Parameter(layer_scale_init_value * torch.ones((dim)), requires_grad=True)
             if layer_scale_init_value > 0
             else None
         )
-        self.drop_path = (
-            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
-        )
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
     def forward(self, x):
         input = x
@@ -90,9 +79,7 @@ class ConvNeXt(nn.Module):
     ):
         super().__init__()
 
-        self.downsample_layers = (
-            nn.ModuleList()
-        )  # stem and 3 intermediate downsampling conv layers
+        self.downsample_layers = nn.ModuleList()  # stem and 3 intermediate downsampling conv layers
         stem = nn.Sequential(
             nn.Conv2d(in_chans, dims[0], kernel_size=4, stride=4),
             LayerNorm(dims[0], eps=1e-6, data_format="channels_first"),
@@ -105,12 +92,8 @@ class ConvNeXt(nn.Module):
             )
             self.downsample_layers.append(downsample_layer)
 
-        self.stages = (
-            nn.ModuleList()
-        )  # 4 feature resolution stages, each consisting of multiple residual blocks
-        dp_rates = [
-            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
-        ]
+        self.stages = nn.ModuleList()  # 4 feature resolution stages, each consisting of multiple residual blocks
+        dp_rates = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
         cur = 0
         for i in range(4):
             stage = nn.Sequential(
@@ -142,9 +125,7 @@ class ConvNeXt(nn.Module):
         for i in range(4):
             x = self.downsample_layers[i](x)
             x = self.stages[i](x)
-        return self.norm(
-            x.mean([-2, -1])
-        )  # global average pooling, (N, C, H, W) -> (N, C)
+        return self.norm(x.mean([-2, -1]))  # global average pooling, (N, C, H, W) -> (N, C)
 
     def forward(self, x):
         x = self.forward_features(x)
@@ -171,9 +152,7 @@ class LayerNorm(nn.Module):
 
     def forward(self, x):
         if self.data_format == "channels_last":
-            return F.layer_norm(
-                x, self.normalized_shape, self.weight, self.bias, self.eps
-            )
+            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
         elif self.data_format == "channels_first":
             u = x.mean(1, keepdim=True)
             s = (x - u).pow(2).mean(1, keepdim=True)

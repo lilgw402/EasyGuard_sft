@@ -17,12 +17,7 @@
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-
-from transformers.image_processing_utils import (
-    BaseImageProcessor,
-    BatchFeature,
-    get_size_dict,
-)
+from transformers.image_processing_utils import BaseImageProcessor, BatchFeature, get_size_dict
 from transformers.image_transforms import (
     center_crop,
     get_resize_output_image_size,
@@ -51,9 +46,7 @@ if is_vision_available():
     import PIL
 
 
-def convert_to_rgb(
-    image: Union[Any, PIL.Image.Image]
-) -> Union[Any, PIL.Image.Image]:
+def convert_to_rgb(image: Union[Any, PIL.Image.Image]) -> Union[Any, PIL.Image.Image]:
     """
     Converts `PIL.Image.Image` to RGB format. Images in other formats are returned as is.
 
@@ -125,14 +118,8 @@ class CLIPImageProcessor(BaseImageProcessor):
         super().__init__(**kwargs)
         size = size if size is not None else {"shortest_edge": 224}
         size = get_size_dict(size, default_to_square=False)
-        crop_size = (
-            crop_size
-            if crop_size is not None
-            else {"height": 224, "width": 224}
-        )
-        crop_size = get_size_dict(
-            crop_size, default_to_square=True, param_name="crop_size"
-        )
+        crop_size = crop_size if crop_size is not None else {"height": 224, "width": 224}
+        crop_size = get_size_dict(crop_size, default_to_square=True, param_name="crop_size")
 
         self.do_resize = do_resize
         self.size = size
@@ -142,16 +129,8 @@ class CLIPImageProcessor(BaseImageProcessor):
         self.do_rescale = do_rescale
         self.rescale_factor = rescale_factor
         self.do_normalize = do_normalize
-        self.image_mean = (
-            image_mean
-            if image_mean is not None
-            else [0.48145466, 0.4578275, 0.40821073]
-        )
-        self.image_std = (
-            image_std
-            if image_std is not None
-            else [0.26862954, 0.26130258, 0.27577711]
-        )
+        self.image_mean = image_mean if image_mean is not None else [0.48145466, 0.4578275, 0.40821073]
+        self.image_std = image_std if image_std is not None else [0.26862954, 0.26130258, 0.27577711]
         self.do_convert_rgb = do_convert_rgb
 
     def resize(
@@ -178,12 +157,8 @@ class CLIPImageProcessor(BaseImageProcessor):
         """
         size = get_size_dict(size, default_to_square=False)
         if "shortest_edge" not in size:
-            raise ValueError(
-                f"The `size` parameter must contain the key `shortest_edge`. Got {size.keys()}"
-            )
-        output_size = get_resize_output_image_size(
-            image, size=size["shortest_edge"], default_to_square=False
-        )
+            raise ValueError(f"The `size` parameter must contain the key `shortest_edge`. Got {size.keys()}")
+        output_size = get_resize_output_image_size(image, size=size["shortest_edge"], default_to_square=False)
         return resize(
             image,
             size=output_size,
@@ -213,9 +188,7 @@ class CLIPImageProcessor(BaseImageProcessor):
         """
         size = get_size_dict(size)
         if "height" not in size or "width" not in size:
-            raise ValueError(
-                f"The `size` parameter must contain the keys (height, width). Got {size.keys()}"
-            )
+            raise ValueError(f"The `size` parameter must contain the keys (height, width). Got {size.keys()}")
         return center_crop(
             image,
             size=(size["height"], size["width"]),
@@ -264,9 +237,7 @@ class CLIPImageProcessor(BaseImageProcessor):
             data_format (`str` or `ChannelDimension`, *optional*):
                 The channel dimension format of the image. If not provided, it will be the same as the input image.
         """
-        return normalize(
-            image, mean=mean, std=std, data_format=data_format, **kwargs
-        )
+        return normalize(image, mean=mean, std=std, data_format=data_format, **kwargs)
 
     def preprocess(
         self,
@@ -334,31 +305,15 @@ class CLIPImageProcessor(BaseImageProcessor):
         size = size if size is not None else self.size
         size = get_size_dict(size, param_name="size", default_to_square=False)
         resample = resample if resample is not None else self.resample
-        do_center_crop = (
-            do_center_crop
-            if do_center_crop is not None
-            else self.do_center_crop
-        )
+        do_center_crop = do_center_crop if do_center_crop is not None else self.do_center_crop
         crop_size = crop_size if crop_size is not None else self.crop_size
-        crop_size = get_size_dict(
-            crop_size, param_name="crop_size", default_to_square=True
-        )
+        crop_size = get_size_dict(crop_size, param_name="crop_size", default_to_square=True)
         do_rescale = do_rescale if do_rescale is not None else self.do_rescale
-        rescale_factor = (
-            rescale_factor
-            if rescale_factor is not None
-            else self.rescale_factor
-        )
-        do_normalize = (
-            do_normalize if do_normalize is not None else self.do_normalize
-        )
+        rescale_factor = rescale_factor if rescale_factor is not None else self.rescale_factor
+        do_normalize = do_normalize if do_normalize is not None else self.do_normalize
         image_mean = image_mean if image_mean is not None else self.image_mean
         image_std = image_std if image_std is not None else self.image_std
-        do_convert_rgb = (
-            do_convert_rgb
-            if do_convert_rgb is not None
-            else self.do_convert_rgb
-        )
+        do_convert_rgb = do_convert_rgb if do_convert_rgb is not None else self.do_convert_rgb
 
         if not is_batched(images):
             images = [images]
@@ -373,19 +328,13 @@ class CLIPImageProcessor(BaseImageProcessor):
             raise ValueError("Size must be specified if do_resize is True.")
 
         if do_center_crop and crop_size is None:
-            raise ValueError(
-                "Crop size must be specified if do_center_crop is True."
-            )
+            raise ValueError("Crop size must be specified if do_center_crop is True.")
 
         if do_rescale and rescale_factor is None:
-            raise ValueError(
-                "Rescale factor must be specified if do_rescale is True."
-            )
+            raise ValueError("Rescale factor must be specified if do_rescale is True.")
 
         if do_normalize and (image_mean is None or image_std is None):
-            raise ValueError(
-                "Image mean and std must be specified if do_normalize is True."
-            )
+            raise ValueError("Image mean and std must be specified if do_normalize is True.")
 
         # PIL RGBA images are converted to RGB
         if do_convert_rgb:
@@ -395,32 +344,18 @@ class CLIPImageProcessor(BaseImageProcessor):
         images = [to_numpy_array(image) for image in images]
 
         if do_resize:
-            images = [
-                self.resize(image=image, size=size, resample=resample)
-                for image in images
-            ]
+            images = [self.resize(image=image, size=size, resample=resample) for image in images]
 
         if do_center_crop:
-            images = [
-                self.center_crop(image=image, size=crop_size)
-                for image in images
-            ]
+            images = [self.center_crop(image=image, size=crop_size) for image in images]
 
         if do_rescale:
-            images = [
-                self.rescale(image=image, scale=rescale_factor)
-                for image in images
-            ]
+            images = [self.rescale(image=image, scale=rescale_factor) for image in images]
 
         if do_normalize:
-            images = [
-                self.normalize(image=image, mean=image_mean, std=image_std)
-                for image in images
-            ]
+            images = [self.normalize(image=image, mean=image_mean, std=image_std) for image in images]
 
-        images = [
-            to_channel_dimension_format(image, data_format) for image in images
-        ]
+        images = [to_channel_dimension_format(image, data_format) for image in images]
 
         data = {"pixel_values": images}
         return BatchFeature(data=data, tensor_type=return_tensors)

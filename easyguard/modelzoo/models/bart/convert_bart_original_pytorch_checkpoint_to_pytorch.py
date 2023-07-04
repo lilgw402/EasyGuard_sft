@@ -23,7 +23,6 @@ import fairseq
 import torch
 from packaging import version
 from torch import nn
-
 from transformers import (
     BartConfig,
     BartForConditionalGeneration,
@@ -104,9 +103,7 @@ def make_linear_from_emb(emb):
 
 
 @torch.no_grad()
-def convert_bart_checkpoint(
-    checkpoint_path, pytorch_dump_folder_path, hf_checkpoint_name=None
-):
+def convert_bart_checkpoint(checkpoint_path, pytorch_dump_folder_path, hf_checkpoint_name=None):
     """
     Copy/paste/tweak model's weights to our BERT structure.
     """
@@ -120,19 +117,13 @@ def convert_bart_checkpoint(
         hf_checkpoint_name = checkpoint_path.replace(".", "-")
     config = BartConfig.from_pretrained(hf_checkpoint_name)
     tokens = bart.encode(SAMPLE_TEXT).unsqueeze(0)
-    tokens2 = (
-        BartTokenizer.from_pretrained(hf_checkpoint_name)
-        .encode(SAMPLE_TEXT, return_tensors="pt")
-        .unsqueeze(0)
-    )
+    tokens2 = BartTokenizer.from_pretrained(hf_checkpoint_name).encode(SAMPLE_TEXT, return_tensors="pt").unsqueeze(0)
     assert torch.eq(tokens, tokens2).all()
 
     if checkpoint_path == "bart.large.mnli":
         state_dict = bart.state_dict()
         remove_ignore_keys_(state_dict)
-        state_dict["model.shared.weight"] = state_dict[
-            "model.decoder.embed_tokens.weight"
-        ]
+        state_dict["model.shared.weight"] = state_dict["model.decoder.embed_tokens.weight"]
         for src, dest in mnli_rename_keys:
             rename_key(state_dict, src, dest)
         model = BartForSequenceClassification(config).eval()
@@ -149,9 +140,7 @@ def convert_bart_checkpoint(
             model.load_state_dict(state_dict)
             new_model_outputs = model(tokens).model[0]
         else:
-            model = BartForConditionalGeneration(
-                config
-            ).eval()  # an existing summarization ckpt
+            model = BartForConditionalGeneration(config).eval()  # an existing summarization ckpt
             model.model.load_state_dict(state_dict)
             if hasattr(model, "lm_head"):
                 model.lm_head = make_linear_from_emb(model.model.shared)

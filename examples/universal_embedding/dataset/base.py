@@ -1,15 +1,15 @@
-
-from __future__ import print_function
-from __future__ import division
+from __future__ import division, print_function
 
 import os
-import torch
-import torchvision
+
 import numpy as np
 import PIL.Image
+import torch
+import torchvision
+
 
 class BaseDataset(torch.utils.data.Dataset):
-    def __init__(self, root, mode, transform = None):
+    def __init__(self, root, mode, transform=None):
         self.root = root
         self.mode = mode
         self.transform = transform
@@ -24,12 +24,13 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         def img_load(index):
-            im = PIL.Image.open(self.im_paths[index]).convert('RGB')
+            im = PIL.Image.open(self.im_paths[index]).convert("RGB")
             # convert gray to rgb
-            # if len(list(im.split())) == 1 : im = im.convert('RGB') 
+            # if len(list(im.split())) == 1 : im = im.convert('RGB')
             if self.transform is not None:
                 im = self.transform(im)
             return im
+
         try:
             im = img_load(index)
             target = self.ys[index]

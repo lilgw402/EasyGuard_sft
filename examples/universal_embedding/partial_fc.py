@@ -7,12 +7,7 @@ from torch.nn.functional import linear, normalize
 
 
 class CombinedMarginLoss(torch.nn.Module):
-    def __init__(self,
-                 s,
-                 m1,
-                 m2,
-                 m3,
-                 interclass_filtering_threshold=0):
+    def __init__(self, s, m1, m2, m3, interclass_filtering_threshold=0):
         super().__init__()
         self.s = s
         self.m1 = m1
@@ -34,7 +29,10 @@ class CombinedMarginLoss(torch.nn.Module):
             with torch.no_grad():
                 dirty = logits > self.interclass_filtering_threshold
                 dirty = dirty.float()
-                mask = torch.ones([index_positive.size(0), logits.size(1)], device=logits.device)
+                mask = torch.ones(
+                    [index_positive.size(0), logits.size(1)],
+                    device=logits.device,
+                )
                 mask.scatter_(1, labels[index_positive], 0)
                 dirty[index_positive] *= mask
                 tensor_mul = 1 - dirty
@@ -83,6 +81,7 @@ class PartialFC_V2(torch.nn.Module):
     >>>     loss.backward()
     >>>     optimizer.step()
     """
+
     _version = 2
 
     def __init__(
@@ -93,7 +92,7 @@ class PartialFC_V2(torch.nn.Module):
         sample_rate: float = 1.0,
         fp16: bool = False,
         is_normlize: int = 1,
-        sample_num_feat=None
+        sample_num_feat=None,
     ):
         """
         Paramenters:
@@ -106,9 +105,7 @@ class PartialFC_V2(torch.nn.Module):
             The rate of negative centers participating in the calculation, default is 1.0.
         """
         super(PartialFC_V2, self).__init__()
-        assert (
-            distributed.is_initialized()
-        ), "must initialize distributed before create this"
+        assert distributed.is_initialized(), "must initialize distributed before create this"
         self.rank = distributed.get_rank()
         self.world_size = distributed.get_world_size()
 
@@ -118,9 +115,7 @@ class PartialFC_V2(torch.nn.Module):
         self.sample_num_feat: int = sample_num_feat
         self.fp16 = fp16
         self.is_normlize = is_normlize
-        self.num_local: int = num_classes // self.world_size + int(
-            self.rank < num_classes % self.world_size
-        )
+        self.num_local: int = num_classes // self.world_size + int(self.rank < num_classes % self.world_size)
         self.class_start: int = num_classes // self.world_size * self.rank + min(
             self.rank, num_classes % self.world_size
         )
@@ -139,15 +134,15 @@ class PartialFC_V2(torch.nn.Module):
 
     def sample(self, labels, index_positive):
         """
-            This functions will change the value of labels
-            Parameters:
-            -----------
-            labels: torch.Tensor
-                pass
-            index_positive: torch.Tensor
-                pass
-            optimizer: torch.optim.Optimizer
-                pass
+        This functions will change the value of labels
+        Parameters:
+        -----------
+        labels: torch.Tensor
+            pass
+        index_positive: torch.Tensor
+            pass
+        optimizer: torch.optim.Optimizer
+            pass
         """
         with torch.no_grad():
             positive = torch.unique(labels[index_positive], sorted=True).cuda()
@@ -160,8 +155,7 @@ class PartialFC_V2(torch.nn.Module):
                 index = positive
             self.weight_index = index
 
-            labels[index_positive] = torch.searchsorted(
-                index, labels[index_positive])
+            labels[index_positive] = torch.searchsorted(index, labels[index_positive])
 
         return self.weight[self.weight_index]
 
@@ -188,16 +182,12 @@ class PartialFC_V2(torch.nn.Module):
         batch_size = local_embeddings.size(0)
         if self.last_batch_size == 0:
             self.last_batch_size = batch_size
-        assert self.last_batch_size == batch_size, (
-            f"last batch size do not equal current batch size: {self.last_batch_size} vs {batch_size}")
+        assert (
+            self.last_batch_size == batch_size
+        ), f"last batch size do not equal current batch size: {self.last_batch_size} vs {batch_size}"
 
-        _gather_embeddings = [
-            torch.zeros((batch_size, self.embedding_size)).cuda()
-            for _ in range(self.world_size)
-        ]
-        _gather_labels = [
-            torch.zeros(batch_size).long().cuda() for _ in range(self.world_size)
-        ]
+        _gather_embeddings = [torch.zeros((batch_size, self.embedding_size)).cuda() for _ in range(self.world_size)]
+        _gather_labels = [torch.zeros(batch_size).long().cuda() for _ in range(self.world_size)]
         _list_embeddings = AllGather(local_embeddings, *_gather_embeddings)
         distributed.all_gather(_gather_labels, local_labels)
 
@@ -205,9 +195,7 @@ class PartialFC_V2(torch.nn.Module):
         labels = torch.cat(_gather_labels)
 
         labels = labels.view(-1, 1)
-        index_positive = (self.class_start <= labels) & (
-            labels < self.class_start + self.num_local
-        )
+        index_positive = (self.class_start <= labels) & (labels < self.class_start + self.num_local)
         labels[~index_positive] = -1
         labels[index_positive] -= self.class_start
 
@@ -285,9 +273,7 @@ class DistCrossEntropyFunc(torch.autograd.Function):
             label,
         ) = ctx.saved_tensors
         batch_size = logits.size(0)
-        one_hot = torch.zeros(
-            size=[index.size(0), logits.size(1)], device=logits.device
-        )
+        one_hot = torch.zeros(size=[index.size(0), logits.size(1)], device=logits.device)
         one_hot.scatter_(1, label[index], 1)
         logits[index] -= one_hot
         logits.div_(batch_size)
@@ -318,12 +304,9 @@ class AllGatherFunc(torch.autograd.Function):
         grad_out = grad_list[rank]
 
         dist_ops = [
-            distributed.reduce(
-                grad_out, rank, distributed.ReduceOp.SUM, async_op=True)
+            distributed.reduce(grad_out, rank, distributed.ReduceOp.SUM, async_op=True)
             if i == rank
-            else distributed.reduce(
-                grad_list[i], i, distributed.ReduceOp.SUM, async_op=True
-            )
+            else distributed.reduce(grad_list[i], i, distributed.ReduceOp.SUM, async_op=True)
             for i in range(distributed.get_world_size())
         ]
         for _op in dist_ops:

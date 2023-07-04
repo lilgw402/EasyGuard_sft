@@ -20,12 +20,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (
-        (cp >= 33 and cp <= 47)
-        or (cp >= 58 and cp <= 64)
-        or (cp >= 91 and cp <= 96)
-        or (cp >= 123 and cp <= 126)
-    ):
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
@@ -159,7 +154,8 @@ class BasicTokenizer(object):
         range_min_4 = 8205
         range_max_4 = 12953
         if range_min <= char_code <= range_max:
-            # or range_min_2 <= char_code <= range_max_2 or range_min_3 <= char_code <= range_max_3 or range_min_4 <= char_code <= range_max_4:
+            # or range_min_2 <= char_code <= range_max_2 or range_min_3 <= char_code <= range_max_3
+            # or range_min_4 <= char_code <= range_max_4:
             return True
         elif range_min_2 <= char_code <= range_max_2:
             return True
@@ -321,17 +317,13 @@ class FalBertTokenizer(TokenizerBase):
         """
         super().__init__()
         self.vocab = self.load_vocab(vocab_file)
-        self.ids_to_tokens = collections.OrderedDict(
-            [(ids, tok) for tok, ids in self.vocab.items()]
-        )
+        self.ids_to_tokens = collections.OrderedDict([(ids, tok) for tok, ids in self.vocab.items()])
         self.basic_tokenizer = BasicTokenizer(
             do_lower_case=do_lower_case,
             tokenize_emoji=tokenize_emoji,
             never_split=never_split,
         )
-        self.wordpiece_tokenizer = WordpieceTokenizer(
-            vocab=self.vocab, greedy_sharp=greedy_sharp
-        )
+        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, greedy_sharp=greedy_sharp)
         self.max_len = max_len if max_len is not None else int(1e12)
 
     def tokenize(self, text):
@@ -366,9 +358,7 @@ class FalBertTokenizer(TokenizerBase):
             raise ValueError(
                 "Token indices sequence length is longer than the specified maximum "
                 " sequence length for this BERT model ({} > {}). Running this"
-                " sequence through BERT will result in indexing errors".format(
-                    len(ids), self.max_len
-                )
+                " sequence through BERT will result in indexing errors".format(len(ids), self.max_len)
             )
         return ids
 
