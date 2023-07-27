@@ -22,13 +22,19 @@ HDFS_HUB_CN = "hdfs://haruna/home/byte_ecom_govern/easyguard"
 HDFS_HUB_VA = "hdfs://harunava/home/byte_magellan_va/easyguard"
 BUCKET_CN = "ecom-govern-easyguard-zh"
 BUCKET_SG = "ecom-govern-easyguard-sg"
+BUCKET_VA = "ecom-govern-easyguard-aiso"
 CDN_VA = "lf0-ecom-govern-easyguard-sg.byteintl.net"
+# http://lf0-ecom-govern-easyguard-sg.byteintl.net/obj/ecom-govern-easyguard-sg/
 TOS_HTTP_VA = f"​http://{CDN_VA}/obj/{BUCKET_SG}"
 TOS_HTTP_VA = TOS_HTTP_VA.strip("\u200b")
 TOS_HTTP_CN = r"http://tosv.byted.org/obj/ecom-govern-easyguard-zh"
 AK_CN = "SHZ0CK8T8963R1AVC3WT"  # dangerous ak
+AK_VA = "YD89UTTCRK4RQP5UUNZS"
 ENDPOINT_CN = "tos-cn-north.byted.org"
-SERVER_MAPPING = OrderedDict([["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]])
+ENDPOINT_VA = "tos-us.byted.org"
+SERVER_MAPPING = OrderedDict(
+    [["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]]
+)
 REGION_MAPPING = OrderedDict([["CN", 0], ["VA", 1]])
 _import_structure = {
     "yaml_utils": [
