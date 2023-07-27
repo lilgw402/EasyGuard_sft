@@ -32,9 +32,7 @@ AK_CN = "SHZ0CK8T8963R1AVC3WT"  # dangerous ak
 AK_VA = "YD89UTTCRK4RQP5UUNZS"
 ENDPOINT_CN = "tos-cn-north.byted.org"
 ENDPOINT_VA = "tos-us.byted.org"
-SERVER_MAPPING = OrderedDict(
-    [["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]]
-)
+SERVER_MAPPING = OrderedDict([["hdfs", (HDFS_HUB_CN, HDFS_HUB_VA)], ["tos", (TOS_HTTP_CN, TOS_HTTP_VA)]])
 REGION_MAPPING = OrderedDict([["CN", 0], ["VA", 1]])
 _import_structure = {
     "yaml_utils": [
