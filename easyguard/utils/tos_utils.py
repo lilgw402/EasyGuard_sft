@@ -1,28 +1,18 @@
-from typing import Optional, Dict, Union
-import bytedtos
-import os
 import json
+import os
+from typing import Dict, Optional, Union
+
 import bytedenv
+import bytedtos
 import requests
-from progressbar import *
 from prettytable import PrettyTable
+from progressbar import *
+
+from easyguard.modelzoo.config import MODEL_ARCHIVE_CONFIG, MODEL_ARCHIVE_PATH_BACKUP, TOS_FILES_PATH
+
+from . import AK_CN, AK_VA, BUCKET_CN, BUCKET_VA, CDN_VA, ENDPOINT_CN, TOS_HTTP_CN, TOS_HTTP_VA
 from .logging import get_logger
-from .yaml_utils import load_yaml, json2yaml
-from . import (
-    AK_VA,
-    BUCKET_CN,
-    BUCKET_VA,
-    CDN_VA,
-    TOS_HTTP_CN,
-    TOS_HTTP_VA,
-    AK_CN,
-    ENDPOINT_CN,
-)
-from easyguard.modelzoo.config import (
-    MODEL_ARCHIVE_CONFIG,
-    MODEL_ARCHIVE_PATH_BACKUP,
-    TOS_FILES_PATH,
-)
+from .yaml_utils import json2yaml, load_yaml
 
 logger = get_logger(__name__)
 
@@ -70,7 +60,7 @@ class TOS:
             if just download, not connect to cn tos, by default True
         """
         if not just_own:
-            if 'va' not in self.get_idc():
+            if "va" not in self.get_idc():
                 self.bucket_name = bucket_name
                 self.endpoint_ = endpoint
             else:
@@ -345,13 +335,9 @@ class TOS:
         return object_arr
 
     def get(self, key_name: str, save_dir: str = "./", verbose: bool = True):
-        assert self.exist(
-            key_name
-        ), f"please check the name exist in tos[{self.bucket}]"
+        assert self.exist(key_name), f"please check the name exist in tos[{self.bucket}]"
         get_files = self._get_obj_info(key_name)
-        local_files = list(
-            map(lambda x: os.path.join(save_dir, x.split("/")[-1]), get_files)
-        )
+        local_files = list(map(lambda x: os.path.join(save_dir, x.split("/")[-1]), get_files))
         save_dir_ = os.path.dirname(local_files[0])
         os.makedirs(save_dir_, exist_ok=True)
         for index, file_ in enumerate(get_files):
@@ -359,12 +345,12 @@ class TOS:
                 logger.info(f"start to download file `{file_}`...")
 
             respone = self.tos_client.get_object(file_)
-            with open(local_files[index], 'wb') as writer:
+            with open(local_files[index], "wb") as writer:
                 writer.write(respone.data)
-            
+
         if verbose:
             logger.info(f"all the files are saved in {save_dir_}")
-        
+
     def get_cdn(self, key_name: str, save_dir: str = "./", verbose: bool = True):
         """can get file or directory from tos[cn/sg], just support txt, json, yaml, torch model
 
