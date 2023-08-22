@@ -10,7 +10,7 @@ from progressbar import *
 
 from easyguard.modelzoo.config import MODEL_ARCHIVE_CONFIG, MODEL_ARCHIVE_PATH_BACKUP, TOS_FILES_PATH
 
-from . import AK_CN, AK_VA, BUCKET_CN, BUCKET_VA, CDN_VA, ENDPOINT_CN, TOS_HTTP_CN, TOS_HTTP_VA
+from . import AK_CN, AK_VA, BUCKET_CN, BUCKET_VA, CDN_VA, ENDPOINT_CN, ENDPOINT_VA, TOS_HTTP_CN, TOS_HTTP_VA
 from .logging import get_logger
 from .yaml_utils import json2yaml, load_yaml
 
@@ -61,12 +61,12 @@ class TOS:
         """
         if not just_own:
             if "va" not in self.get_idc():
-                self.bucket_name = bucket_name
-                self.endpoint_ = endpoint
+                self.bucket_name = BUCKET_CN
+                self.endpoint_ = ENDPOINT_CN
             else:
                 self.bucket_name = BUCKET_VA
                 access_key = AK_VA
-                self.endpoint_ = endpoint
+                self.endpoint_ = ENDPOINT_VA
         self.timeout_ = timeout
         self.http_va_ = http_cdn_va
         self.http_cn_ = http_cn
@@ -74,7 +74,7 @@ class TOS:
         self.tos_client = bytedtos.Client(
             self.bucket_name,
             access_key,
-            endpoint=endpoint,
+            endpoint=self.endpoint_,
             timeout=timeout,
             connect_timeout=timeout_connect,
         )
