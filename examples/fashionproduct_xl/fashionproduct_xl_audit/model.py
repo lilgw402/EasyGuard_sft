@@ -11,7 +11,7 @@ from easyguard.modelzoo.models.falbert.albert import Transformer
 class FPXL(CruiseModule):
     def __init__(
         self,
-        backbone="fashionproduct-xl-general-v2",
+        backbone="fashionproduct-xl-v2",
         class_num: int = 2100,
         hidden_dim: int = 768,
         optim: str = "AdamW",
