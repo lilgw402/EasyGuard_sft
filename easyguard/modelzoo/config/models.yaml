@@ -167,4 +167,3 @@ models:
     backend: default
     modeling_fashionproduct_xl:
       model: FashionProductXL
-  

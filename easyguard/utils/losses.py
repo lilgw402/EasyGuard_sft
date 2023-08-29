@@ -131,7 +131,7 @@ class SCELoss(nn.Module):
         return loss
 
 
-def multilabel_cross_entropy_loss(y_pred, y_true, reduction='mean'):
+def multilabel_cross_entropy_loss(y_pred, y_true, reduction="mean"):
     y_pred = (1 - 2 * y_true) * y_pred
     y_pred_neg = y_pred - y_true * 1e12
     y_pred_pos = y_pred - (1 - y_true) * 1e12
@@ -146,5 +146,5 @@ def multilabel_cross_entropy_loss(y_pred, y_true, reduction='mean'):
         pass
     elif reduction == "mean":
         loss = loss.mean()
-    
+
     return loss
