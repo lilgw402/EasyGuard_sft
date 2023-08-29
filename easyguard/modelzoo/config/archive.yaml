@@ -102,7 +102,7 @@ fashionproduct-xl-hr-v1:
   type: fashionproduct_xl
   server: hdfs/tos
   description: 侧重于高危类目的多语言商品图文表征模型fashionproduct-xl，目前支持en、th、id、vn、my
-fashionproduct-xl-general-v2:
+fashionproduct-xl-v2:
   type: fashionproduct_xl
   server: hdfs/tos
   description: v2版本的多语言上文图文表征模型fashionproduct-xl，目前支持en、th、id、vn、my

@@ -266,7 +266,6 @@ class FacDataModule(CruiseDataModule):
         text_len: int = 128,
         frame_len: int = 1,
         head_num: int = 5,
-        exp: str = "default",
         download_files: list = [],
     ):
         super().__init__()

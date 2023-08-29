@@ -41,7 +41,7 @@ trainer:
   qat_kwargs: { }
   grad_norm_layers: [ ]
 model:
-  backbone: /mnt/bn/fashionproductxl/weights/fashionproduct_xl_local  # fashionproduct-xl-hr-v1
+  backbone: fashionproduct-xl-v2
   class_num: 47
   hidden_dim: 768
   optim: AdamW
@@ -55,12 +55,15 @@ model:
     - backbone.falbert.visual
   head_num: 5                       # 分类投的个数，仅在use_multihead为true时生效
   use_multihead: true               # 是否使用多分类头，如果不按国家区分建议设置为false
-  load_pretrained: hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/fashionproductxl/fashionproductxl_v2.ckpt
+  load_pretrained: null
+  # hdfs://harunava/home/byte_magellan_va/user/wangxian/weights/fashionproductxl/fashionproductxl_v2.ckpt
   # hdfs://harunava/home/byte_magellan_va/user/wangxian/projects/fp_xl_ptm_v3/version_2756826/checkpoints/epoch=2-step=94000-val_loss=10.188.ckpt
   prefix_changes: [ ]               # modify layer name in state_dict before loading weights
 #    - backbone.->backbone.falbert.
-  download_files: [ ]
-#    - hdfs://haruna/home/byte_ecom_govern/user/wangxian/storage/fashionproduct_xl_general_v1->/opt/tiger/easyguard
+  download_files: # [ ]
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/libcut_model_ml_20201229->/opt/tiger
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/m_albert_h512a8l12/vocab.txt->./examples/fashionproduct_xl/m_albert_h512a8l12
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/m_albert_h512a8l12/sp.model->./examples/fashionproduct_xl/m_albert_h512a8l12
 data:
   train_files: hdfs://harunava/home/byte_magellan_va/user/xuqi/data/feature_audit
   train_size: 12000000
@@ -69,9 +72,11 @@ data:
   train_batch_size: 32
   val_batch_size: 16
   num_workers: 2
-  text_len: 512
+  text_len: 256
   frame_len: 3                      # how many frames to use
   head_num: 5
-  exp: null
-  download_files: [ ]
+  download_files: # [ ]
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/libcut_model_ml_20201229->/opt/tiger
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/m_albert_h512a8l12/vocab.txt->./examples/fashionproduct_xl/m_albert_h512a8l12/
+    - hdfs://harunava/home/byte_magellan_va/user/wangxian/cache/m_albert_h512a8l12/sp.model->./examples/fashionproduct_xl/m_albert_h512a8l12/
 log_level: INFO
