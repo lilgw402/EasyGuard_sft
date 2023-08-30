@@ -106,3 +106,7 @@ fashionproduct-xl-v2:
   type: fashionproduct_xl
   server: hdfs/tos
   description: v2版本的多语言上文图文表征模型fashionproduct-xl，目前支持en、th、id、vn、my
+eva_vit_giant:
+  type: eva_vit_giant
+  server: hdfs/tos
+  description: v2版本的多语言上文图文表征模型fashionproduct-xl，目前支持en、th、id、vn、my

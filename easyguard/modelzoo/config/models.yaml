@@ -167,3 +167,8 @@ models:
     backend: default
     modeling_fashionproduct_xl:
       model: FashionProductXL
+  eva_vit_giant:
+    name: EvaVitGiant
+    backend: default
+    modeling_eva_vit_giant:
+      model: EvaVitGiant
