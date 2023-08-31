@@ -8,7 +8,7 @@ from ...processor_utils import CENTER_IMAGE, RESIZE_IMAGE, ImageInput, Processor
 
 
 @dataclass
-class FashionUniversalProcessor(ProcessorImageBase):
+class EvaVitGiantProcessor(ProcessorImageBase):
     mean: Optional[List[float]] = None
     std: Optional[List[float]] = None
     size: Optional[float] = RESIZE_IMAGE
@@ -16,8 +16,6 @@ class FashionUniversalProcessor(ProcessorImageBase):
 
     def __post_init__(self):
         super().__init__(**self.__dict__)
-        self.mean = [0.48145466, 0.4578275, 0.40821073]
-        self.std = [0.26862954, 0.26130258, 0.27577711]
         self.transform = self.get_transforms()
 
     def get_transforms(self) -> Callable:
