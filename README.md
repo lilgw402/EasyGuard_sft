@@ -23,14 +23,6 @@ EasyGuard的使用说明详见：
 * Merlin中国区（MLX-Lab）: https://ml.bytedance.net/development/repos/207/detail?sid=3c70c89545eb65c3
 * Merlin海外：https://ml.byteintl.net/development/repos/22/detail?sid=fbed5f4d85cdce20
 
-## 依赖
-
-EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业务算法
-
-* [Cruise框架](https://codebase.byted.org/repo/data/cruise)
-* [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
-* 后续考虑新增ptx
-
 # 电商场景预训练算法服务
 * 文档详见：[预训练算法服务](https://bytedance.feishu.cn/wiki/wikcnrmcpmz5RAB89yJhWd0jFZg)
 
@@ -65,6 +57,15 @@ list_pretrained_models()
 * 直接提[issues](https://code.byted.org/ecom_govern/EasyGuard/issues)
 
 * 记录到文档里：[EasyGuard问题反馈](https://bytedance.feishu.cn/docx/Hk8NdiLkWofEzUxJGn4cot9KnwP)
+
+
+## 依赖
+
+EasyGuard依赖公司内外的NLP，CV，和多模态的框架来构建基础业务算法
+
+* [Cruise框架](https://codebase.byted.org/repo/data/cruise)
+* [Huggingface/Transformers框架](https://github.com/huggingface/transformers)
+
 
 ## CopyRight
 2021 ByteDance Inc. All Rights Reserved.
