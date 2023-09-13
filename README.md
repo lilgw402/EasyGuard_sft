@@ -17,6 +17,7 @@ EasyGuard的使用说明详见：
 
 
 [Warning:代码处于快速迭代期，核心代码需要UT保护，不然可能会被破坏!]()
+[Warning:代码库branches比较多整体比较大，建议clone的时候只clone master分支：git clone -b master --single-branch git@code.byted.org:ecom_govern/EasyGuard.git]()
 
 ## Job
 推荐用Merlin
