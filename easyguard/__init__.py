@@ -12,6 +12,7 @@ REMOTE_PATH_SEP = "/"
 os.environ["EASYGUARD_CACHE"] = EASYGUARD_CACHE
 os.environ["EASYGUARD_HOME"] = os.path.dirname(os.path.dirname(__file__))
 
+from . import models
 from .core import AutoImageProcessor, AutoModel, AutoProcessor, AutoTokenizer
 from .modelzoo.config import MODELZOO_CONFIG
 

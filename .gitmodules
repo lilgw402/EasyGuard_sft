@@ -1,4 +1,0 @@
-
-[submodule "data_pipe/framepipe/pyiam"]
-	path = data_pipe/framepipe/pyiam
-	url = git@code.byted.org:videoarch/pyiam.git
