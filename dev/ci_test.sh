@@ -3,6 +3,7 @@
 set -e
 
 echo "====================begin to test===================="
-pip3 install pytest
-pytest tests/unit_tests
+export PYTHONPATH=`pwd`:${PYTHONPATH}
+# pytest参数说明: https://bytedance.feishu.cn/docx/CyuqdE43toqTUux96M9cBbpJnih
+pytest -s -v -x -n auto tests/unit_tests
 echo "====================tests passed======================"

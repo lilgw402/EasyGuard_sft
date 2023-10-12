@@ -17,6 +17,7 @@ jobs:
     working-directory: fex
     # JOB的执行内容由若干个step组成，每个step独立串行执行
     steps:
+      - uses: actions/setup-proxy  # 设置全局代理 https://bytedance.feishu.cn/wiki/wikcnuNhxcArGLry5F7g1buOiib#45rFnA
       - name: Print basic info
         commands:
           - python3 -V
