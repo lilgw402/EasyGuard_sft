@@ -1,0 +1,56 @@
+model_name_or_path: ../../weight_pretrained/vicuna-7b-v1.5
+data_path: ../../meta_data/pretrain_data/LLaVA-CC3M-Pretrain-595K/chat.json
+image_folder: ../../meta_data/pretrain_data/LLaVA-CC3M-Pretrain-595K/image_new
+output_dir: ../../checkpoints/pretrain-valley-7b-v1.5.1
+# experiment name
+project_name: valley2
+run_name: pretrain
+# Whether to make the system prompt a mask in the label, and others do not mask
+only_mask_system: False
+# system prompt style
+conv_mode: plain
+# wether freeze backbone
+freeze_backbone: True
+# wether tune multimodal projection layer
+tune_mm_mlp_adapter: True
+# wether use patch pooling
+use_patch_importance_pooling: False
+tune_patch_pooling_matrix: False
+use_patch_importance_transformer: False
+tune_patch_importance_transformer: False
+# wether lora
+lora: False
+# wether multimodal
+is_multimodal: True
+
+num_train_epochs: 1
+per_device_train_batch_size: 16
+save_strategy: steps
+save_steps: 2400
+learning_rate: 2e-3
+gradient_checkpointing: True
+ddp_find_unused_parameters: True
+# wether do fast epoch
+fast_epoch: False
+
+vision_tower: openai/clip-vit-large-patch14
+mm_vision_select_layer: -2
+mm_use_im_start_end: True
+lazy_preprocess: True
+bf16: True
+fp16: False
+tf32: False
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 1
+evaluation_strategy: "no"
+save_total_limit: 1 
+weight_decay: 0.
+warmup_ratio: 0.03 
+lr_scheduler_type: cosine
+logging_steps: 1 
+model_max_length: 2048 
+adam_beta1: 0.9 
+adam_beta2: 0.95 
+deepspeed: valley/configs/deepspeed/config_zero2.json
+report_to: wandb
+dataloader_num_workers: 16
