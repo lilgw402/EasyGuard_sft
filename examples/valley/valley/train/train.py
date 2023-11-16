@@ -6,7 +6,7 @@ import transformers
 from valley.train.trainner import  ValleyTrainer
 from transformers import TrainerCallback
 from transformers.trainer_callback import TrainerControl, TrainerState
-from valley.model.language_model.valley_llama import ValleyLlamaForCausalLM
+from valley.model.language_model.valley_llama import ValleyVideoLlamaForCausalLM, ValleyProductLlamaForCausalLM
 from valley.model.language_model.valley_mistral import ValleyMistralForCausalLM
 from valley.util.config import *
 from valley.util.data_util import load_video
@@ -43,6 +43,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 @dataclass
 class ModelArguments:
+    model_class: Optional[str] = field(default="valley")
     model_name_or_path: Optional[str] = field(default="facebook/opt-125m")
     version: Optional[str] = field(default="v0")
     vision_tower: Optional[str] = field(default=None)
@@ -55,7 +56,6 @@ class ModelArguments:
     mm_use_im_patch_token: bool = field(default=True)
     mm_vision_select_feature: Optional[str] = field(default="cls_patch")
     tune_mm_mlp_adapter: bool = field(default=False)
-    llm_name: Optional[str] = field(default='llama2')
     language: Optional[str] = field(default='english')
     
 @dataclass
@@ -66,8 +66,10 @@ class DataArguments:
                             metadata={"help": "Path to the video training data."})
     is_fashion_data: str = field(default = False,
                             metadata={"help": "wether bussiness data"})
+    max_img_num : int = field(default = 8,
+                            metadata={"help": "maximum number of images in one conversation."})
     lazy_preprocess: bool = False
-    is_multimodal: bool = False
+    is_multimodal: bool = True
     image_folder: Optional[str] = field(default=None)
     video_folder: Optional[str] = field(default=None)
     image_aspect_ratio: str = 'square'
@@ -285,7 +287,7 @@ def train(args):
     training_args.learning_rate = float(training_args.learning_rate)
     os.environ['WANDB_PROJECT'] = data_args.project_name
 
-    if 'llama' in model_args.llm_name:
+    if model_args.model_class in ['valley-video', 'valley-product']: 
         tokenizer = transformers.LlamaTokenizer.from_pretrained(
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
@@ -293,7 +295,7 @@ def train(args):
             padding_side="right",
             use_fast=False,
         )
-    elif 'mistral' in model_args.llm_name:
+    elif model_args.model_class == 'mistral':
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
@@ -301,6 +303,9 @@ def train(args):
             padding_side="right",
             use_fast=False,
         )
+    else:
+        raise ValueError(f"Unknown Model Class.")
+        
     bnb_model_from_pretrained_args = {}
     if training_args.bits in [4, 8]:
         from transformers import BitsAndBytesConfig
@@ -320,33 +325,43 @@ def train(args):
         ))
 
     
-
+    data_args.model_class = model_args.model_class
     if model_args.vision_tower is not None:
-        if 'llama' in model_args.llm_name: 
-            model = ValleyLlamaForCausalLM.from_pretrained(
+        if  model_args.model_class == 'valley-video': 
+            model = ValleyVideoLlamaForCausalLM.from_pretrained(
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
             **bnb_model_from_pretrained_args
             )
-        else:
+        elif model_args.model_class == 'mistral':
             model = ValleyMistralForCausalLM.from_pretrained(
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
             **bnb_model_from_pretrained_args
             )
+        elif model_args.model_class == 'valley-product':
+            model = ValleyProductLlamaForCausalLM.from_pretrained(
+            model_args.model_name_or_path,
+            cache_dir=training_args.cache_dir,
+            **bnb_model_from_pretrained_args
+            )
+        else:
+            raise ValueError(f"Unknown Model Class.")
     else:
-        if 'llama' in model_args.llm_name: 
+        if model_args.model_class in ['valley-video', 'valley-product']: 
             model = transformers.LlamaForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 **bnb_model_from_pretrained_args
             )
-        else:
+        elif model_args.model_class == 'mistral': 
             model = transformers.MistralForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 **bnb_model_from_pretrained_args
             )
+        else:
+            raise ValueError(f"Unknown Model Class.")
     model.config.use_cache = False   
     if training_args.freeze_backbone:
         model.model.requires_grad_(False)

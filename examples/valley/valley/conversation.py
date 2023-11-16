@@ -10,6 +10,7 @@ class SeparatorStyle(Enum):
     MPT = auto()
     PLAIN = auto()
     LLAMA_2 = auto()
+    MISTRAL = auto()
 
 
 @dataclasses.dataclass
@@ -88,6 +89,30 @@ class Conversation:
                 else:
                     ret += ""
             ret = ret.lstrip(self.sep)
+        elif self.sep_style == SeparatorStyle.MISTRAL:
+            '''text = "[INST] What is your favourite condiment? [/INST]"
+                        "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!</s> "
+                        "[INST] Do you have mayonnaise recipes? [/INST]"'''
+            wrap_sys = lambda msg: f"[INST] {msg} [/INST]Sure!"
+            wrap_inst = lambda msg: f"[INST] {msg} [/INST]"
+            ret = ""
+
+            for i, (role, message) in enumerate(messages):
+                if i == 0:
+                    assert message, "first message should not be none"
+                    assert role == self.roles[0], "first message should come from user"
+                if message:
+                    if type(message) is tuple:
+                        message, _, _ = message
+                    if i == 0: ret = wrap_sys(self.system) + self.sep2
+                    if i % 2 == 0:
+                        message = wrap_inst(message)
+                        ret += message
+                    else:
+                        ret += message + self.sep2
+                else:
+                    ret += ""
+
         elif self.sep_style == SeparatorStyle.PLAIN:
             seps = [self.sep, self.sep2]
             ret = self.system
@@ -274,6 +299,18 @@ If a question does not make any sense, or is not factually coherent, explain why
     sep2="</s>",
 )
 
+conv_mistral = Conversation(
+    system="A chat between a curious human and an artificial intelligence assistant. "
+           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    roles=("USER", "ASSISTANT"),
+    version="mistral",
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.MISTRAL,
+    sep="<s>",
+    sep2="</s>",
+)
+
 conv_llava_llama_2 = Conversation(
     system="You are a helpful language and vision assistant. "
            "You are able to understand the visual content that the user provides, "
@@ -429,6 +466,61 @@ conv_llava_v1_mmtag = Conversation(
     version="v1_mmtag",
 )
 
+conv_ic_common = Conversation(
+    system="You are a professional product information reviewer assessing the 'Incorrect Category High-risk' policy. Determine whether a product violates this policy based on specific domain conditions:"
+           "- For Jewelry Products,  Condition 1: The product is under 'jewellery and derivatives'. Main material and purity measures are specified.  Condition 2: The product does not match its category. "
+           "- For Health Products, Condition 1: The product belongs to: 'Medical Supplies', 'OTC Medications & Treatments', or 'Food Supplements'. Condition 2: The product does not match with its category or the product has weight-loss related claims but is not categorized under 'weight management'. "
+           "- For Fresh and Frozen Foods, Condition 1:  The product is considered 'fresh and frozen food'. Condition 2: The product does not match with its category."
+           "For the above product domains, if both conditions are satisfied, it is considered a violation of the 'Incorrect Category High-risk' policy.",
+    roles=("Human", "Assistant"),
+    messages=(
+    ),
+    offset=0,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###",
+)
+
+conv_ic_simple = Conversation(
+    system="You are a high-risk product reviewer, assessing the correctness of the input category assigned to each product. You will be given the product name, description and image contents. Decide whether to approve or reject the product following the rules below. ",
+    roles=("Human", "Assistant"),
+    messages=(
+    ),
+    offset=0,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###",
+)
+
+
+conv_ic_detail = Conversation(
+    system="You are a high-risk product reviewer, assessing the correctness of the input category assigned to each product under the categories of jewelry products, health products and fresh and frozen food products. You will be given the product name, description and images. Decide whether to approve or reject the product following the steps below."
+            "For Jewelry Products, "
+            "Step 1: determine whether the product belongs to the jewellery and derivative. Jewellery products usually have high value and are worn, displayed, or collected for their decorative purposes. If not, approve. If so, proceed to step 2."
+            "Step 2: check for specific jewelry materials. The product is considered to belong to a specific material only when the product information contains both the main material keywords and purity keywords, and the product is not artificial, plated or laboratory-grown. "
+            "Only and limited to the following jewelry materials need to focus:"
+            "1.Gold: 'Jewellery Accessories & Derivatives>>Gold' OR 'Jewellery Accessories & Derivatives>>Platinum & Carat Gold'2.Silver: 'Jewellery Accessories & Derivatives>>Silver'3.Platinum and Carat gold: 'Jewellery Accessories & Derivatives>>Gold' OR 'Jewellery Accessories & Derivatives>>Platinum & Carat Gold'4.Diamond: 'Jewellery Accessories & Derivatives>>Diamond'5.Jade: 'Jewellery Accessories & Derivatives>>Jade'6.Natural Crystal: 'Jewellery Accessories & Derivatives>>Natural Crystal' If the product does not belong to  any of the material types, it can be approved. Otherwise, proceed to step 3."
+            "Step 3: decide whether the input product category is correct. If so, approve.  If not, reject."
+            "For Health Products, "
+            "Step 1: Combine product information and given criterion to determine what category the products belong to;1->Medical Supplies: to be designed for maintaining and monitoring human health, it must be explicitly claimed for medical purposes, otherwise, it may not be considered as medical supplies: *Typical type: First Aid, Health Monitors, Hearing Aids, Lab Tools, Medical Masks, Medication Aids, Thermometers, Walking Sticks, Wheelchairs ETC."
+            "2->OTC Medications & Treatments: products form in capsules、pills/tablets、liquid syrup、powder、ointments in small tubes、nasal sprays、drops(exhaustive list) and claims can cure/treat/prevent certain human sicknesses (like antifungal、nausea、digestion sickness、coughs,、colds、antibiotics、high blood pressure、diabetes);"
+            "3->Food supplements: preparation intended to provide nutrients,including vitamins, minerals, amino acids, fatty acids, fiber, and various other substances delivered in the form of pills, tablets, capsules, liquid, etc."
+            "1-1 Medical Suppiles ->Turn to step 2 1-2 OTC Medications & Treatments-->Turn to step 3 1-3 Food Supplements-->Turn to step 4 1-4  If none apply -> approve"
+            "Step 2: If the product belongs to 'Medical Suppiles' based on step 1; compare category listed in the input information whether matches the Health>Medical Supplies.   2-1 Yes, approve 2-2 No, reject"
+            "Step 3: If the product belongs to 'OTC Medications & Treatments' based on step 1; compare category listed in the input information whether matches the 'expected category' listed below;"
+            "*Health>Alternative Medications & Treatments>Herbal Medicine *Health>OTC Medications & Treatments.   3-1 Yes, approve 3-2 No, reject"
+            "Step 4: If the product belongs to 'Food Supplements' based on step 1; check is there any weight-loss related claim 4-1 Yes, turn to step 5 4-2 No, turn to step 6"
+            "Step 5: The food supplements contain weight-loss related claims must classified as Weight Management,compare category listed in the input information whether matches 'Health>Food Supplement>Weight Management'   5-1 Yes, approve 5-2 No, reject"
+            "Step 6: For normal food supplement products,compare category listed in the input information whether matches the 'expected category' listed below;"
+            "Expected category *Health>Food Supplement *Baby & Maternity>Baby Care & Health>Baby Vitamins & Supplements *Baby & Maternity>Maternity Supplies>Maternity Vitamins & Supplement  6-1 Yes, approve 6-2 No, approve"
+            "For Fresh and Frozen Foods,   Step 1: Determine if the item is considered fresh and frozen food. Fresh and frozen food should meet the following three conditions. Condition 1: Contain information indicating if the food requires refrigeration or freezing storage: Condition 2: Mentioned that the items expiration date/shelf life is equal or less than 7 days; Condition 3: The products form belongs to commonly found fresh or frozen products,like fresh fruits, vegetables, ice cream, seafood, other freshly made cakes, or meats； 1-1 If the product meets any of the above conditions, proceed to step 2; 1-2 If not, approve"
+            "Step 2: If based on the above steps, we determine it belongs to 'Fresh and Frozen Food'; compare category listed in the input information whether matches  Food & Beverages>> Fresh & Frozen Food 2-1 Yes, approve  2-2 No, reject",
+    roles=("Human", "Assistant"),
+    messages=(
+    ),
+    offset=0,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###"
+)
+
 default_conversation = conv_vicuna_v0
 
 conv_templates = {
@@ -455,7 +547,15 @@ conv_templates = {
     "mfe_v1": conv_valley_mfe_v1,
 
     'valley_v0': conv_valley_v0,
-    'valley_v1': conv_valley_v1
+    'valley_v1': conv_valley_v1,
+
+    'mistral': conv_mistral,
+    "valley_v0": conv_valley_v0,
+    "valley_v1": conv_valley_v1,
+
+    "ic_common": conv_ic_common,
+    "ic_simple": conv_ic_simple,
+    "ic_detail": conv_ic_detail, 
 }
 
 

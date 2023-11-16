@@ -41,7 +41,9 @@ class LazySupervisedDataset(Dataset):
         super(LazySupervisedDataset, self).__init__()
         
         list_data_dict = json.load(open(data_path, "r")) if data_path else []
-        if os.path.isfile(data_args.video_data_path):
+        if data_args.video_data_path is None:
+            list_video_data_dict = []
+        elif os.path.isfile(data_args.video_data_path):
             list_video_data_dict = json.load(open(data_args.video_data_path, "r")) if data_args.video_data_path else []
         else:
             list_video_data_dict = []
@@ -82,9 +84,11 @@ class LazySupervisedDataset(Dataset):
             if isinstance(i, int):
                 sources = [sources]
             assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
-            if 'image' in sources[0]:
+            if ('image' in sources[0]) and isinstance(self.list_data_dict[i]['image'], str):       ### for single image
                 image_file = self.list_data_dict[i]['image']
                 image_folder = self.data_args.image_folder
+                if 'train2014' in image_folder:
+                        image_file = 'COCO_train2014_'+image_file
                 processor = self.data_args.image_processor
                 image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
                 if self.data_args.image_aspect_ratio == 'pad':
@@ -97,10 +101,32 @@ class LazySupervisedDataset(Dataset):
                     copy.deepcopy([e["conversations"] for e in sources]),
                     self.data_args)
                 image = image.unsqueeze(0)
-            elif 'video' in sources[0]:
+            elif ('image' in sources[0]) and isinstance(self.list_data_dict[i]['image'], list):     ### for multi image 
+                image_list = []
+                for image_file in self.list_data_dict[i]['image'][:self.data_args.max_img_num]:
+                    image_folder = self.data_args.image_folder if self.data_args.image_folder else ''
+                    processor = self.data_args.image_processor
+                    image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+                    if self.data_args.image_aspect_ratio == 'pad':
+                        image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
+                        image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                    else:
+                        image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                    image_list.append(image)
+                image_list =  torch.stack(image_list, dim = 0)
+                sources = preprocess_multimodal(
+                    copy.deepcopy([e["conversations"] for e in sources]),
+                    self.data_args)
+                image = image_list
+            elif 'video' in sources[0]:                                                     ### for video file or folder
                 video_file = self.list_data_dict[i]['video']
                 processor = self.data_args.image_processor
-                video_file = os.path.join(self.data_args.video_folder, video_file)
+                if 'source' not in self.list_data_dict[i]:
+                    video_file = os.path.join(self.data_args.video_folder, video_file)
+                else:
+                    video_file_source = self.list_data_dict[i]['source']
+                    video_file = os.path.join(self.data_args.video_folder, video_file_source, video_file)
+                
                 if os.path.isfile(video_file):
                     video_reader = decord.VideoReader(video_file, num_threads=1, ctx= decord.cpu(0))
                     decord.bridge.set_bridge('torch')
@@ -108,7 +134,7 @@ class LazySupervisedDataset(Dataset):
                     video = video_reader.get_batch(np.linspace(0, video_len - 1, 8).astype(np.int_)).byte()  # 8, height,width,3
                 else:
                     if os.path.exists(video_file):
-                        video = [os.path.join(video_file, file) for file in os.listdir(video_file)] 
+                        video = [os.path.join(video_file, file) for file in os.listdir(video_file)][:self.data_args.max_img_num]
                     else:
                         video = []
                     padded_list = ['/mnt/bn/zhaoziwang/multimodal-pretrain-data/demodata/blackimage/black_image.png']*max(8-len(video),0) # this 
@@ -125,9 +151,6 @@ class LazySupervisedDataset(Dataset):
                     image = processor.preprocess(imagetoPIL, return_tensors='pt')['pixel_values'][0]
                     video_pad.append(image)
                 video = torch.stack(video_pad, dim = 0)
-                # FIXME: 14 is hardcoded patch size
-                cur_token_len = (video[0].shape[1]//14) * \
-                    (video[0].shape[2]//14)
                 sources = preprocess_multimodal(
                         copy.deepcopy([e["conversations"] for e in sources]),
                         self.data_args)
@@ -169,7 +192,7 @@ class DataCollatorForSupervisedDataset(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         instances_no_error = []
         for ins in instances:
-            if type(ins) != tuple and len(ins["input_ids"]) < 2048:
+            if type(ins) != tuple and len(ins["input_ids"]) < self.tokenizer.model_max_length:
                 instances_no_error.append(ins)
         instances = instances_no_error
         input_ids, labels = tuple([instance[key] for instance in instances]

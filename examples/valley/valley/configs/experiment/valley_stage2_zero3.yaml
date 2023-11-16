@@ -1,4 +1,5 @@
 deepspeed: valley/configs/deepspeed/config_zero3.json
+model_class: valley-video
 model_name_or_path: /mnt/bn/luoruipu-disk/checkpoints/valley2-7b-v1/
 video_data_path: /mnt/bn/luoruipu-disk/meta_data/toy_data/pretrain_video_chat.json
 video_folder: /mnt/bn/luoruipu-disk/meta_data/toy_data/finetune_video
