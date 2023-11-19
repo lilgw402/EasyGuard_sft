@@ -30,7 +30,7 @@ gradient_accumulation_steps: 1
 evaluation_strategy: "no"
 save_strategy: "no"
 lora_save_strategy: "steps"
-save_steps: 1000
+save_steps: 500
 learning_rate: 5e-4
 weight_decay: 0.
 warmup_ratio: 0.00
