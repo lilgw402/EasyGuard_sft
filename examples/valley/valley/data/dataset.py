@@ -91,6 +91,7 @@ class LazySupervisedDataset(Dataset):
                         image_file = 'COCO_train2014_'+image_file
                 processor = self.data_args.image_processor
                 image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+
                 if self.data_args.image_aspect_ratio == 'pad':
                     image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
                     image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]

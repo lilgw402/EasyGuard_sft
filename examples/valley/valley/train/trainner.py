@@ -204,8 +204,8 @@ class ValleyTrainer(Seq2SeqTrainer):
         optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
         preprocess_logits_for_metrics: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None,):
 
-        self.clf_metrics = evaluate.combine(["bleu", "rouge"])
-        self.bertscore = evaluate.load("bertscore")
+        # self.clf_metrics = evaluate.combine(["bleu", "rouge"])
+        # self.bertscore = evaluate.load("bertscore")
 
         super().__init__(model, args, data_collator, train_dataset, eval_dataset, tokenizer, model_init, compute_metrics, callbacks, optimizers, preprocess_logits_for_metrics,)
     
@@ -267,246 +267,247 @@ class ValleyTrainer(Seq2SeqTrainer):
     #         self.optimizer = super().create_optimizer()
     #     return self.optimizer
 
-    def evaluate(
-        self,
-        eval_dataset: Optional[Dataset] = None,
-        ignore_keys: Optional[List[str]] = None,
-        metric_key_prefix: str = "eval",
-        **gen_kwargs,
-    ) -> Dict[str, float]:
-        results = super().evaluate(
-            eval_dataset, ignore_keys, metric_key_prefix, **gen_kwargs
-        )
-        if dist.get_rank() == 0:
-            # due to multiprocess, just do evaluation in rank 0
-            # print(results)
-            self.log(results)
-        return results
 
-    def predict(
-        self,
-        test_dataset: Dataset,
-        ignore_keys: Optional[List[str]] = None,
-        metric_key_prefix: str = "test",
-        **gen_kwargs,
-    ):
-        self.test_length = len(test_dataset)
-        # for arnold
-        if os.environ.get("ARNOLD_WORKER_GPU", None):
-            self.gpu_number = int(os.environ.get("ARNOLD_WORKER_GPU", 1)) * int(
-                os.environ.get("ARNOLD_WORKER_NUM", 1)
-            )
-        else:
-            self.gpu_number = torch.cuda.device_count()
-        self.total_step = math.ceil(
-            self.test_length
-            // (self.params["per_device_eval_batch_size"] * self.gpu_number)
-        )
-        self.current_step = 0
-        return super().predict(
-            test_dataset, ignore_keys, metric_key_prefix, **gen_kwargs
-        )
+    # def evaluate(
+    #     self,
+    #     eval_dataset: Optional[Dataset] = None,
+    #     ignore_keys: Optional[List[str]] = None,
+    #     metric_key_prefix: str = "eval",
+    #     **gen_kwargs,
+    # ) -> Dict[str, float]:
+    #     results = super().evaluate(
+    #         eval_dataset, ignore_keys, metric_key_prefix, **gen_kwargs
+    #     )
+    #     if dist.get_rank() == 0:
+    #         # due to multiprocess, just do evaluation in rank 0
+    #         # print(results)
+    #         self.log(results)
+    #     return results
 
-    def prediction_step(
-        self,
-        model: torch.nn.Module,
-        inputs: Dict[str, torch.Tensor],
-        prediction_loss_only: bool,
-        ignore_keys: Optional[List[str]] = None,
-    ) -> Tuple[float, torch.Tensor, torch.Tensor]:
-        """
-        Perform an evaluation step on `model` using `inputs`.
+    # def predict(
+    #     self,
+    #     test_dataset: Dataset,
+    #     ignore_keys: Optional[List[str]] = None,
+    #     metric_key_prefix: str = "test",
+    #     **gen_kwargs,
+    # ):
+    #     self.test_length = len(test_dataset)
+    #     # for arnold
+    #     if os.environ.get("ARNOLD_WORKER_GPU", None):
+    #         self.gpu_number = int(os.environ.get("ARNOLD_WORKER_GPU", 1)) * int(
+    #             os.environ.get("ARNOLD_WORKER_NUM", 1)
+    #         )
+    #     else:
+    #         self.gpu_number = torch.cuda.device_count()
+    #     self.total_step = math.ceil(
+    #         self.test_length
+    #         // (self.params["per_device_eval_batch_size"] * self.gpu_number)
+    #     )
+    #     self.current_step = 0
+    #     return super().predict(
+    #         test_dataset, ignore_keys, metric_key_prefix, **gen_kwargs
+    #     )
 
-        Subclass and override to inject custom behavior.
+    # def prediction_step(
+    #     self,
+    #     model: torch.nn.Module,
+    #     inputs: Dict[str, torch.Tensor],
+    #     prediction_loss_only: bool,
+    #     ignore_keys: Optional[List[str]] = None,
+    # ) -> Tuple[float, torch.Tensor, torch.Tensor]:
+    #     """
+    #     Perform an evaluation step on `model` using `inputs`.
 
-        Args:
-            model (`nn.Module`):
-                The model to evaluate.
-            inputs (`Dict[str, Union[torch.Tensor, Any]]`):
-                The inputs and targets of the model.
+    #     Subclass and override to inject custom behavior.
 
-                The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
-                argument `labels`. Check your model's documentation for all accepted arguments.
-            prediction_loss_only (`bool`):
-                Whether or not to return the loss only.
+    #     Args:
+    #         model (`nn.Module`):
+    #             The model to evaluate.
+    #         inputs (`Dict[str, Union[torch.Tensor, Any]]`):
+    #             The inputs and targets of the model.
 
-        Return:
-            Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss, logits and
-            labels (each being optional).
-        """
-        # logger.info(f"rank: {dist.get_rank()}-{inputs['input_ids'].size()}-{inputs['ground_truth_labels'].size()}")
+    #             The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
+    #             argument `labels`. Check your model's documentation for all accepted arguments.
+    #         prediction_loss_only (`bool`):
+    #             Whether or not to return the loss only.
 
-        # evalset is format as input_ids, labels, and label_index, labels represent each turn converation length, and label_index is assistent reponse index
-        # inputs:{ 'input_ids', 'attention_mask', 'labels', 'images', 'label_index' }
+    #     Return:
+    #         Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss, logits and
+    #         labels (each being optional).
+    #     """
+    #     # logger.info(f"rank: {dist.get_rank()}-{inputs['input_ids'].size()}-{inputs['ground_truth_labels'].size()}")
+
+    #     # evalset is format as input_ids, labels, and label_index, labels represent each turn converation length, and label_index is assistent reponse index
+    #     # inputs:{ 'input_ids', 'attention_mask', 'labels', 'images', 'label_index' }
         
-        if not self.args.predict_with_generate or prediction_loss_only:
-            return super().prediction_step(
-                model,
-                inputs,
-                prediction_loss_only=prediction_loss_only,
-                ignore_keys=ignore_keys,
-            )
+    #     if not self.args.predict_with_generate or prediction_loss_only:
+    #         return super().prediction_step(
+    #             model,
+    #             inputs,
+    #             prediction_loss_only=prediction_loss_only,
+    #             ignore_keys=ignore_keys,
+    #         )
         
-        turn_number = len(inputs['label_index'][0])
-        inputs['labels'] = tuple(inputs['labels'][0].numpy().tolist())
-        input_ids_split = torch.split(inputs['input_ids'], inputs['labels'], dim = 1)
+    #     turn_number = len(inputs['label_index'][0])
+    #     inputs['labels'] = tuple(inputs['labels'][0].numpy().tolist())
+    #     input_ids_split = torch.split(inputs['input_ids'], inputs['labels'], dim = 1)
 
-        system_input_id = input_ids_split[0]
-        # human input list, and the last item is <s>###, need to be ignore
+    #     system_input_id = input_ids_split[0]
+    #     # human input list, and the last item is <s>###, need to be ignore
         
-        human_input_id_list = [input_id for i,input_id in enumerate(input_ids_split) if i%2==1]
-        begin_ids = human_input_id_list[-1]
-        human_input_id_list = human_input_id_list[:-1]
-        response_input_id_list = [input_id for i,input_id in enumerate(input_ids_split) if i%2==0 and i!=0]
-        assert len(human_input_id_list) == len(response_input_id_list)
-        if len(response_input_id_list)>5:
-            kwargs = {"device": self.args.device}
-            generated_tokens = torch.tensor([1]).to(**kwargs)
-            loss = None
-            labels = None
-            return loss, generated_tokens, labels
-        last_id = system_input_id
+    #     human_input_id_list = [input_id for i,input_id in enumerate(input_ids_split) if i%2==1]
+    #     begin_ids = human_input_id_list[-1]
+    #     human_input_id_list = human_input_id_list[:-1]
+    #     response_input_id_list = [input_id for i,input_id in enumerate(input_ids_split) if i%2==0 and i!=0]
+    #     assert len(human_input_id_list) == len(response_input_id_list)
+    #     if len(response_input_id_list)>5:
+    #         kwargs = {"device": self.args.device}
+    #         generated_tokens = torch.tensor([1]).to(**kwargs)
+    #         loss = None
+    #         labels = None
+    #         return loss, generated_tokens, labels
+    #     last_id = system_input_id
 
-        generated_tokens = []
-        gd_truth_tokens = []
-        for turn_index in range(turn_number):
-            input_ids = torch.concat([last_id, human_input_id_list[turn_index], begin_ids],dim=1)
-            if input_ids.shape[1] > self.args.generation_max_length:
-                gd_truth_this_turn = response_input_id_list[turn_index][:,1:]
-                gd_truth_tokens.append(gd_truth_this_turn[0])
-                generated_tokens.append(torch.tensor([0]))
-                continue
-            inputs = dict(
-                input_ids = input_ids,
-                attention_mask = torch.ones_like(input_ids),
-                images = inputs['images']
-            )
-            inputs = self._prepare_inputs(inputs)
+    #     generated_tokens = []
+    #     gd_truth_tokens = []
+    #     for turn_index in range(turn_number):
+    #         input_ids = torch.concat([last_id, human_input_id_list[turn_index], begin_ids],dim=1)
+    #         if input_ids.shape[1] > self.args.generation_max_length:
+    #             gd_truth_this_turn = response_input_id_list[turn_index][:,1:]
+    #             gd_truth_tokens.append(gd_truth_this_turn[0])
+    #             generated_tokens.append(torch.tensor([0]))
+    #             continue
+    #         inputs = dict(
+    #             input_ids = input_ids,
+    #             attention_mask = torch.ones_like(input_ids),
+    #             images = inputs['images']
+    #         )
+    #         inputs = self._prepare_inputs(inputs)
 
-            # XXX: adapt synced_gpus for fairscale as well
-            # Priority (handled in generate):
-            # gen_kwargs > model.generation_config > default GenerationConfig()
-            gen_kwargs = self._gen_kwargs.copy()
-            if (
-                gen_kwargs.get("max_length") is None
-                and gen_kwargs.get("max_new_tokens") is None
-            ):
-                gen_kwargs["max_length"] = self.model.config.max_length
-            gen_kwargs["num_beams"] = (
-                gen_kwargs["num_beams"]
-                if gen_kwargs.get("num_beams") is not None
-                else self.model.config.num_beams
-            )
-            default_synced_gpus = True if is_deepspeed_zero3_enabled() else False
-            gen_kwargs["synced_gpus"] = (
-                gen_kwargs["synced_gpus"]
-                if gen_kwargs.get("synced_gpus") is not None
-                else default_synced_gpus
-            )
+    #         # XXX: adapt synced_gpus for fairscale as well
+    #         # Priority (handled in generate):
+    #         # gen_kwargs > model.generation_config > default GenerationConfig()
+    #         gen_kwargs = self._gen_kwargs.copy()
+    #         if (
+    #             gen_kwargs.get("max_length") is None
+    #             and gen_kwargs.get("max_new_tokens") is None
+    #         ):
+    #             gen_kwargs["max_length"] = self.model.config.max_length
+    #         gen_kwargs["num_beams"] = (
+    #             gen_kwargs["num_beams"]
+    #             if gen_kwargs.get("num_beams") is not None
+    #             else self.model.config.num_beams
+    #         )
+    #         default_synced_gpus = True if is_deepspeed_zero3_enabled() else False
+    #         gen_kwargs["synced_gpus"] = (
+    #             gen_kwargs["synced_gpus"]
+    #             if gen_kwargs.get("synced_gpus") is not None
+    #             else default_synced_gpus
+    #         )
 
-            gen_kwargs['stopping_criteria'] =  [KeywordsStoppingCriteria(['###'], self.tokenizer, inputs['input_ids'])]
-            outputs = self.model.generate(**inputs, **gen_kwargs, return_dict_in_generate=True)
-            # because upper code has implement the begin token, so don't need to add ,so [input_ids.shape[1]:-1]
-            outputs_ids = outputs.sequences[:,input_ids.shape[1]:]
-            gd_truth_this_turn = response_input_id_list[turn_index][:,1:]
-            gd_truth_tokens.append(gd_truth_this_turn[0])
-            generated_tokens.append(outputs_ids[0])
-            # add generate token to tail of last id
-            last_id = torch.concat([input_ids,outputs_ids.cpu()],dim=1)
+    #         gen_kwargs['stopping_criteria'] =  [KeywordsStoppingCriteria(['###'], self.tokenizer, inputs['input_ids'])]
+    #         outputs = self.model.generate(**inputs, **gen_kwargs, return_dict_in_generate=True)
+    #         # because upper code has implement the begin token, so don't need to add ,so [input_ids.shape[1]:-1]
+    #         outputs_ids = outputs.sequences[:,input_ids.shape[1]:]
+    #         gd_truth_this_turn = response_input_id_list[turn_index][:,1:]
+    #         gd_truth_tokens.append(gd_truth_this_turn[0])
+    #         generated_tokens.append(outputs_ids[0])
+    #         # add generate token to tail of last id
+    #         last_id = torch.concat([input_ids,outputs_ids.cpu()],dim=1)
 
-        self._output_generate_results(
-            generated_tokens, gd_truth_tokens
-        )
-        kwargs = {"device": self.args.device}
-        generated_tokens = torch.tensor([1]).to(**kwargs)
-        loss = None
-        labels = None
-        return loss, generated_tokens, labels
+    #     self._output_generate_results(
+    #         generated_tokens, gd_truth_tokens
+    #     )
+    #     kwargs = {"device": self.args.device}
+    #     generated_tokens = torch.tensor([1]).to(**kwargs)
+    #     loss = None
+    #     labels = None
+    #     return loss, generated_tokens, labels
 
-    def _pad_tensors_to_max_len(self, tensor, max_length):
-        return super()._pad_tensors_to_max_len(tensor, max_length)
+    # def _pad_tensors_to_max_len(self, tensor, max_length):
+    #     return super()._pad_tensors_to_max_len(tensor, max_length)
 
-    def decode(self, token_list):
-        ignore_tokens = [
-            self.tokenizer.bos_token,
-            self.tokenizer.eos_token,
-            self.tokenizer.pad_token,
-            "\n",
-            # "\x20",
-        ]
-        sub_re = re.compile("|".join(ignore_tokens))
-        return list(map(lambda x: sub_re.sub("", self.tokenizer.decode(x)), token_list))
+    # def decode(self, token_list):
+    #     ignore_tokens = [
+    #         self.tokenizer.bos_token,
+    #         self.tokenizer.eos_token,
+    #         self.tokenizer.pad_token,
+    #         "\n",
+    #         # "\x20",
+    #     ]
+    #     sub_re = re.compile("|".join(ignore_tokens))
+    #     return list(map(lambda x: sub_re.sub("", self.tokenizer.decode(x)), token_list))
 
-    def _output_generate_results(
-        self,
-        generated_tokens,
-        gd_truth
-    ):
-        """output the greneted results to target file
+    # def _output_generate_results(
+    #     self,
+    #     generated_tokens,
+    #     gd_truth
+    # ):
+    #     """output the greneted results to target file
 
-        Parameters
-        ----------
-        generated_tokens : List
-            generated tokens
-        gd_truth : List
-            the ground truth, by default None
-        Returns
-        ----------
-        _type_
-            _description_
-        """
-        generate_response_list = []
-        gd_truth_list = []
-        metric_score = []
-        for generate_str,gd_truth_str in zip(generated_tokens,gd_truth):
-            try:
-                generate_response_list.append(self.tokenizer.decode(generate_str))
-                gd_truth_list.append(self.tokenizer.decode(gd_truth_str))
-                if generate_response_list[-1].strip() == "":
-                    generate_response_list[-1] = 'aaaaaaaaaa'
-                metric_score.append(self.clf_metrics.compute(predictions=[generate_response_list[-1]], references=[gd_truth_list[-1]]))
-            except:
-                print(generate_response_list[-1])
-                continue
-        bert_score = self.bertscore.compute(predictions=generate_response_list, references=gd_truth_list, lang='en')
+    #     Parameters
+    #     ----------
+    #     generated_tokens : List
+    #         generated tokens
+    #     gd_truth : List
+    #         the ground truth, by default None
+    #     Returns
+    #     ----------
+    #     _type_
+    #         _description_
+    #     """
+    #     generate_response_list = []
+    #     gd_truth_list = []
+    #     metric_score = []
+    #     for generate_str,gd_truth_str in zip(generated_tokens,gd_truth):
+    #         try:
+    #             generate_response_list.append(self.tokenizer.decode(generate_str))
+    #             gd_truth_list.append(self.tokenizer.decode(gd_truth_str))
+    #             if generate_response_list[-1].strip() == "":
+    #                 generate_response_list[-1] = 'aaaaaaaaaa'
+    #             metric_score.append(self.clf_metrics.compute(predictions=[generate_response_list[-1]], references=[gd_truth_list[-1]]))
+    #         except:
+    #             print(generate_response_list[-1])
+    #             continue
+    #     bert_score = self.bertscore.compute(predictions=generate_response_list, references=gd_truth_list, lang='en')
         
-        assert len(generate_response_list) == len(gd_truth_list)
+    #     assert len(generate_response_list) == len(gd_truth_list)
 
-        json_arr = []
+    #     json_arr = []
         
-        json_arr.append(
-            dict(
-                generate_response=generate_response_list,
-                ground_truth=gd_truth_list,
-                bert_score = bert_score,
-                metric_score = metric_score
-            )
-        )
+    #     json_arr.append(
+    #         dict(
+    #             generate_response=generate_response_list,
+    #             ground_truth=gd_truth_list,
+    #             bert_score = bert_score,
+    #             metric_score = metric_score
+    #         )
+    #     )
 
-        self.jsonl_write(json_arr)
+    #     self.jsonl_write(json_arr)
 
-    def jsonl_write(self, json_arr: Dict[str, str]):
-        """jsonl write
+    # def jsonl_write(self, json_arr: Dict[str, str]):
+    #     """jsonl write
 
-        Parameters
-        ----------
-        json_arr : Dict[str, str]
-            json dict list
-        output_file : str
-            the output file
-        """
-        rank = dist.get_rank()
-        json_str_arr = map(json.dumps, json_arr)
-        global_step = 'step'+str(self.state.global_step)
-        path = self.args.prediction_file_name.split('/')
-        path[-1] = global_step + '_' + path[-1]
-        path = '/'.join(path)
-        output_file = path.replace(".jsonl", f".jsonl.worker{rank}")
-        if not os.path.exists(os.path.dirname(output_file)):
-            os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        with open(output_file, "a") as writer:
-            for line in json_str_arr:
-                writer.write(f"{line}\n")
+    #     Parameters
+    #     ----------
+    #     json_arr : Dict[str, str]
+    #         json dict list
+    #     output_file : str
+    #         the output file
+    #     """
+    #     rank = dist.get_rank()
+    #     json_str_arr = map(json.dumps, json_arr)
+    #     global_step = 'step'+str(self.state.global_step)
+    #     path = self.args.prediction_file_name.split('/')
+    #     path[-1] = global_step + '_' + path[-1]
+    #     path = '/'.join(path)
+    #     output_file = path.replace(".jsonl", f".jsonl.worker{rank}")
+    #     if not os.path.exists(os.path.dirname(output_file)):
+    #         os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    #     with open(output_file, "a") as writer:
+    #         for line in json_str_arr:
+    #             writer.write(f"{line}\n")
     
     # def _get_train_sampler(self) -> Optional[torch.utils.data.Sampler]:
     #     return DistributedSampler(

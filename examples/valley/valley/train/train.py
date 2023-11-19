@@ -56,7 +56,8 @@ class ModelArguments:
     mm_use_im_patch_token: bool = field(default=True)
     mm_vision_select_feature: Optional[str] = field(default="cls_patch")
     tune_mm_mlp_adapter: bool = field(default=False)
-    language: Optional[str] = field(default='english')
+    language: Optional[str] = field(default='xl')
+    pool_out_size: int = field(default=8)
     
 @dataclass
 class DataArguments:

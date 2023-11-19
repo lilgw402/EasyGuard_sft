@@ -320,7 +320,6 @@ class ValleyProductMetaModel:
         if getattr(self, 'mm_projector', None) is None:
             self.mm_projector = build_vision_projector(self.config)
 
-        
 
         if pretrain_mm_mlp_adapter is not None:
             mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu')
@@ -363,7 +362,6 @@ class ValleyProductMetaForCausalLM(ABC):
         new_input_embeds = []
         new_labels = [] if labels is not None else None
         for batch_idx, cur_input_ids in enumerate(input_ids):
-            
             if (cur_input_ids == IMAGE_TOKEN_INDEX).sum() == 0:
                 half_len = cur_input_ids.shape[0] // 2
                 cur_image_features = image_features[batch_idx]
@@ -377,6 +375,7 @@ class ValleyProductMetaForCausalLM(ABC):
                 continue
             image_token_indices = torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0]
             cur_new_input_embeds = []
+            cur_image_index = 0
             if labels is not None:
                 cur_labels = labels[batch_idx]
                 cur_new_labels = []
@@ -386,15 +385,15 @@ class ValleyProductMetaForCausalLM(ABC):
                 if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_im_start_end', False):
                     cur_new_input_embeds.append(self.get_model().embed_tokens(cur_input_ids[:image_token_start-1]).detach()) # before <image_start>
                     cur_new_input_embeds.append(self.get_model().embed_tokens(cur_input_ids[image_token_start-1:image_token_start])) # <image_start>
-                    cur_new_input_embeds.append(image_features[batch_idx].reshape(-1,image_features[batch_idx].shape[-1])) # <image_patch>
-                    cur_new_input_embeds.append(self.get_model().embed_tokens(cur_input_ids[image_token_start+2:image_token_start+3])) # <image_end>
-                    cur_input_ids = cur_input_ids[image_token_start+5:]# rolling window: skipping current image and start/end tokens
+                    cur_new_input_embeds.append(image_features[batch_idx][cur_image_index].reshape(-1,image_features[batch_idx].shape[-1])) # <image_patch>
+                    cur_new_input_embeds.append(self.get_model().embed_tokens(cur_input_ids[image_token_start+1:image_token_start+2])) # <image_end>
+                    cur_input_ids = cur_input_ids[image_token_start+2:]# rolling window: skipping current image and start/end tokens
 
                     if labels is not None:
                         cur_new_labels.append(cur_labels[:image_token_start])
-                        cur_new_labels.append(torch.full((image_features[batch_idx].reshape(-1,image_features[batch_idx].shape[-1]).shape[0],), IGNORE_INDEX, device=labels.device, dtype=labels.dtype))
-                        cur_new_labels.append(cur_labels[image_token_start+2:image_token_start+3]) # im_end
-                        cur_labels = cur_labels[image_token_start+5:] # rolling window: skipping current image and start/end tokens
+                        cur_new_labels.append(torch.full((image_features[batch_idx][cur_image_index].reshape(-1,image_features[batch_idx].shape[-1]).shape[0],), IGNORE_INDEX, device=labels.device, dtype=labels.dtype))
+                        cur_new_labels.append(cur_labels[image_token_start+1:image_token_start+2]) # im_end
+                        cur_labels = cur_labels[image_token_start+2:] # rolling window: skipping current image and start/end tokens
                 else:
                     cur_new_input_embeds.append(self.get_model().embed_tokens(cur_input_ids[:image_token_start]))
                     cur_new_input_embeds.append(image_features[batch_idx].reshape(-1,image_features[batch_idx].shape[-1]))
@@ -406,6 +405,7 @@ class ValleyProductMetaForCausalLM(ABC):
                         cur_labels = cur_labels[image_token_start+1:] # rolling window: skipping current image
 
                 image_token_indices = torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0] # search for next image token
+                cur_image_index += 1
 
             if cur_input_ids.numel() > 0:
                 if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_im_start_end', False):
@@ -466,6 +466,7 @@ class ValleyProductMetaForCausalLM(ABC):
                 assert attention_mask.shape == new_input_embeds.shape[:2]
 
         return None, attention_mask, past_key_values, new_input_embeds, new_labels
+
 
     def initialize_vision_tokenizer(self, model_args, tokenizer):
         if model_args.mm_use_im_patch_token:

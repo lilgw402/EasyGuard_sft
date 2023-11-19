@@ -204,6 +204,11 @@ def preprocess_multimodal(
                 # for multi image
                 segs = re.split(r'<image[\d]*>',sentence["value"])
                 sentence["value"] = '<image>'.join(segs[:data_args.max_img_num+1]) + ' '.join(segs[data_args.max_img_num+1:])
+
+                replace_token = DEFAULT_IMAGE_TOKEN
+                if data_args.mm_use_im_start_end:
+                    replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
+                sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, replace_token)
             
             else:
                 if DEFAULT_IMAGE_TOKEN in sentence['value'] or DEFAULT_VIDEO_TOKEN in sentence['value']:
@@ -217,11 +222,6 @@ def preprocess_multimodal(
                 if data_args.mm_use_im_start_end:
                     replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN + DEFAULT_VI_START_TOKEN + DEFAULT_VI_END_TOKEN
                 sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, replace_token)
-            
-            replace_token = DEFAULT_IMAGE_TOKEN
-            if data_args.mm_use_im_start_end:
-                replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN + DEFAULT_VI_START_TOKEN + DEFAULT_VI_END_TOKEN
-            sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, replace_token)
     return sources
 
 
