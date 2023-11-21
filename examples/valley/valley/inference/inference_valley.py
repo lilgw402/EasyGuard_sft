@@ -2,11 +2,10 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 from transformers import LlamaTokenizer
-from valley.model.language_model.valley_llama import ValleyLlamaForCausalLM
+from valley.model.language_model.valley_llama import ValleyVideoLlamaForCausalLM, ValleyProductLlamaForCausalLM
 import torch
 import os
 from valley.utils import disable_torch_init
-from transformers import  CLIPImageProcessor
 import os
 import random
 from tqdm import tqdm
@@ -45,13 +44,20 @@ def inference(rank, world_size, args):
 
     device = torch.device('cuda:'+str(this_rank_gpu_index)
                           if torch.cuda.is_available() else 'cpu')
+
+    Model = None
+    if args.model_class == 'valley-video':
+        Model = ValleyVideoLlamaForCausalLM
+    elif args.model_class == 'valley-product':
+        Model = ValleyProductLlamaForCausalLM
+
     model_name = os.path.expanduser(args.model_name)
 
     # load model
     if 'lora' in model_name:
         config = PeftConfig.from_pretrained(model_name)
         print('load old model weight and lora weight')
-        model_old = ValleyLlamaForCausalLM.from_pretrained(model_name)
+        model_old = Model.from_pretrained(model_name)
         print('load no lora model')
         if os.path.exists(os.path.join(model_name,'non_lora_trainables.bin')):
             non_lora_state_dict = torch.load(os.path.join(model_name,'non_lora_trainables.bin'))
@@ -70,15 +76,21 @@ def inference(rank, world_size, args):
         print("load end")
     else:
         print('load model')
-        model = ValleyLlamaForCausalLM.from_pretrained(
+        model = Model.from_pretrained(
             model_name, torch_dtype=torch.float16)
         tokenizer = LlamaTokenizer.from_pretrained(args.model_name, use_fast = False)
         tokenizer.padding_side = 'left'
         print('load end')
     
+    if args.language == 'chinese':
+        from transformers import ChineseCLIPImageProcessor as CLIPImageProcessor
+    else:
+        from transformers import  CLIPImageProcessor
+    
     image_processor = CLIPImageProcessor.from_pretrained(model.config.mm_vision_tower)
     model.eval()
     model = model.to(device)
+
     args.image_processor = image_processor
     args.is_multimodal = True
     args.mm_use_im_start_end = True
@@ -166,6 +178,8 @@ def gather_result(args,world_size):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model-class", type=str, default="valley-video")
+    parser.add_argument("--language", type=str, default="chinese")
     parser.add_argument("--model-name", type=str, default = "/mnt/bn/luoruipu-disk/checkpoints/stable-valley-13b-v1")
     parser.add_argument("--video_data_path", type=str, required = False, default = '/mnt/bn/luoruipu-disk/code_base/valley/valley/inference/sample_input/sample_input_video.json' )
     parser.add_argument("--data_path", type=str, required = False, default = '' )
