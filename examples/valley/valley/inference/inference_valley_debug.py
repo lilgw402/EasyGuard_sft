@@ -15,7 +15,7 @@ import traceback
 from torch.utils.data.distributed import DistributedSampler
 from valley.util.config import DEFAULT_GANDALF_TOKEN
 from valley.util.data_util import KeywordsStoppingCriteria
-from peft import PeftConfig
+from peft import PeftConfig, PeftModel
 from transformers import set_seed
 from valley.data.dataset import LazySupervisedDataset, DataCollatorForSupervisedDataset
 from valley.util.data_util import smart_tokenizer_and_embedding_resize
@@ -55,9 +55,9 @@ def inference(rank, world_size, args):
 
     # load model
     if 'lora' in model_name:
-        config = PeftConfig.from_pretrained(model_name)
-        print('load old model weight and lora weight')
-        model_old = Model.from_pretrained(model_name, torch_dtype=torch.float16)
+        lora_config = PeftConfig.from_pretrained(model_name)
+        print('load base model')
+        model_old = Model.from_pretrained(lora_config.base_model_name_or_path, torch_dtype=torch.float16)
         print('load no lora model')
         if os.path.exists(os.path.join(model_name,'non_lora_trainables.bin')):
             non_lora_state_dict = torch.load(os.path.join(model_name,'non_lora_trainables.bin'))
@@ -69,6 +69,9 @@ def inference(rank, world_size, args):
             model_old_state.update(new_state_dict)
             model_old.load_state_dict(model_old_state)
         model = model_old
+        print(f"Merging lora weights")
+        model = PeftModel.from_pretrained(model, model_name)
+        model = model.merge_and_unload()
         tokenizer = LlamaTokenizer.from_pretrained(os.path.dirname(model_name), use_fast = False)
         if hasattr(model.model, 'gandalf_projector'):
             model_old.config.gandalf_token_index = tokenizer.convert_tokens_to_ids(DEFAULT_GANDALF_TOKEN)
@@ -82,6 +85,18 @@ def inference(rank, world_size, args):
         tokenizer.padding_side = 'left'
         print('load end')
     
+    """ check vision tower, is ok"""
+    # print("before:")
+    # # print(model.model.vision_tower.vision_tower.named_parameters())
+    # print(model.model.vision_tower.vision_tower.vision_model.encoder.layers[0].self_attn.k_proj.weight)
+    
+    # model.model.vision_tower.vision_tower = CLIPVisionModel.from_pretrained(model.config.mm_vision_tower, torch_dtype=torch.float16)
+    # model.model.vision_tower.requires_grad_(False)
+
+    # print("after:")
+    # # print(model.model.vision_tower.vision_tower.named_parameters())
+    # print(model.model.vision_tower.vision_tower.vision_model.encoder.layers[0].self_attn.k_proj.weight)
+
     if args.language == 'chinese':
         from transformers import ChineseCLIPImageProcessor as CLIPImageProcessor
     else:
@@ -191,7 +206,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_path", type=str, required = False, default = '/mnt/bn/yangmin-priv-fashionmm/database/llava_bench_chat.json' )
     parser.add_argument("--video_folder", type=str, required = False, default = None)
     parser.add_argument("--image_folder", type=str, required = False, default = '/mnt/bn/yangmin-priv-fashionmm/projects/zhaoziwang/data/chinese_valley_test_image/image/')
-    parser.add_argument("--out_path", type=str, required = False, default = 'valley/inference/sample_output/test_output.txt' )
+    parser.add_argument("--out_path", type=str, required = False, default = 'valley/inference/sample_output/test_output_debug.txt' )
     parser.add_argument("--version", type=str, default="v0")
     parser.add_argument("--prompt_version", type=str, default="belle")
     parser.add_argument("--max_img_num", type=int, default=8)
