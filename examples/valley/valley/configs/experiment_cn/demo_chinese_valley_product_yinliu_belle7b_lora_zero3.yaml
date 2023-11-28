@@ -1,7 +1,7 @@
-deepspeed: valley/configs/deepspeed/config_zero2.json
+deepspeed: valley/configs/deepspeed/config_zero3.json
 model_class: valley-product
-model_name_or_path: /mnt/bn/yangmin-priv-fashionmm/Checkpoints/wangzhen/valley/pool_adapter_stage2_three_data_reduced/checkpoint-13300
-data_path: /mnt/bn/yangmin-priv-fashionmm/wangzhen/data/product/product_train_20k.json
+model_name_or_path: /mnt/bn/yangmin-priv-fashionmm/pretrained/chinese_valley_product_belle7b_pool_adapter
+data_path: /mnt/bn/yangmin-priv-fashionmm/wangzhen/data/redirect/cot_train_gpt4_mixed_prompt_fit.json
 project_name: toy
 run_name: valley-pool_adapter-sft-demo
 # english or chinese, default is english
@@ -23,7 +23,7 @@ group_by_modality_length: True
 bf16: False
 fp16: True
 lora_enable: True
-output_dir: /mnt/bn/yangmin-priv-fashionmm/Checkpoints/toy_valley_imgs_belle7b_lora_zero3
+output_dir: /mnt/bn/yangmin-priv-fashionmm/Checkpoints/toy_yinliu_valley_product_belle7b_lora_zero3
 num_train_epochs: 5
 per_device_train_batch_size: 4
 per_device_eval_batch_size: 4

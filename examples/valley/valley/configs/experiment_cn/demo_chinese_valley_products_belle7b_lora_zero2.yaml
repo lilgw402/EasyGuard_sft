@@ -1,6 +1,6 @@
 deepspeed: valley/configs/deepspeed/config_zero2.json
 model_class: valley-product
-model_name_or_path: /mnt/bn/yangmin-priv-fashionmm/Checkpoints/wangzhen/valley/pool_adapter_stage2_three_data_reduced/checkpoint-13300
+model_name_or_path: /mnt/bn/yangmin-priv-fashionmm/pretrained/chinese_valley_product_belle7b_pool_adapter
 data_path: /mnt/bn/yangmin-priv-fashionmm/wangzhen/data/product/product_train_20k.json
 project_name: toy
 run_name: valley-pool_adapter-sft-demo
