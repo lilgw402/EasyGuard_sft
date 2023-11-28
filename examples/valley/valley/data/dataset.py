@@ -107,7 +107,13 @@ class LazySupervisedDataset(Dataset):
                 for image_file in self.list_data_dict[i]['image'][:self.data_args.max_img_num]:
                     image_folder = self.data_args.image_folder if self.data_args.image_folder else ''
                     processor = self.data_args.image_processor
-                    image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+                    # image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+                    try:
+                        image = read_and_download_img(image_file, image_folder)
+                    except:
+                        print(f'down img err, url: {image_file}')
+                        print(traceback.format_exc())
+                        image = Image.new(mode="RGB", size=(224, 224))
                     if self.data_args.image_aspect_ratio == 'pad':
                         image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
                         image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
@@ -237,3 +243,20 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
     return dict(train_dataset=train_dataset,
                 eval_dataset=None,
                 data_collator=data_collator)
+
+
+def read_and_download_img(imgurl, image_folder='/mnt/bn/yangmin-priv-fashionmm/Data/wuji/big_model_train_image_data'):
+    import urllib
+    from io import BytesIO
+    from PIL import Image
+    
+    name = imgurl.split('/')[-1]
+    img_path = os.path.join(image_folder, name + f'.png')
+    
+    if os.path.exists(img_path):
+        img_data = Image.open(img_path).convert('RGB')
+    else:
+        image_data = urllib.request.urlopen(imgurl, timeout=2).read()
+        img_data = Image.open(BytesIO(image_data)).convert('RGB')
+        img_data.save(img_path, format="PNG")
+    return img_data

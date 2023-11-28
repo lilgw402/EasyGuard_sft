@@ -25,7 +25,7 @@ import torch
 import re
 from valley.util.data_util import  KeywordsStoppingCriteria
 from transformers.data.data_collator import DataCollator
-import evaluate
+# import evaluate
 logger = get_logger("Trainer")
 
 class LLMCallback(TrainerCallback):
