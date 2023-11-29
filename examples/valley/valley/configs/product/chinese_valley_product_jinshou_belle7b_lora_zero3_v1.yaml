@@ -1,4 +1,4 @@
-deepspeed: valley/configs/deepspeed/config_zero3.json
+deepspeed: valley/configs/deepspeed/config_zero2.json
 model_class: valley-product
 model_name_or_path: /mnt/bn/yangmin-priv-fashionmm/pretrained/chinese_valley_product_belle7b_pool_adapter
 data_path: /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/train_data/train_data_v12_dup_neg_and_pos_valley_product.json
