@@ -20,30 +20,26 @@ from transformers import set_seed
 from valley.data.dataset import LazySupervisedDataset, DataCollatorForSupervisedDataset
 from valley.util.data_util import smart_tokenizer_and_embedding_resize
 from valley import conversation as conversation_lib
+from valley.util import ddp_utils as utils
+
+
 os.environ['NCCL_DEBUG']=''
-def setup(args,rank, world_size):
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = args.DDP_port
-    dist.init_process_group("nccl", rank=rank, world_size=world_size, )
+
 
 def standardization(data):
-        mu = torch.mean(data)
-        sigma = torch.std(data)
-        return (data - mu) / sigma
+    mu = torch.mean(data)
+    sigma = torch.std(data)
+    return (data - mu) / sigma
 
 def inference(rank, world_size, args):
     set_seed(42)
-
-    this_rank_gpu_index = rank
-
-    if args.DDP:
-        torch.cuda.set_device(this_rank_gpu_index)
-        setup(args, rank, world_size)
+    print(args)
+    utils.init_distributed_mode(args)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    world_size = utils.get_world_size()
+    rank = utils.get_rank()
         
     disable_torch_init()
-
-    device = torch.device('cuda:'+str(this_rank_gpu_index)
-                          if torch.cuda.is_available() else 'cpu')
 
     Model = None
     if args.model_class == 'valley-video':
@@ -145,26 +141,43 @@ def inference(rank, world_size, args):
                     temperature=args.temperature,
                     stopping_criteria=[stopping_criteria],
                     max_new_tokens = 1024,
-                    return_dict_in_generate= True if args.ouput_logits else False, output_scores= True if args.ouput_logits else False
+                    return_dict_in_generate= True if args.ouput_logits else False, 
+                    output_scores= True if args.ouput_logits else False
                 )
             if not args.ouput_logits: 
                 input_token_len = test_batch['input_ids'].unsqueeze(0).shape[1]
                 n_diff_input_output = (test_batch['input_ids'].unsqueeze(0) != output_ids[:, :input_token_len]).sum().item()
                 if n_diff_input_output > 0:
                     print(f'[Warning] {n_diff_input_output} output_ids are not the same as the input_ids')
-                outputs = tokenizer.batch_decode( output_ids[:, input_token_len:], skip_special_tokens=True)
-                response = outputs
-                print(response)
-            if args.ouput_logits:
-                outputs = tokenizer.batch_decode(output_ids.sequences[:, -3:], skip_special_tokens=True)
-                scores = standardization(output_ids.scores[ 3])
-                standardization_score = scores[:,[3869,1939]]
-                standardization_logits = torch.softmax(standardization_score, dim=1).cpu().numpy().tolist()
-                response = [format(yes_logits, '.8f') for yes_logits, no_logits in standardization_logits]
+                outputs = tokenizer.batch_decode(output_ids[:, input_token_len:], skip_special_tokens=True)
 
-            for i in range(len(response)):
-                # rf.write('\t'.join(['None', str(gt_label[i]), response[i].replace('\n','')]) + '\n')
-                rf.write(response[i].replace('\n','') + '\n')
+            if args.ouput_logits:
+                input_token_len = test_batch['input_ids'].unsqueeze(0).shape[1]
+                n_diff_input_output = (test_batch['input_ids'].unsqueeze(0) != output_ids.sequences[:, :input_token_len]).sum().item()
+                if n_diff_input_output > 0:
+                    print(
+                        f'[Warning] {n_diff_input_output} output_ids are not the same as the input_ids')
+                outputs = tokenizer.batch_decode(output_ids.sequences[:, input_token_len:], skip_special_tokens=True)
+
+                scores = standardization(output_ids.scores[3])
+                yes_score, no_score = scores[0,34043], scores[0,29871]  #scores[0,31191]
+                standardization_score = torch.stack([yes_score, no_score])
+
+                yes_logits = torch.softmax(standardization_score, dim=0)[0].cpu().numpy().tolist()
+                yes_logits = format(yes_logits, '.6f')
+
+                
+                generated_scores = []
+                for j in range(len(outputs)):
+                    generated_scores.append(yes_logits)
+
+            for i in range(len(outputs)):
+                if not args.ouput_logits:
+                    res = [str(id[i]), str(gt_label[i]), outputs[i].replace('\n','')]
+                else:
+                    res = [str(id[i]), str(gt_label[i]), str(generated_scores[i]), outputs[i].replace('\n','')]
+                print(res)
+                rf.write('\t'.join(res) + '\n')
                 rf.flush()
 
         except Exception as e:
@@ -172,14 +185,17 @@ def inference(rank, world_size, args):
     rf.close()
 
 
-def gather_result(args,world_size):
-    num_worker = world_size
-    with open(args.out_path, 'w') as f:
-        for i in range(num_worker):
-            with open(args.out_path+".worker_"+str(i), 'r') as tf:
-                tmp_result = tf.readlines()
-            f.writelines(tmp_result)
-            os.remove(args.out_path+".worker_"+str(i))
+def gather_result(args):
+    dist.barrier()
+    rank = utils.get_rank()
+    num_worker = utils.get_world_size()
+    if rank == 0:
+        with open(args.out_path, 'a+') as f:
+            for i in range(num_worker):
+                with open(args.out_path+".worker_"+str(i), 'r') as tf:
+                    tmp_result = tf.readlines()
+                f.writelines(tmp_result)
+                os.remove(args.out_path+".worker_"+str(i))
 
 
 
@@ -194,8 +210,8 @@ if __name__ == "__main__":
     parser.add_argument("--image_folder", type=str, required = False, default = '/mnt/bn/yangmin-priv-fashionmm/projects/zhaoziwang/data/chinese_valley_test_image/image/')
     parser.add_argument("--out_path", type=str, required = False, default = 'valley/inference/sample_output/test_output.txt' )
     parser.add_argument("--version", type=str, default="v0")
-    parser.add_argument("--prompt_version", type=str, default="belle")
-    parser.add_argument("--max_img_num", type=int, default=8)
+    parser.add_argument("--prompt_version", type=str, default="jinshou_cot")
+    parser.add_argument("--max_img_num", type=int, default=12)
     parser.add_argument("--image_aspect_ratio", type=str, default=None)
     parser.add_argument("--batch_size", type=int, required=False, default=1)
     parser.add_argument("--ouput_logits", action="store_true", default=False)
@@ -204,6 +220,7 @@ if __name__ == "__main__":
     parser.add_argument("--DDP", action="store_true")
     parser.add_argument("--DDP_port", default = '12345')
     parser.add_argument("--world_size", type=int, default = 8)
+    parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     args = parser.parse_args()
 
     if args.DDP:

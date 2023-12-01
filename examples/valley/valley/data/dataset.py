@@ -40,7 +40,13 @@ class LazySupervisedDataset(Dataset):
                  inference):
         super(LazySupervisedDataset, self).__init__()
         
-        list_data_dict = json.load(open(data_path, "r")) if data_path else []
+        list_data_dict = []
+        if os.path.isfile(data_path) and data_path[-4:] != 'json':
+            list_data_dict = [json.loads(data) for data in open(data_path, 'r').readlines()]
+        else:
+            list_data_dict = json.load(open(data_path, "r"))
+        print(list_data_dict[:2])
+
         if data_args.video_data_path is None:
             list_video_data_dict = []
         elif os.path.isfile(data_args.video_data_path):
@@ -52,7 +58,8 @@ class LazySupervisedDataset(Dataset):
                 data_path = os.path.join(data_args.video_data_path, file_name)
                 list_video_data_dict += json.load(open(data_path, "r"))
         list_data_dict = list_video_data_dict + list_data_dict
-        random.shuffle(list_data_dict)
+        if not inference:
+            random.shuffle(list_data_dict)
         print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
         self.list_data_dict = list_data_dict
@@ -180,8 +187,10 @@ class LazySupervisedDataset(Dataset):
                 # image does not exist in the data, but the model is multimodal
                 crop_size = self.data_args.image_processor.crop_size
                 data_dict['image'] = torch.zeros(1, 3, crop_size['height'], crop_size['width'])
-            if 'gt_label' in self.list_data_dict[i]:
-                data_dict['gt_label'] = self.list_data_dict[i]['gt_label']
+            if 'label' in self.list_data_dict[i]:
+                data_dict['label'] = self.list_data_dict[i]['label']
+            if 'id' in self.list_data_dict[i]:
+                data_dict['id'] = self.list_data_dict[i]['id']
             return data_dict
         except Exception as e:
             traceback.print_exc()
@@ -256,6 +265,7 @@ def read_and_download_img(imgurl, image_folder='/mnt/bn/yangmin-priv-fashionmm/D
     if os.path.exists(img_path):
         img_data = Image.open(img_path).convert('RGB')
     else:
+        print('image not exist, download it', img_path)
         image_data = urllib.request.urlopen(imgurl, timeout=2).read()
         img_data = Image.open(BytesIO(image_data)).convert('RGB')
         img_data.save(img_path, format="PNG")
