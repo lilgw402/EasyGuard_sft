@@ -418,7 +418,7 @@ def train(args):
     # if data_args.prompt_version == "mfe_v0":
     #     conversation_lib.default_conversation = conversation_lib.conv_templates["mfe_v0"]
     if data_args.prompt_version is not None:
-        conversation_lib.default_conversation = conversation_lib.conv_templates[args.prompt_version]
+        conversation_lib.default_conversation = conversation_lib.conv_templates[data_args.prompt_version]
     if model_args.vision_tower is not None:
         model.get_model().initialize_vision_modules(
             model_args=model_args,
