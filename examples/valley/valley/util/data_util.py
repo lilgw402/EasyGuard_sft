@@ -604,7 +604,7 @@ def preprocess(
     conversations = []
     for source in sources:
         header = f"{conversation_lib.default_conversation.system}\n\n"
-        conversation = _add_speaker_and_signal(header, source)
+        conversation = _add_speaker_and_signal(header, source, inference = inference)
         conversations.append(conversation)
     # tokenize conversations
     def get_tokenize_len(prompts):
