@@ -127,16 +127,22 @@ def get_valley_result_fix(path, src_path):
     print(name)
     pids, gts, preds, images = [], [], [], []
 
+    ids = []
     with open(path) as f:
         lines = f.read().split('remark_')
         # print(lines[:10])
         for line in lines:
             if not line: continue
-            # print(line.split('    '))
+            # print(line.split('\t'))
             try:
-                id, true_label, score, predict = line.split('    ')
+                id, true_label, score, predict = line.split('\t')
             except:
-                id, true_label, predict = line.split('    ')
+                id, true_label, predict = line.split('\t')
+            
+            if id in ids:
+                continue
+            else:
+                ids.append(id)
 
             y_true = int(true_label)
             y_pred = 1 if predict[0] == '是' else 0
@@ -171,7 +177,7 @@ def get_valley_result_fix(path, src_path):
 
 
 if __name__ == '__main__': 
-    output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v1-valley-product-7b-jinshou-class-lora-multi-class-test-35000-debug.txt'
+    output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v1-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-20000.txt'
     # output_path = '/mnt/bn/yangmin-priv-fashionmm/Data/zhongheng/jinshou_mllm_output/data-v16-valley-7b-jinshou-class-lora-multi-class-test-45000.txt'
     # output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/valley-7b-v40-{step}-jinshou-class-lora-multi-class-test.txt'
     src_path = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w.txt'

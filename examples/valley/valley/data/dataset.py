@@ -17,6 +17,8 @@ import numpy as np
 from torchvision import transforms
 import decord
 import traceback
+import urllib
+from io import BytesIO
 
 def expand2square(pil_img, background_color):
     width, height = pil_img.size
@@ -259,10 +261,6 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
 
 
 def read_and_download_img(imgurl, image_folder='/mnt/bn/yangmin-priv-fashionmm/Data/wuji/big_model_train_image_data'):
-    import urllib
-    from io import BytesIO
-    from PIL import Image
-    
     name = imgurl.split('/')[-1]
     img_path = os.path.join(image_folder, name + f'.png')
     

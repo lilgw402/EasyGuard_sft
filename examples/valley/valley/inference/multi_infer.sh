@@ -6,7 +6,7 @@ do
     --data_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w_ocr512_n_valley_product.json \
     --image_folder /mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_benchmark_image_data \
     --out_path /mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-$1-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-$num.txt \
-    --DDP --prompt_version v0
+    --DDP --prompt_version jinshou_cot
 done
 
 # for num in {15000..30000..5000}
