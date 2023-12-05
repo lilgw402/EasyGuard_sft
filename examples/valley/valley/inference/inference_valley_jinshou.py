@@ -31,7 +31,7 @@ def standardization(data):
     sigma = torch.std(data)
     return (data - mu) / sigma
 
-def inference(rank, world_size, args):
+def inference(args):
     set_seed(42)
     print(args)
     utils.init_distributed_mode(args)
@@ -170,12 +170,22 @@ def inference(rank, world_size, args):
                 generated_scores = []
                 for j in range(len(outputs)):
                     generated_scores.append(yes_logits)
+            
+            for i, out in enumerate(outputs):
+                while True:
+                    cur_len = len(out)
+                    out = out.strip()
+                    for pattern in ['###', '##', 'Assistant:', 'Response:','LLaVA:', '助理']:
+                        if out.startswith(pattern):
+                            out = out[len(pattern):].strip()
+                    if len(out) == cur_len:
+                        break
+                out = out.replace('\n###','').replace('\n##','').strip()
 
-            for i in range(len(outputs)):
                 if not args.ouput_logits:
-                    res = [str(id[i]), str(gt_label[i]), outputs[i].replace('\n','')]
+                    res = [str(id[i]), str(gt_label[i]), out]
                 else:
-                    res = [str(id[i]), str(gt_label[i]), str(generated_scores[i]), outputs[i].replace('\n','')]
+                    res = [str(id[i]), str(gt_label[i]), str(generated_scores[i]), out]
                 print(res)
                 rf.write('\t'.join(res) + '\n')
                 rf.flush()
@@ -210,11 +220,11 @@ if __name__ == "__main__":
     parser.add_argument("--image_folder", type=str, required = False, default = '/mnt/bn/yangmin-priv-fashionmm/projects/zhaoziwang/data/chinese_valley_test_image/image/')
     parser.add_argument("--out_path", type=str, required = False, default = 'valley/inference/sample_output/test_output.txt' )
     parser.add_argument("--version", type=str, default="v0")
-    parser.add_argument("--prompt_version", type=str, default="jinshou_cot")
+    parser.add_argument("--prompt_version", type=str, default="v0")
     parser.add_argument("--max_img_num", type=int, default=12)
     parser.add_argument("--image_aspect_ratio", type=str, default=None)
     parser.add_argument("--batch_size", type=int, required=False, default=1)
-    parser.add_argument("--ouput_logits", action="store_true", default=False)
+    parser.add_argument("--ouput_logits", action="store_true", default=True)
     parser.add_argument("--temperature", type = float, default=1)
     parser.add_argument("--do-sample", action="store_true", default=False)
     parser.add_argument("--DDP", action="store_true")
@@ -223,8 +233,5 @@ if __name__ == "__main__":
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     args = parser.parse_args()
 
-    if args.DDP:
-        mp.spawn( inference, args=(args.world_size, args), nprocs=args.world_size)
-        gather_result(args, args.world_size)
-    else: 
-        inference(0, args.world_size, args)
+    inference(args)
+    gather_result(args)
