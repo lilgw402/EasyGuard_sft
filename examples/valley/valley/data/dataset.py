@@ -116,6 +116,8 @@ class LazySupervisedDataset(Dataset):
                     processor = self.data_args.image_processor
                     # image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
                     try:
+                        if self.inference:
+                            image_folder = os.path.join(image_folder, self.list_data_dict[i]['id'].split('_')[1])
                         image = read_and_download_img(image_file, image_folder)
                     except:
                         print(f'down img err, url: {image_file}')
