@@ -139,14 +139,14 @@ def get_valley_result_fix(path, src_path):
             except:
                 id, true_label, predict = line.split('\t')
             
-            if id in ids:
-                continue
-            else:
-                ids.append(id)
+            # if id in ids:
+            #     continue
+            # else:
+            #     ids.append(id)
 
             y_true = int(true_label)
-            y_pred = 1 if predict[0] == '是' else 0
-            # y_pred = 1 if float(score) >= thresh else 0
+            # y_pred = 1 if predict[0] == '是' else 0
+            y_pred = 1 if float(score) >= thresh else 0
 
             C += y_pred
             B += (1 - y_true)
@@ -177,15 +177,15 @@ def get_valley_result_fix(path, src_path):
 
 
 if __name__ == '__main__': 
-    output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v1-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-20000.txt'
+    # output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v2-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-25000.txt'
     # output_path = '/mnt/bn/yangmin-priv-fashionmm/Data/zhongheng/jinshou_mllm_output/data-v16-valley-7b-jinshou-class-lora-multi-class-test-45000.txt'
     # output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/valley-7b-v40-{step}-jinshou-class-lora-multi-class-test.txt'
-    src_path = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w.txt'
-    get_valley_result_fix(output_path, src_path)
-    exit()
+    # src_path = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w.txt'
+    # get_valley_result_fix(output_path, src_path)
+    # exit()
 
-    for step in range(25000, 50000, 5000):
-        output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v10-valley-7b-jinshou-class-lora-multi-class-test-ocr512-{step}.txt'
+    for step in range(15000, 35000, 5000):
+        output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v2-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-{step}.txt'
         # output_path = '/mnt/bn/yangmin-priv-fashionmm/Data/zhongheng/jinshou_mllm_output/data-v16-valley-7b-jinshou-class-lora-multi-class-test-45000.txt'
         # output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/valley-7b-v40-{step}-jinshou-class-lora-multi-class-test.txt'
         src_path = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w.txt'
