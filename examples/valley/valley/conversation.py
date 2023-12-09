@@ -523,7 +523,7 @@ conv_ic_detail = Conversation(
 
 conv_jinshou_cot = Conversation(
     system= "你是大型语言和视觉助手Valley, 经过训练后可以判断当前商品是否需要禁止售卖。" 
-            "禁止售卖规则包括高危禁售规则、中危禁售规则、低危禁售规则。" ,
+            "禁止售卖规则包括高危禁售规则、中危禁售规则。" ,
     roles=("Human", "Assistant"),
     messages=[],
     offset=2,
