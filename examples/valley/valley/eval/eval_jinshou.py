@@ -113,7 +113,7 @@ def get_valley_result_fix(path, src_path):
         for data in f.readlines():
             data = json.loads(data)
             data_map[data['id']] = data['image']
-    thresh = 0.56
+    thresh = 0.52
     print(len(data_map), thresh)
 
     y_true = []
@@ -188,8 +188,8 @@ if __name__ == '__main__':
     # get_valley_result_fix(output_path, src_path)
     # exit()
 
-    for step in range(15000, 35000, 5000):
-        output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v1-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-{step}.txt'
+    for step in range(15000, 65000, 5000):
+        output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-ys-v3-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-{step}.txt'
         # output_path = '/mnt/bn/yangmin-priv-fashionmm/Data/zhongheng/jinshou_mllm_output/data-v16-valley-7b-jinshou-class-lora-multi-class-test-45000.txt'
         # output_path = f'/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/valley-7b-v40-{step}-jinshou-class-lora-multi-class-test.txt'
         src_path = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w.txt'

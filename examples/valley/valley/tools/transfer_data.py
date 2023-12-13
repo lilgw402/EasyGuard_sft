@@ -2,8 +2,8 @@ import json
 
 # data_dir = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/train_data/train_data_v1.json'
 # data_dir = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/train_data/train_data_v5.json'
-# data_dir = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/train_data/train_data_v12.json'
-data_dir = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w_ocr512_n.txt'
+data_dir = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/train_data/train_data_v12.json'
+# data_dir = '/mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w_ocr512_n.txt'
 
 if data_dir[-4:] != 'json':
     data = [json.loads(data) for data in open(data_dir, 'r').readlines()]
