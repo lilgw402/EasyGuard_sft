@@ -5,7 +5,7 @@ do
     --model-name /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/product_checkpoints/data-wj-$1-valley-product-7b-jinshou-class-lora-multi-class/checkpoint-$num \
     --data_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w_ocr512_n_multi_ans_small_model_valley_product.json \
     --image_folder /mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_benchmark_image_data \
-    --out_path /mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_mllm_output/data-wj-$1-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-$num.txt \
+    --out_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/data-wj-$1-valley-product-7b-jinshou-class-lora-multi-class-test-ocr512-$num.txt \
     --DDP --prompt_version jinshou_cot
 done
 
