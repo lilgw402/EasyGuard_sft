@@ -11,7 +11,7 @@
 #     --DDP --prompt_version jinshou_cot
 # done
 
-for num in {20000..20000..5000}
+for num in {5000..20000..5000}
 do  
     torchrun --nproc_per_node $ARNOLD_WORKER_GPU --nnodes $ARNOLD_WORKER_NUM --node_rank=$ARNOLD_ID --master_addr $ARNOLD_WORKER_0_HOST \
     --master_port 12701 valley/inference/inference_valley_jinshou.py --model-class valley-product \
