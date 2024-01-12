@@ -531,6 +531,15 @@ conv_jinshou_cot = Conversation(
     sep="###",
 )
 
+conv_jinshou = Conversation(
+    system= "你是大型语言和视觉助手Valley, 经过训练后可以判断当前商品是否需要禁止售卖。" ,
+    roles=("Human", "Assistant"),
+    messages=[],
+    offset=2,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###",
+)
+
 
 default_conversation = conv_vicuna_v0
 
@@ -569,6 +578,7 @@ conv_templates = {
     "ic_detail": conv_ic_detail, 
 
     'jinshou_cot': conv_jinshou_cot,
+    'jinshou': conv_jinshou,
 }
 
 
