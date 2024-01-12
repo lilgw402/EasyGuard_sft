@@ -540,6 +540,15 @@ conv_jinshou = Conversation(
     sep="###",
 )
 
+conv_total = Conversation(
+    system= "你是大型语言和视觉助手Valley, 经过训练后可以判断当前商品是否违反商品准入规则。" ,
+    roles=("Human", "Assistant"),
+    messages=[],
+    offset=2,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###",
+)
+
 
 default_conversation = conv_vicuna_v0
 
@@ -579,6 +588,7 @@ conv_templates = {
 
     'jinshou_cot': conv_jinshou_cot,
     'jinshou': conv_jinshou,
+    'total': conv_total
 }
 
 
