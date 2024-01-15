@@ -142,7 +142,7 @@ def inference(args):
                     do_sample=args.do_sample,
                     temperature=args.temperature,
                     stopping_criteria=[stopping_criteria],
-                    max_new_tokens = 15,
+                    max_new_tokens = 25,
                     return_dict_in_generate= True if args.ouput_logits else False, 
                     output_scores= True if args.ouput_logits else False
                 )
