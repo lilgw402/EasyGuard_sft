@@ -70,15 +70,74 @@ class PoolAdapter(nn.Module):
 
         return x
 
+class AttentioAdapter(nn.Module):
+    def __init__(self, dim_in, dim_out, pool_out_size=4):
+        super().__init__()
+        self.pool_h, self.pool_w = pool_out_size, pool_out_size
+
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(dim_in, dim_out),
+        #     nn.GELU(),
+        #     nn.Linear(dim_out, dim_out)
+        # )
+
+        self.attention = nn.TransformerEncoder(
+            encoder_layer=nn.TransformerEncoderLayer(
+                d_model=dim_in,
+                nhead=4,
+                dim_feedforward=2048,
+                dropout=0.1,
+                batch_first=True,
+                activation="gelu"
+            ),
+            num_layers=2
+        )
+        self.adapter = nn.Linear(dim_in, dim_out)
+                
+    def forward(self, x):
+        """
+        Args:
+            x (torch.Tensor): image features
+                shape (F, v, D)
+        Returns:
+            shape (F, n, D) where n is token_num that has been reduced
+        """
+        # print(x.shape)  # torch.Size([image_num, vit_token_num, dim_in])  [8, 257, 1024]
+        f, v, d = x.shape
+        s = int(math.sqrt(v-1))
+        x = x[:, 1:, :]  # remove cls_token
+        x = x.reshape(f, s, s, d)
+
+        if s % self.pool_h == 0 and s % self.pool_w == 0:
+            x = x.reshape(f, self.pool_h, s//self.pool_h, self.pool_w, s//self.pool_w, d)
+            x = x.permute([0, 1, 3, 5, 2, 4]).reshape(f, self.pool_h * self.pool_w, d, -1).mean(-1)
+            # x = self.mlp(x)                 # [f, h*w, d]
+            x = self.attention(x)   
+            x = self.adapter(x)   
+        #else:
+        #    x = x.flatten(0, 2).permute(0, 3, 1, 2)
+        #    x = torch.nn.functional.adaptive_avg_pool2d(x, (self.pool_h, self.pool_w))
+        #    x = x.permute(0, 2, 3, 1).flatten(1, 2)
+        #    x = self.mlp(x)                 # [b, t, f, h*w, d]
+        else:
+            raise ValueError()
+
+        return x
 
 def build_vision_projector(config, delay_load=False, **kwargs):
     projector_type = getattr(config, 'mm_projector_type', 'linear')
+
+    #设置没用 直接强制写下
+    projector_type = 'attention_adapter'
 
     if projector_type == 'linear':
         return nn.Linear(config.mm_hidden_size, config.hidden_size)
         
     elif projector_type == 'pool_adapter':
         return PoolAdapter(config.mm_hidden_size, config.hidden_size, config.pool_out_size)
+
+    elif projector_type == 'attention_adapter':
+        return AttentioAdapter(config.mm_hidden_size, config.hidden_size, config.pool_out_size) 
 
     mlp_gelu_match = re.match(r'^mlp(\d+)x_gelu$', projector_type)
     if mlp_gelu_match:
