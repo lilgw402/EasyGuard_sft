@@ -18,7 +18,7 @@ do
     --model-name /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/product_checkpoints/data-mutli-$1-valley-7b-jinshou-class-lora-multi-class/checkpoint-$num \
     --data_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/wupian_test_data_4w_new_v19_valley_product.json \
     --image_folder /mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_benchmark_image_data \
-    --out_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/data-wj-$1-valley-product-7b-jinshou-class-lora-multi-class-test-v14-$num.txt \
+    --out_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/data-wj-$1-valley-product-7b-jinshou-class-lora-multi-class-test-v19-$num.txt \
     --DDP --prompt_version jinshou_cot
 done
 
