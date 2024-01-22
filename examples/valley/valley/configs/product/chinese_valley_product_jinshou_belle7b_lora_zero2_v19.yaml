@@ -3,7 +3,7 @@ model_class: valley-product
 model_name_or_path: /mnt/bn/yangmin-priv-fashionmm/Data/sk/checkpoints/valley-chinese-7b-merge-product-continue-pretrain-down-pool-5epoch-v2/checkpoint-12000
 data_path: /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/train_data/train_data_v35_add_fu_4_add_cot_valley_product.json
 image_folder: /mnt/bn/yangmin-priv-fashionmm/Data/wuji/big_model_train_image_data
-output_dir: /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/product_checkpoints/data-mutli-v19-valley-7b-jinshou-class-lora-multi-class
+output_dir: /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/product_checkpoints/data-mutli-v19-2-valley-7b-jinshou-class-lora-multi-class
 project_name: jinshou_valley_product
 run_name: jinshou_class
 # english or chinese, default is english
@@ -25,7 +25,7 @@ group_by_modality_length: True
 bf16: False
 fp16: True
 lora_enable: True
-num_train_epochs: 6
+num_train_epochs: 7
 per_device_train_batch_size: 3
 per_device_eval_batch_size: 1
 gradient_accumulation_steps: 1
