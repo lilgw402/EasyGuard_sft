@@ -128,7 +128,8 @@ def build_vision_projector(config, delay_load=False, **kwargs):
     projector_type = getattr(config, 'mm_projector_type', 'linear')
 
     #设置没用 直接强制写下
-    projector_type = 'attention_adapter'
+    #projector_type = 'attention_adapter'
+    projector_type = 'pool_adapter'
 
     if projector_type == 'linear':
         return nn.Linear(config.mm_hidden_size, config.hidden_size)

@@ -10,7 +10,6 @@ do
     --out_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/data-wj-$1-valley-product-7b-jinshou-class-lora-multi-class-test-0109-$num.txt \
     --DDP --prompt_version jinshou_cot
 done
-
 # for num in {15000..20000..5000}
 # do  
 #     torchrun --nproc_per_node $ARNOLD_WORKER_GPU --nnodes $ARNOLD_WORKER_NUM --node_rank=$ARNOLD_ID --master_addr $ARNOLD_WORKER_0_HOST \
