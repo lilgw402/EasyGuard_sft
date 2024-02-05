@@ -5,7 +5,7 @@ torchrun --nproc_per_node $ARNOLD_WORKER_GPU --nnodes $ARNOLD_WORKER_NUM --node_
     --model-name /mnt/bn/yangmin-priv-fashionmm/Data/wuji/data_process/new_process/product_checkpoints/data-mutli-v20-valley-7b-jinshou-class-lora-multi-class/checkpoint-10000 \
     --data_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/new_wupian/test_0201_valley_product.json \
     --image_folder /mnt/bn/yangmin-priv-fashionmm/Data/yangshuang/jinshou_benchmark_image_data \
-    --out_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/data-wj-v20-valley-product-7b-jinshou-class-lora-multi-class-10000.txt \
+    --out_path /mnt/bn/yangmin-priv-fashionmm/Data/wuji/wupian_process/output/data-wj-v20-1-valley-product-7b-jinshou-class-lora-multi-class-10000.txt \
     --DDP --prompt_version total
 
 # for num in {25000..50000..5000}
