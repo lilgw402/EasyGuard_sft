@@ -155,7 +155,7 @@ def _tokenize_fn(strings: Sequence[str],
         labels_lens=labels_lens,
     )
 
-
+#`target`中相应的说话人部分被标记为`IGNORE_INDEX`（label=-100，计算loss时可以忽略），其他部分保持不变
 def _mask_targets(target, tokenized_lens, speakers, only_mask_system = False):
     # cur_idx = 0
     cur_idx = tokenized_lens[0]
@@ -634,7 +634,7 @@ def preprocess(
         else:
             tokenized_lens = _tokenize_fn([header] + [s["value"] for s in source], tokenizer)["input_ids_lens"]
         speakers = [sentence["from"] for sentence in source]
-        #使用 `_mask_targets` 函数对目标进行掩盖，这里掩盖的目的是在训练中隐藏某些信息，例如只掩盖系统发出的单词，而保留用户的原话
+        #`target`中相应的说话人部分被标记为`IGNORE_INDEX`（label=-100，计算loss时可以忽略），其他部分保持不变
         _mask_targets(target, tokenized_lens, speakers, only_mask_system = only_mask_system )
 
     return dict(input_ids=input_ids, labels=targets)

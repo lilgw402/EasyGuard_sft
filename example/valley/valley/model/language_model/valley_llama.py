@@ -172,11 +172,10 @@ class ValleyVideoLlamaForCausalLM(LlamaForCausalLM, ValleyVideoMetaForCausalLM):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict
-        )
+        ) 
 
-        hidden_states = outputs[0]
-        logits = self.lm_head(hidden_states)
-
+        hidden_states = outputs[0] 
+        logits = self.lm_head(hidden_states) 
         loss = None
         if labels is not None:
             # Shift so that tokens < n predict n
@@ -375,7 +374,7 @@ class ValleyProductLlamaForCausalLM(LlamaForCausalLM, ValleyProductMetaForCausal
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        
+        breakpoint()
         input_ids, attention_mask, past_key_values, inputs_embeds, labels = self.prepare_inputs_labels_for_multimodal(input_ids, attention_mask, past_key_values, labels, images)
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
@@ -389,16 +388,23 @@ class ValleyProductLlamaForCausalLM(LlamaForCausalLM, ValleyProductMetaForCausal
             output_hidden_states=output_hidden_states,
             return_dict=return_dict
         )
+        breakpoint()
 
-        hidden_states = outputs[0]
-        logits = self.lm_head(hidden_states) #通过线性层计算预测的词表分布（logits）
+        hidden_states = outputs[0] #每个输入token的表示 examlple:[1, 1364, 4096]
+        logits = self.lm_head(hidden_states) ##调用模型的语言模型头部（`lm_head`），使用 `hidden_states` 来计算每个token的下一个token的logits。example:[1, 1364, 79480]
 
         loss = None
         #如果提供了真实标签，计算损失。损失计算通常涉及将预测向前移动一位，即让第 n-1 个token去预测第 n 个token
+        '''在语言模型中，经常需要做一个操作，即将logits向左移动一位，标签向右移动一位，以便进行下一个token的预测（正如代码中注释所述）。
+        这是为了在训练过程中，确保我们用特定token的logit（即当前隐藏状态产出的预测）去预测下一个token（即下一个token作为标签）。
+        这与模型如何学习生成序列有关。通过这种方式，对于序列中的每一个token，都有一个目标或标签token供模型基于当前token去预测。
+        
+        因此，`shift_logits` 及 `shift_labels` 的长度是比 `input_ids` 和 `hidden_states` 短一位的，
+        这是因为在序列的最后一个token，是没有下一个token去预测的。'''
         if labels is not None:
             # Shift so that tokens < n predict n
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
+            shift_logits = logits[..., :-1, :].contiguous() #将logits向左移动一位
+            shift_labels = labels[..., 1:].contiguous() #标签向右移动一位
             # Flatten the tokens
             loss_fct = CrossEntropyLoss()
             shift_logits = shift_logits.view(-1, self.config.vocab_size)

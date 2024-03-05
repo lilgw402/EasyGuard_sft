@@ -346,7 +346,7 @@ def train(args):
     #模型初始化
     #根据 `vision_tower`，会初始化不同类别的模型，可能是 `ValleyVideoLlamaForCausalLM`、`ValleyMistralForCausalLM` 等。这些模型会加载之前配置的预设设置。
     data_args.model_class = model_args.model_class
-    if model_args.vision_tower is not None: #多模态
+    if model_args.vision_tower is not None: #判断是否是多模态
         if  model_args.model_class == 'valley-video': 
             model = ValleyVideoLlamaForCausalLM.from_pretrained(
             model_args.model_name_or_path,

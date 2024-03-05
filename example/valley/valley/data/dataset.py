@@ -217,6 +217,7 @@ class LazySupervisedDataset(Dataset):
                 data_dict['label'] = self.list_data_dict[i]['label']
             if 'id' in self.list_data_dict[i]:
                 data_dict['id'] = self.list_data_dict[i]['id']
+            # print("data_dict==================",data_dict)
             return data_dict
         except Exception as e:
             traceback.print_exc()
@@ -283,11 +284,11 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
 def read_and_download_img(imgurl, image_folder='/mnt/bn/yangmin-priv-fashionmm/Data/wuji/big_model_train_image_data'):
     name = imgurl.split('/')[-1]
     img_path = os.path.join(image_folder, name + f'.png')
-    print(img_path)
+    # print(img_path)
     
     if os.path.exists(img_path):
         img_data = Image.open(img_path).convert('RGB')
-        print(img_data)
+        # print(img_data)
     else:
         print('image not exist, download it', img_path)
         image_data = urllib.request.urlopen(imgurl, timeout=2).read()
